@@ -1,0 +1,684 @@
+     1→     1→'use client'
+     2→     2→
+     3→     3→import * as React from 'react'
+     4→     4→import { cn } from '@/lib/utils'
+     5→     5→import { Button } from '@/components/ui/button'
+     6→     6→import { Input } from '@/components/ui/input'
+     7→     7→import { Checkbox } from '@/components/ui/checkbox'
+     8→     8→import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+     9→     9→import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+    10→    10→import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+    11→    11→import {
+    12→    12→  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel,
+    13→    13→  DropdownMenuSeparator, DropdownMenuTrigger, DropdownMenuCheckboxItem,
+    14→    14→} from '@/components/ui/dropdown-menu'
+    15→    15→import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog'
+    16→    16→import { Label } from '@/components/ui/label'
+    17→    17→import { Switch } from '@/components/ui/switch'
+    18→    18→import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+    19→    19→import { Calendar } from '@/components/ui/calendar'
+    20→    20→import { format } from 'date-fns'
+    21→    21→import { toast } from 'sonner'
+    22→    22→import { api, ApiError, list, createOne, updateOne, deleteOne, ApiMeta } from '@/lib/api-client'
+    23→    23→import { inr, fmtDate, fmtDateTime } from '@/lib/format'
+    24→    24→import {
+    25→    25→  ArrowDown, ArrowUp, ChevronLeft, ChevronRight, ChevronsUpDown, Download, Filter,
+    26→    26→  Loader2, MoreHorizontal, Pencil, Plus, RefreshCw, Search, SlidersHorizontal, Trash2, X, CalendarIcon,
+    27→    27→} from 'lucide-react'
+    28→    28→import { EmptyState, ErrorState, TableSkeleton, StatusBadge } from './ui'
+    29→    29→
+    30→    30→/* eslint-disable @typescript-eslint/no-explicit-any */
+    31→    31→
+    32→    32→export interface Column {
+    33→    33→  key: string
+    34→    34→  label: string
+    35→    35→  sortable?: boolean
+    36→    36→  className?: string
+    37→    37→  money?: boolean
+    38→    38→  date?: boolean
+    39→    39→  dateTime?: boolean
+    40→    40→  badge?: boolean
+    41→    41→  badgeMap?: Record<string, string>
+    42→    42→  defaultHidden?: boolean
+    43→    43→  hideOnMobile?: boolean
+    44→    44→  render?: (row: any) => React.ReactNode
+    45→    45→}
+    46→    46→
+    47→    47→export interface FieldOption { label: string; value: string }
+    48→    48→
+    49→    49→export interface FormField {
+    50→    50→  name: string
+    51→    51→  label: string
+    52→    52→  type: 'text' | 'number' | 'email' | 'tel' | 'password' | 'date' | 'time' | 'textarea' | 'select' | 'switch' | 'url'
+    53→    53→  options?: FieldOption[]
+    54→    54→  optionsLoader?: () => Promise<FieldOption[]>
+    55→    55→  required?: boolean
+    56→    56→  placeholder?: string
+    57→    57→  help?: string
+    58→    58→  defaultValue?: any
+    59→    59→  colSpan?: 1 | 2
+    60→    60→  min?: number
+    61→    61→  max?: number
+    62→    62→  disabled?: (mode: 'create' | 'edit') => boolean
+    63→    63→}
+    64→    64→
+    65→    65→export interface FilterDef {
+    66→    66→  key: string
+    67→    67→  label: string
+    68→    68→  options: FieldOption[]
+    69→    69→}
+    70→    70→
+    71→    71→export interface BulkAction {
+    72→    72→  label: string
+    73→    73→  icon?: React.ReactNode
+    74→    74→  danger?: boolean
+    75→    75→  onClick: (ids: string[], rows: any[], refresh: () => void) => Promise<void>
+    76→    76→}
+    77→    77→
+    78→    78→export interface DataTableProps {
+    79→    79→  endpoint: string
+    80→    80→  columns: Column[]
+    81→    81→  fields?: FormField[]
+    82→    82→  title?: string
+    83→    83→  searchPlaceholder?: string
+    84→    84→  filters?: FilterDef[]
+    85→    85→  defaultSort?: { sortBy: string; sortDir?: 'asc' | 'desc' }
+    86→    86→  defaultPageSize?: number
+    87→    87→  allowCreate?: boolean
+    88→    88→  allowEdit?: boolean
+    89→    89→  allowDelete?: boolean
+    90→    90→  createLabel?: string
+    91→    91→  rowActions?: (row: any, ctx: { refresh: () => void }) => React.ReactNode
+    92→    92→  bulkActions?: BulkAction[]
+    93→    93→  toolbar?: (ctx: { refresh: () => void; meta?: ApiMeta }) => React.ReactNode
+    94→    94→  onRowClick?: (row: any) => void
+    95→    95→  transformSave?: (values: Record<string, any>, mode: 'create' | 'edit') => Record<string, any>
+    96→    96→  rowToForm?: (row: any) => Record<string, any>
+    97→    97→  exportEntity?: string
+    98→    98→  refreshKey?: number
+    99→    99→  emptyTitle?: string
+   100→   100→  emptyDescription?: string
+   101→   101→  emptyAction?: React.ReactNode
+   102→   102→  hideToolbar?: boolean
+   103→   103→  pageSizeOptions?: number[]
+   104→   104→  extraQuery?: Record<string, unknown>
+   105→   105→  deleteLabelField?: string
+   106→   106→}
+   107→   107→
+   108→   108→function coerce(field: FormField, raw: any): any {
+   109→   109→  if (raw === undefined || raw === null || raw === '') {
+   110→   110→    return field.type === 'switch' ? false : field.type === 'number' ? (field.required ? undefined : null) : ''
+   111→   111→  }
+   112→   112→  if (field.type === 'number') {
+   113→   113→    const n = Number(raw)
+   114→   114→    return isNaN(n) ? undefined : n
+   115→   115→  }
+   116→   116→  return raw
+   117→   117→}
+   118→   118→
+   119→   119→export function validateForm(fields: FormField[], values: Record<string, any>): Record<string, string> {
+   120→   120→  const errors: Record<string, string> = {}
+   121→   121→  for (const f of fields) {
+   122→   122→    const v = values[f.name]
+   123→   123→    if (f.required && (v === undefined || v === null || String(v).trim() === '')) {
+   124→   124→      errors[f.name] = `${f.label} is required`
+   125→   125→      continue
+   126→   126→    }
+   127→   127→    if (f.type === 'email' && v && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v)) errors[f.name] = 'Enter a valid email address'
+   128→   128→    if (f.type === 'number' && f.required && v !== undefined && isNaN(Number(v))) errors[f.name] = `${f.label} must be a number`
+   129→   129→    if (f.type === 'number' && v !== undefined && v !== null && String(v) !== '') {
+   130→   130→      if (f.min !== undefined && Number(v) < f.min) errors[f.name] = `Minimum value is ${f.min}`
+   131→   131→      if (f.max !== undefined && Number(v) > f.max) errors[f.name] = `Maximum value is ${f.max}`
+   132→   132→    }
+   133→   133→    if (f.type === 'tel' && v && !/^[+\d][\d\s-]{6,}$/.test(v)) errors[f.name] = 'Enter a valid phone number'
+   134→   134→  }
+   135→   135→  return errors
+   136→   136→}
+   137→   137→
+   138→   138→export function FormFields({ fields, values, setValues, errors, mode }: {
+   139→   139→  fields: FormField[]
+   140→   140→  values: Record<string, any>
+   141→   141→  setValues: (fn: (prev: Record<string, any>) => Record<string, any>) => void
+   142→   142→  errors: Record<string, string>
+   143→   143→  mode: 'create' | 'edit'
+   144→   144→}) {
+   145→   145→  const [loadedOptions, setLoadedOptions] = React.useState<Record<string, FieldOption[]>>({})
+   146→   146→  React.useEffect(() => {
+   147→   147→    let alive = true
+   148→   148→    fields.forEach((f) => {
+   149→   149→      if (f.optionsLoader && !loadedOptions[f.name]) {
+   150→   150→        f.optionsLoader().then(opts => { if (alive) setLoadedOptions(prev => ({ ...prev, [f.name]: opts })) })
+   151→   151→          .catch(() => { if (alive) setLoadedOptions(prev => ({ ...prev, [f.name]: [] })) })
+   152→   152→      }
+   153→   153→    })
+   154→   154→    return () => { alive = false }
+   155→   155→    // eslint-disable-next-line react-hooks/exhaustive-deps
+   156→   156→  }, [fields])
+   157→   157→
+   158→   158→  return (
+   159→   159→    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+   160→   160→      {fields.map((f) => {
+   161→   161→        const disabled = f.disabled?.(mode)
+   162→   162→        const opts = f.options || loadedOptions[f.name] || []
+   163→   163→        const id = `ff-${f.name}`
+   164→   164→        return (
+   165→   165→          <div key={f.name} className={cn('space-y-1.5', f.colSpan === 2 && 'sm:col-span-2')}>
+   166→   166→            <Label htmlFor={id} className="text-sm">
+   167→   167→              {f.label}{f.required && <span className="ml-0.5 text-rose-500">*</span>}
+   168→   168→            </Label>
+   169→   169→            {f.type === 'select' ? (
+   170→   170→              <Select
+   171→   171→                value={values[f.name] ?? ''}
+   172→   172→                onValueChange={(v) => setValues(prev => ({ ...prev, [f.name]: v }))}
+   173→   173→                disabled={disabled}
+   174→   174→              >
+   175→   175→                <SelectTrigger id={id} className={cn('w-full', errors[f.name] && 'border-rose-500')}>
+   176→   176→                  <SelectValue placeholder={`Select ${f.label.toLowerCase()}`} />
+   177→   177→                </SelectTrigger>
+   178→   178→                <SelectContent className="max-h-64">
+   179→   179→                  {opts.length === 0 && <div className="px-3 py-2 text-sm text-muted-foreground">Loading…</div>}
+   180→   180→                  {opts.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
+   181→   181→                </SelectContent>
+   182→   182→              </Select>
+   183→   183→            ) : f.type === 'switch' ? (
+   184→   184→              <div className="flex items-center gap-2 pt-1">
+   185→   185→                <Switch id={id} checked={!!values[f.name]} onCheckedChange={(v) => setValues(prev => ({ ...prev, [f.name]: v }))} disabled={disabled} />
+   186→   186→                <span className="text-sm text-muted-foreground">{values[f.name] ? 'Yes' : 'No'}</span>
+   187→   187→              </div>
+   188→   188→            ) : f.type === 'textarea' ? (
+   189→   189→              <textarea
+   190→   190→                id={id}
+   191→   191→                className={cn('flex min-h-[80px] w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50', errors[f.name] && 'border-rose-500')}
+   192→   192→                placeholder={f.placeholder}
+   193→   193→                value={values[f.name] ?? ''}
+   194→   194→                disabled={disabled}
+   195→   195→                onChange={e => setValues(prev => ({ ...prev, [f.name]: e.target.value }))}
+   196→   196→              />
+   197→   197→            ) : f.type === 'date' ? (
+   198→   198→              <Popover>
+   199→   199→                <PopoverTrigger asChild>
+   200→   200→                  <Button id={id} variant="outline" role="combobox" disabled={disabled}
+   201→   201→                    className={cn('w-full justify-start text-left font-normal', !values[f.name] && 'text-muted-foreground', errors[f.name] && 'border-rose-500')}>
+   202→   202→                    <CalendarIcon className="mr-2 h-4 w-4" />
+   203→   203→                    {values[f.name] ? fmtDate(values[f.name]) : 'Pick a date'}
+   204→   204→                  </Button>
+   205→   205→                </PopoverTrigger>
+   206→   206→                <PopoverContent className="w-auto p-0" align="start">
+   207→   207→                  <Calendar
+   208→   208→                    mode="single"
+   209→   209→                    selected={values[f.name] ? new Date(values[f.name]) : undefined}
+   210→   210→                    onSelect={(d) => setValues(prev => ({ ...prev, [f.name]: d ? format(d, 'yyyy-MM-dd') : '' }))}
+   211→   211→                    initialFocus
+   212→   212→                  />
+   213→   213→                </PopoverContent>
+   214→   214→              </Popover>
+   215→   215→            ) : (
+   216→   216→              <Input
+   217→   217→                id={id}
+   218→   218→                type={f.type === 'number' ? 'number' : f.type === 'date' ? 'date' : f.type === 'time' ? 'time' : f.type}
+   219→   219→                placeholder={f.placeholder}
+   220→   220→                value={values[f.name] ?? ''}
+   221→   221→                min={f.min}
+   222→   222→                max={f.max}
+   223→   223→                disabled={disabled}
+   224→   224→                className={cn(errors[f.name] && 'border-rose-500')}
+   225→   225→                onChange={e => setValues(prev => ({ ...prev, [f.name]: e.target.value }))}
+   226→   226→              />
+   227→   227→            )}
+   228→   228→            {errors[f.name] ? (
+   229→   229→              <p className="text-xs font-medium text-rose-500">{errors[f.name]}</p>
+   230→   230→            ) : f.help ? (
+   231→   231→              <p className="text-xs text-muted-foreground">{f.help}</p>
+   232→   232→            ) : null}
+   233→   233→          </div>
+   234→   234→        )
+   235→   235→      })}
+   236→   236→    </div>
+   237→   237→  )
+   238→   238→}
+   239→   239→
+   240→   240→export function DataTable(props: DataTableProps) {
+   241→   241→  const {
+   242→   242→    endpoint, columns, fields = [], filters = [], defaultSort, defaultPageSize = 10,
+   243→   243→    allowCreate = true, allowEdit = true, allowDelete = true, createLabel = 'Add New',
+   244→   244→    rowActions, bulkActions, toolbar, onRowClick, transformSave, rowToForm, exportEntity,
+   245→   245→    refreshKey = 0, emptyTitle = 'No records found', emptyDescription, emptyAction, hideToolbar,
+   246→   246→    pageSizeOptions = [10, 25, 50], deleteLabelField = 'name',
+   247→   247→  } = props
+   248→   248→
+   249→   249→  const [rows, setRows] = React.useState<any[]>([])
+   250→   250→  const [meta, setMeta] = React.useState<ApiMeta | undefined>()
+   251→   251→  const [loading, setLoading] = React.useState(true)
+   252→   252→  const [error, setError] = React.useState<string | null>(null)
+   253→   253→  const [page, setPage] = React.useState(1)
+   254→   254→  const [pageSize, setPageSize] = React.useState(defaultPageSize)
+   255→   255→  const [q, setQ] = React.useState('')
+   256→   256→  const [search, setSearch] = React.useState('')
+   257→   257→  const [sortBy, setSortBy] = React.useState(defaultSort?.sortBy)
+   258→   258→  const [sortDir, setSortDir] = React.useState<'asc' | 'desc'>(defaultSort?.sortDir || 'desc')
+   259→   259→  const [filterValues, setFilterValues] = React.useState<Record<string, string>>({})
+   260→   260→  const [hiddenCols, setHiddenCols] = React.useState<string[]>(columns.filter(c => c.defaultHidden).map(c => c.key))
+   261→   261→  const [selected, setSelected] = React.useState<Set<string>>(new Set())
+   262→   262→  const [dialogOpen, setDialogOpen] = React.useState(false)
+   263→   263→  const [editMode, setEditMode] = React.useState<'create' | 'edit'>('create')
+   264→   264→  const [editingId, setEditingId] = React.useState<string | null>(null)
+   265→   265→  const [formValues, setFormValues] = React.useState<Record<string, any>>({})
+   266→   266→  const [formErrors, setFormErrors] = React.useState<Record<string, string>>({})
+   267→   267→  const [saving, setSaving] = React.useState(false)
+   268→   268→  const [deleteRow, setDeleteRow] = React.useState<any | null>(null)
+   269→   269→  const [deleting, setDeleting] = React.useState(false)
+   270→   270→  const [bulkConfirm, setBulkConfirm] = React.useState<BulkAction | null>(null)
+   271→   271→
+   272→   272→  React.useEffect(() => {
+   273→   273→    const t = setTimeout(() => { setSearch(q); setPage(1) }, 350)
+   274→   274→    return () => clearTimeout(t)
+   275→   275→  }, [q])
+   276→   276→
+   277→   277→  const refresh = React.useCallback(() => {
+   278→   278→    let alive = true
+   279→   279→    setLoading(true)
+   280→   280→    setError(null)
+   281→   281→    const params: Record<string, unknown> = {
+   282→   282→      page, pageSize: pageSize, q: search || undefined,
+   283→   283→      sortBy, sortDir, ...filterValues, ...(props.extraQuery || {}),
+   284→   284→    }
+   285→   285→    list(endpoint, params)
+   286→   286→      .then(res => { if (alive) { setRows(res.data); setMeta(res.meta) } })
+   287→   287→      .catch((e: ApiError) => { if (alive) setError(e.message) })
+   288→   288→      .finally(() => { if (alive) setLoading(false) })
+   289→   289→    return () => { alive = false }
+   290→   290→    // eslint-disable-next-line react-hooks/exhaustive-deps
+   291→   291→  }, [endpoint, page, pageSize, search, sortBy, sortDir, JSON.stringify(filterValues), refreshKey, JSON.stringify(props.extraQuery)])
+   292→   292→
+   293→   293→  React.useEffect(() => { refresh() }, [refresh])
+   294→   294→
+   295→   295→  const openCreate = React.useCallback(() => {
+   296→   296→    if (!fields.length) return
+   297→   297→    const init: Record<string, any> = {}
+   298→   298→    fields.forEach(f => { init[f.name] = f.defaultValue ?? (f.type === 'switch' ? false : '') })
+   299→   299→    setFormValues(init)
+   300→   300→    setFormErrors({})
+   301→   301→    setEditMode('create')
+   302→   302→    setEditingId(null)
+   303→   303→    setDialogOpen(true)
+   304→   304→  }, [fields])
+   305→   305→
+   306→   306→  const openEdit = React.useCallback((row: any) => {
+   307→   307→    if (!fields.length) return
+   308→   308→    const base = rowToForm ? rowToForm(row) : Object.fromEntries(fields.map(f => [f.name, row[f.name] ?? (f.type === 'switch' ? false : '')]))
+   309→   309→    setFormValues(base)
+   310→   310→    setFormErrors({})
+   311→   311→    setEditMode('edit')
+   312→   312→    setEditingId(row.id)
+   313→   313→    setDialogOpen(true)
+   314→   314→  }, [fields, rowToForm])
+   315→   315→
+   316→   316→  const handleSave = async () => {
+   317→   317→    const errs = validateForm(fields, formValues)
+   318→   318→    if (Object.keys(errs).length) {
+   319→   319→      setFormErrors(errs)
+   320→   320→      toast.error('Please fix the highlighted fields.')
+   321→   321→      return
+   322→   322→    }
+   323→   323→    let payload = Object.fromEntries(fields.map(f => [f.name, coerce(f, formValues[f.name])]))
+   324→   324→    if (transformSave) payload = transformSave(payload, editMode)
+   325→   325→    setSaving(true)
+   326→   326→    try {
+   327→   327→      if (editMode === 'create') await createOne(endpoint, payload)
+   328→   328→      else await updateOne(endpoint, editingId!, payload)
+   329→   329→      toast.success(editMode === 'create' ? 'Record created successfully.' : 'Record updated successfully.')
+   330→   330→      setDialogOpen(false)
+   331→   331→      refresh()
+   332→   332→    } catch (e) {
+   333→   333→      const err = e as ApiError
+   334→   334→      if (err.fields?.length) {
+   335→   335→        setFormErrors(Object.fromEntries(err.fields.map(f => [f, 'Invalid value'])))
+   336→   336→      }
+   337→   337→      toast.error(err.message)
+   338→   338→    } finally {
+   339→   339→      setSaving(false)
+   340→   340→    }
+   341→   341→  }
+   342→   342→
+   343→   343→  const handleDelete = async () => {
+   344→   344→    if (!deleteRow) return
+   345→   345→    setDeleting(true)
+   346→   346→    try {
+   347→   347→      await deleteOne(endpoint, deleteRow.id)
+   348→   348→      toast.success('Record deleted.')
+   349→   349→      setDeleteRow(null)
+   350→   350→      refresh()
+   351→   351→    } catch (e) {
+   352→   352→      toast.error((e as ApiError).message)
+   353→   353→    } finally {
+   354→   354→      setDeleting(false)
+   355→   355→    }
+   356→   356→  }
+   357→   357→
+   358→   358→  const handleBulk = async (action: BulkAction) => {
+   359→   359→    try {
+   360→   360→      await action.onClick(Array.from(selected), rows.filter(r => selected.has(r.id)), refresh)
+   361→   361→      setSelected(new Set())
+   362→   362→    } catch (e) {
+   363→   363→      toast.error((e as ApiError)?.message || 'Bulk action failed.')
+   364→   364→    }
+   365→   365→  }
+   366→   366→
+   367→   367→  const toggleSort = (key: string) => {
+   368→   368→    if (sortBy === key) setSortDir(d => (d === 'asc' ? 'desc' : 'asc'))
+   369→   369→    else { setSortBy(key); setSortDir('asc') }
+   370→   370→    setPage(1)
+   371→   371→  }
+   372→   372→
+   373→   373→  const exportCsv = async () => {
+   374→   374→    try {
+   375→   375→      const res = await api<{ data: any[] }>(`/api/export?entity=${exportEntity || endpoint.split('/').pop()}`)
+   376→   376→      const data = res.data || []
+   377→   377→      if (!data.length) { toast.error('No data to export.'); return }
+   378→   378→      const headers = Object.keys(data[0])
+   379→   379→      const csv = [headers.join(','), ...data.map(r => headers.map(h => {
+   380→   380→        const v = r[h]
+   381→   381→        const s = v === null || v === undefined ? '' : String(v)
+   382→   382→        return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s
+   383→   383→      }).join(','))].join('\n')
+   384→   384→      const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv' }))
+   385→   385→      const a = document.createElement('a')
+   386→   386→      a.href = url
+   387→   387→      a.download = `${exportEntity || 'export'}-${new Date().toISOString().slice(0, 10)}.csv`
+   388→   388→      a.click()
+   389→   389→      URL.revokeObjectURL(url)
+   390→   390→      toast.success(`Exported ${data.length} rows.`)
+   391→   391→    } catch (e) {
+   392→   392→      toast.error((e as ApiError)?.message || 'Export failed.')
+   393→   393→    }
+   394→   394→  }
+   395→   395→
+   396→   396→  const visibleColumns = columns.filter(c => !hiddenCols.includes(c.key))
+   397→   397→  const allSelected = rows.length > 0 && rows.every(r => selected.has(r.id))
+   398→   398→  const activeFilterCount = Object.values(filterValues).filter(v => v && v !== 'ALL').length
+   399→   399→
+   400→   400→  return (
+   401→   401→    <div className="space-y-3">
+   402→   402→      {/* Toolbar */}
+   403→   403→      {!hideToolbar && (
+   404→   404→        <div className="flex flex-col gap-2 lg:flex-row lg:items-center lg:justify-between">
+   405→   405→          <div className="flex flex-1 flex-wrap items-center gap-2">
+   406→   406→            <div className="relative w-full max-w-xs">
+   407→   407→              <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+   408→   408→              <Input value={q} onChange={e => { setQ(e.target.value); }} placeholder={props.searchPlaceholder || 'Search…'}
+   409→   409→                className="h-9 pl-8 pr-8" />
+   410→   410→              {q && (
+   411→   411→                <button onClick={() => { setQ(''); setSearch('') }} className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground" aria-label="Clear search">
+   412→   412→                  <X className="h-4 w-4" />
+   413→   413→                </button>
+   414→   414→              )}
+   415→   415→            </div>
+   416→   416→            {filters.map(f => (
+   417→   417→              <Select key={f.key} value={filterValues[f.key] || 'ALL'}
+   418→   418→                onValueChange={v => { setFilterValues(prev => ({ ...prev, [f.key]: v })); setPage(1) }}>
+   419→   419→                <SelectTrigger className={cn('h-9 w-[150px]', activeFilterCount > 0 && 'border-primary/50')}>
+   420→   420→                  <Filter className="mr-1 h-3.5 w-3.5 text-muted-foreground" />
+   421→   421→                  <SelectValue placeholder={f.label} />
+   422→   422→                </SelectTrigger>
+   423→   423→                <SelectContent>
+   424→   424→                  <SelectItem value="ALL">All {f.label}</SelectItem>
+   425→   425→                  {f.options.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
+   426→   426→                </SelectContent>
+   427→   427→              </Select>
+   428→   428→            ))}
+   429→   429→            {(activeFilterCount > 0 || search) && (
+   430→   430→              <Button variant="ghost" size="sm" className="h-9"
+   431→   431→                onClick={() => { setFilterValues({}); setQ(''); setSearch('') }}>
+   432→   432→                <X className="mr-1 h-3.5 w-3.5" /> Clear
+   433→   433→              </Button>
+   434→   434→            )}
+   435→   435→          </div>
+   436→   436→          <div className="flex flex-wrap items-center gap-2">
+   437→   437→            {toolbar?.({ refresh, meta })}
+   438→   438→            {exportEntity !== undefined && (
+   439→   439→              <Button variant="outline" size="sm" className="h-9" onClick={exportCsv}>
+   440→   440→                <Download className="mr-1.5 h-4 w-4" /> Export
+   441→   441→              </Button>
+   442→   442→            )}
+   443→   443→            <DropdownMenu>
+   444→   444→              <DropdownMenuTrigger asChild>
+   445→   445→                <Button variant="outline" size="sm" className="h-9">
+   446→   446→                  <SlidersHorizontal className="mr-1.5 h-4 w-4" /> Columns
+   447→   447→                </Button>
+   448→   448→              </DropdownMenuTrigger>
+   449→   449→              <DropdownMenuContent align="end">
+   450→   450→                <DropdownMenuLabel>Visible columns</DropdownMenuLabel>
+   451→   451→                <DropdownMenuSeparator />
+   452→   452→                {columns.map(c => (
+   453→   453→                  <DropdownMenuCheckboxItem key={c.key} checked={!hiddenCols.includes(c.key)}
+   454→   454→                    onCheckedChange={(v) => setHiddenCols(prev => v ? prev.filter(k => k !== c.key) : [...prev, c.key])}
+   455→   455→                    onSelect={e => e.preventDefault()}>
+   456→   456→                    {c.label}
+   457→   457→                  </DropdownMenuCheckboxItem>
+   458→   458→                ))}
+   459→   459→              </DropdownMenuContent>
+   460→   460→            </DropdownMenu>
+   461→   461→            {fields.length > 0 && allowCreate && (
+   462→   462→              <Button size="sm" className="h-9" onClick={openCreate}>
+   463→   463→                <Plus className="mr-1.5 h-4 w-4" /> {createLabel}
+   464→   464→              </Button>
+   465→   465→            )}
+   466→   466→          </div>
+   467→   467→        </div>
+   468→   468→      )}
+   469→   469→
+   470→   470→      {/* Bulk bar */}
+   471→   471→      {bulkActions && bulkActions.length > 0 && selected.size > 0 && (
+   472→   472→        <div className="flex flex-wrap items-center gap-2 rounded-lg border border-primary/20 bg-primary/5 px-3 py-2">
+   473→   473→          <span className="text-sm font-medium">{selected.size} selected</span>
+   474→   474→          {bulkActions.map(a => (
+   475→   475→            <Button key={a.label} variant={a.danger ? 'destructive' : 'outline'} size="sm" className="h-8"
+   476→   476→              onClick={() => setBulkConfirm(a)}>
+   477→   477→              {a.icon}{a.label}
+   478→   478→            </Button>
+   479→   479→          ))}
+   480→   480→          <Button variant="ghost" size="sm" className="h-8" onClick={() => setSelected(new Set())}>Cancel</Button>
+   481→   481→        </div>
+   482→   482→      )}
+   483→   483→
+   484→   484→      {/* Table */}
+   485→   485→      <div className="overflow-hidden rounded-xl border bg-card">
+   486→   486→        {loading ? (
+   487→   487→          <TableSkeleton rows={Math.min(pageSize, 8)} />
+   488→   488→        ) : error ? (
+   489→   489→          <ErrorState message={error} onRetry={refresh} />
+   490→   490→        ) : rows.length === 0 ? (
+   491→   491→          <EmptyState
+   492→   492→            title={search || activeFilterCount ? 'No results found' : emptyTitle}
+   493→   493→            description={search || activeFilterCount ? 'Try adjusting your search or filters.' : emptyDescription}
+   494→   494→            action={emptyAction || (!search && !activeFilterCount && fields.length > 0 && allowCreate ? (
+   495→   495→              <Button size="sm" onClick={openCreate}><Plus className="mr-1.5 h-4 w-4" /> {createLabel}</Button>
+   496→   496→            ) : null)}
+   497→   497→          />
+   498→   498→        ) : (
+   499→   499→          <>
+   500→   500→            <div className="overflow-x-auto">
+   501→   501→              <Table>
+   502→   502→                <TableHeader>
+   503→   503→                  <TableRow className="bg-muted/50 hover:bg-muted/50">
+   504→   504→                    {bulkActions && bulkActions.length > 0 && (
+   505→   505→                      <TableHead className="w-10">
+   506→   506→                        <Checkbox checked={allSelected}
+   507→   507→                          onCheckedChange={(v) => setSelected(v ? new Set(rows.map(r => r.id)) : new Set())}
+   508→   508→                          aria-label="Select all" />
+   509→   509→                      </TableHead>
+   510→   510→                    )}
+   511→   511→                    {visibleColumns.map(c => (
+   512→   512→                      <TableHead key={c.key} className={cn('whitespace-nowrap', c.hideOnMobile && 'hidden md:table-cell', c.className)}>
+   513→   513→                        {c.sortable !== false ? (
+   514→   514→                          <button className="group inline-flex items-center gap-1 font-medium" onClick={() => toggleSort(c.key)}>
+   515→   515→                            {c.label}
+   516→   516→                            {sortBy === c.key ? (
+   517→   517→                              sortDir === 'asc' ? <ArrowUp className="h-3.5 w-3.5 text-primary" /> : <ArrowDown className="h-3.5 w-3.5 text-primary" />
+   518→   518→                            ) : (
+   519→   519→                              <ChevronsUpDown className="h-3.5 w-3.5 opacity-0 transition-opacity group-hover:opacity-40" />
+   520→   520→                            )}
+   521→   521→                          </button>
+   522→   522→                        ) : c.label}
+   523→   523→                      </TableHead>
+   524→   524→                    ))}
+   525→   525→                    {(rowActions || (fields.length > 0 && (allowEdit || allowDelete))) && (
+   526→   526→                      <TableHead className="w-14 text-right">Actions</TableHead>
+   527→   527→                    )}
+   528→   528→                  </TableRow>
+   529→   529→                </TableHeader>
+   530→   530→                <TableBody>
+   531→   531→                  {rows.map(row => (
+   532→   532→                    <TableRow
+   533→   533→                      key={row.id}
+   534→   534→                      className={cn(selected.has(row.id) && 'bg-primary/5', onRowClick && 'cursor-pointer')}
+   535→   535→                      onClick={() => onRowClick?.(row)}
+   536→   536→                    >
+   537→   537→                      {bulkActions && bulkActions.length > 0 && (
+   538→   538→                        <TableCell onClick={e => e.stopPropagation()}>
+   539→   539→                          <Checkbox checked={selected.has(row.id)}
+   540→   540→                            onCheckedChange={(v) => setSelected(prev => {
+   541→   541→                              const next = new Set(prev)
+   542→   542→                              if (v) next.add(row.id); else next.delete(row.id)
+   543→   543→                              return next
+   544→   544→                            })}
+   545→   545→                            aria-label="Select row" />
+   546→   546→                        </TableCell>
+   547→   547→                      )}
+   548→   548→                      {visibleColumns.map(c => (
+   549→   549→                        <TableCell key={c.key} className={cn('py-2.5', c.hideOnMobile && 'hidden md:table-cell', c.className)}>
+   550→   550→                          {c.render ? c.render(row)
+   551→   551→                            : c.badge ? <StatusBadge value={row[c.key]} map={c.badgeMap} />
+   552→   552→                              : c.money ? <span className="font-medium tabular-nums">{inr(row[c.key])}</span>
+   553→   553→                                : c.dateTime ? <span className="whitespace-nowrap text-muted-foreground">{fmtDateTime(row[c.key])}</span>
+   554→   554→                                  : c.date ? <span className="whitespace-nowrap text-muted-foreground">{fmtDate(row[c.key])}</span>
+   555→   555→                                    : <span className="line-clamp-2">{row[c.key] === null || row[c.key] === undefined || row[c.key] === '' ? '—' : String(row[c.key])}</span>}
+   556→   556→                        </TableCell>
+   557→   557→                      ))}
+   558→   558→                      {(rowActions || (fields.length > 0 && (allowEdit || allowDelete))) && (
+   559→   559→                        <TableCell className="py-2 text-right" onClick={e => e.stopPropagation()}>
+   560→   560→                          <div className="flex items-center justify-end gap-0.5">
+   561→   561→                            {rowActions?.(row, { refresh })}
+   562→   562→                            {(allowEdit || allowDelete) && fields.length > 0 && (
+   563→   563→                              <DropdownMenu>
+   564→   564→                                <DropdownMenuTrigger asChild>
+   565→   565→                                  <Button variant="ghost" size="icon" className="h-8 w-8" aria-label="Row actions">
+   566→   566→                                    <MoreHorizontal className="h-4 w-4" />
+   567→   567→                                  </Button>
+   568→   568→                                </DropdownMenuTrigger>
+   569→   569→                                <DropdownMenuContent align="end" className="w-44">
+   570→   570→                                  {allowEdit && fields.length > 0 && (
+   571→   571→                                    <DropdownMenuItem onClick={() => openEdit(row)}>
+   572→   572→                                      <Pencil className="mr-2 h-4 w-4" /> Edit
+   573→   573→                                    </DropdownMenuItem>
+   574→   574→                                  )}
+   575→   575→                                  {rowActions && <DropdownMenuSeparator />}
+   576→   576→                                  {allowDelete && (
+   577→   577→                                    <>
+   578→   578→                                      <DropdownMenuItem className="text-rose-600 dark:text-rose-400 focus:text-rose-600 dark:focus:text-rose-400"
+   579→   579→                                        onClick={() => setDeleteRow(row)}>
+   580→   580→                                        <Trash2 className="mr-2 h-4 w-4" /> Delete
+   581→   581→                                      </DropdownMenuItem>
+   582→   582→                                    </>
+   583→   583→                                  )}
+   584→   584→                                </DropdownMenuContent>
+   585→   585→                              </DropdownMenu>
+   586→   586→                            )}
+   587→   587→                          </div>
+   588→   588→                        </TableCell>
+   589→   589→                      )}
+   590→   590→                    </TableRow>
+   591→   591→                  ))}
+   592→   592→                </TableBody>
+   593→   593→              </Table>
+   594→   594→            </div>
+   595→   595→            {/* Pagination */}
+   596→   596→            <div className="flex flex-col items-center justify-between gap-2 border-t px-4 py-3 sm:flex-row">
+   597→   597→              <div className="flex items-center gap-3 text-sm text-muted-foreground">
+   598→   598→                <span>{meta ? `${(meta.page - 1) * meta.pageSize + 1}–${Math.min(meta.page * meta.pageSize, meta.total)} of ${meta.total}` : '—'}</span>
+   599→   599→                <Select value={String(pageSize)} onValueChange={v => { setPageSize(Number(v)); setPage(1) }}>
+   600→   600→                  <SelectTrigger className="h-8 w-[100px]"><SelectValue /></SelectTrigger>
+   601→   601→                  <SelectContent>
+   602→   602→                    {pageSizeOptions.map(n => <SelectItem key={n} value={String(n)}>{n} / page</SelectItem>)}
+   603→   603→                  </SelectContent>
+   604→   604→                </Select>
+   605→   605→              </div>
+   606→   606→              <div className="flex items-center gap-1">
+   607→   607→                <Button variant="outline" size="icon" className="h-8 w-8" disabled={page <= 1} onClick={() => setPage(p => p - 1)} aria-label="Previous page">
+   608→   608→                  <ChevronLeft className="h-4 w-4" />
+   609→   609→                </Button>
+   610→   610→                <span className="px-2 text-sm text-muted-foreground">
+   611→   611→                  Page {meta?.page ?? 1}{meta && meta.totalPages > 1 ? ` of ${meta.totalPages}` : ''}
+   612→   612→                </span>
+   613→   613→                <Button variant="outline" size="icon" className="h-8 w-8" disabled={!meta || page >= meta.totalPages} onClick={() => setPage(p => p + 1)} aria-label="Next page">
+   614→   614→                  <ChevronRight className="h-4 w-4" />
+   615→   615→                </Button>
+   616→   616→              </div>
+   617→   617→            </div>
+   618→   618→          </>
+   619→   619→        )}
+   620→   620→      </div>
+   621→   621→
+   622→   622→      {/* Create / Edit dialog */}
+   623→   623→      <Dialog open={dialogOpen} onOpenChange={(open) => { if (!open && !saving) setDialogOpen(false) }}>
+   624→   624→        <DialogContent className="max-h-[88vh] overflow-y-auto sm:max-w-lg">
+   625→   625→          <DialogHeader>
+   626→   626→            <DialogTitle>{editMode === 'create' ? createLabel : 'Edit Record'}</DialogTitle>
+   627→   627→            <DialogDescription>
+   628→   628→              {editMode === 'create' ? 'Fill in the details below. Required fields are marked with *.' : 'Update the details below and save your changes.'}
+   629→   629→            </DialogDescription>
+   630→   630→          </DialogHeader>
+   631→   631→          <FormFields fields={fields} values={formValues} setValues={setFormValues} errors={formErrors} mode={editMode} />
+   632→   632→          <DialogFooter className="gap-2">
+   633→   633→            <Button variant="outline" disabled={saving} onClick={() => setDialogOpen(false)}>Cancel</Button>
+   634→   634→            <Button onClick={handleSave} disabled={saving}>
+   635→   635→              {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+   636→   636→              {editMode === 'create' ? 'Create' : 'Save Changes'}
+   637→   637→            </Button>
+   638→   638→          </DialogFooter>
+   639→   639→        </DialogContent>
+   640→   640→      </Dialog>
+   641→   641→
+   642→   642→      {/* Delete confirm */}
+   643→   643→      <AlertDialog open={!!deleteRow} onOpenChange={(open) => !open && setDeleteRow(null)}>
+   644→   644→        <AlertDialogContent>
+   645→   645→          <AlertDialogHeader>
+   646→   646→            <AlertDialogTitle>Delete this record?</AlertDialogTitle>
+   647→   647→            <AlertDialogDescription>
+   648→   648→              {deleteRow ? `You are about to permanently delete “${deleteRow[deleteLabelField] || deleteRow.title || deleteRow.name || deleteRow.id}”. This action cannot be undone.` : ''}
+   649→   649→            </AlertDialogDescription>
+   650→   650→          </AlertDialogHeader>
+   651→   651→          <AlertDialogFooter>
+   652→   652→            <AlertDialogCancel disabled={deleting}>Cancel</AlertDialogCancel>
+   653→   653→            <AlertDialogAction
+   654→   654→              className="bg-rose-600 hover:bg-rose-700 focus:ring-rose-600"
+   655→   655→              disabled={deleting}
+   656→   656→              onClick={(e) => { e.preventDefault(); handleDelete() }}
+   657→   657→            >
+   658→   658→              {deleting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+   659→   659→              Delete
+   660→   660→            </AlertDialogAction>
+   661→   661→          </AlertDialogFooter>
+   662→   662→        </AlertDialogContent>
+   663→   663→      </AlertDialog>
+   664→   664→
+   665→   665→      {/* Bulk confirm */}
+   666→   666→      <AlertDialog open={!!bulkConfirm} onOpenChange={(open) => !open && setBulkConfirm(null)}>
+   667→   667→        <AlertDialogContent>
+   668→   668→          <AlertDialogHeader>
+   669→   669→            <AlertDialogTitle>Confirm {bulkConfirm?.label.toLowerCase()}</AlertDialogTitle>
+   670→   670→            <AlertDialogDescription>This will apply to {selected.size} selected record(s). Continue?</AlertDialogDescription>
+   671→   671→          </AlertDialogHeader>
+   672→   672→          <AlertDialogFooter>
+   673→   673→            <AlertDialogCancel>Cancel</AlertDialogCancel>
+   674→   674→            <AlertDialogAction className={cn(bulkConfirm?.danger && 'bg-rose-600 hover:bg-rose-700')}
+   675→   675→              onClick={(e) => { e.preventDefault(); if (bulkConfirm) handleBulk(bulkConfirm); setBulkConfirm(null) }}>
+   676→   676→              Confirm
+   677→   677→            </AlertDialogAction>
+   678→   678→          </AlertDialogFooter>
+   679→   679→        </AlertDialogContent>
+   680→   680→      </AlertDialog>
+   681→   681→    </div>
+   682→   682→  )
+   683→   683→}
+   684→   684→
