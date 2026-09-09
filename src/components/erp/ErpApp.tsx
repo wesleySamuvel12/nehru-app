@@ -6,9 +6,10 @@ import { api, ApiError } from '@/lib/api-client'
 import { can } from '@/lib/rbac'
 import { LoginScreen } from './LoginScreen'
 import { AppShell } from './AppShell'
+import { BrandSplash, BrandMark } from './brand'
 import { MODULE_REGISTRY } from '@/lib/registry'
 import { Button } from '@/components/ui/button'
-import { GraduationCap, ShieldAlert, Loader2 } from 'lucide-react'
+import { ShieldAlert } from 'lucide-react'
 
 export function ErpApp() {
   const { session, setSession, activeModule, setModule } = useErp()
@@ -36,7 +37,7 @@ export function ErpApp() {
     setModule(defaultModule)
   }
 
-  if (booting) return <Splash />
+  if (booting) return <BrandSplash />
   if (!session) return <LoginScreen onLogin={onLogin} />
 
   // Enforce RBAC on the client too (API enforces server-side)
@@ -47,9 +48,11 @@ export function ErpApp() {
   return (
     <AppShell>
       {allowed ? (
-        <React.Suspense fallback={<ModuleFallback />}>
-          <ModuleView />
-        </React.Suspense>
+        <div key={activeModule} className="anim-page-in">
+          <React.Suspense fallback={<ModuleFallback />}>
+            <ModuleView />
+          </React.Suspense>
+        </div>
       ) : (
         <div className="flex flex-col items-center justify-center gap-4 py-24 text-center">
           <div className="flex h-16 w-16 items-center justify-center rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400">
@@ -72,19 +75,11 @@ export function ErpApp() {
 
 function ModuleFallback() {
   return (
-    <div className="flex items-center justify-center py-24">
-      <Loader2 className="h-7 w-7 animate-spin text-primary" />
-    </div>
-  )
-}
-
-function Splash() {
-  return (
-    <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-background">
-      <div className="flex h-14 w-14 animate-pulse items-center justify-center rounded-2xl bg-emerald-600 text-white">
-        <GraduationCap className="h-7 w-7" />
+    <div className="flex flex-col items-center justify-center gap-4 py-24">
+      <BrandMark tileClassName="h-10 w-10" breathe />
+      <div className="h-1 w-32 overflow-hidden rounded-full bg-muted">
+        <div className="indeterminate-bar h-full rounded-full bg-primary/70" />
       </div>
-      <p className="text-sm font-medium text-muted-foreground">Loading Greenwood ERP…</p>
     </div>
   )
 }

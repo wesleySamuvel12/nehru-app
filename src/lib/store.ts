@@ -22,11 +22,13 @@ export interface ErpState {
   schoolId: string
   schoolName: string
   sidebarOpen: boolean
+  sidebarCollapsed: boolean
   setSession: (s: Session | null) => void
   setModule: (key: string, params?: Record<string, string>) => void
   setAcademicYear: (id: string, name: string) => void
   setSchool: (id: string, name: string) => void
   setSidebarOpen: (open: boolean) => void
+  setSidebarCollapsed: (collapsed: boolean) => void
 }
 
 export const useErp = create<ErpState>()(
@@ -40,12 +42,14 @@ export const useErp = create<ErpState>()(
       schoolId: 'main',
       schoolName: 'Greenwood International School',
       sidebarOpen: false,
+      sidebarCollapsed: false,
       setSession: (s) => set({ session: s }),
       setModule: (key, params = {}) => set({ activeModule: key, moduleParams: params, sidebarOpen: false }),
       setAcademicYear: (id, name) => set({ academicYearId: id, academicYearName: name }),
       setSchool: (id, name) => set({ schoolId: id, schoolName: name }),
       setSidebarOpen: (open) => set({ sidebarOpen: open }),
+      setSidebarCollapsed: (collapsed) => set({ sidebarCollapsed: collapsed }),
     }),
-    { name: 'erp-ui-state', partialize: (s) => ({ academicYearId: s.academicYearId, academicYearName: s.academicYearName, schoolId: s.schoolId, schoolName: s.schoolName }) }
+    { name: 'erp-ui-state', partialize: (s) => ({ academicYearId: s.academicYearId, academicYearName: s.academicYearName, schoolId: s.schoolId, schoolName: s.schoolName, sidebarCollapsed: s.sidebarCollapsed }) }
   )
 )

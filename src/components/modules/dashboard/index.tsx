@@ -5,7 +5,8 @@ import { api, ApiError } from '@/lib/api-client'
 import { useErp } from '@/lib/store'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { PageHeader, StatCard, SectionCard, EmptyState } from '@/components/erp/ui'
+import { StatCard, SectionCard, EmptyState } from '@/components/erp/ui'
+import { ROLE_LABELS } from '@/lib/rbac'
 import { TrendArea, BarsChart, LineTrend, DonutChart, GaugeChart } from '@/components/erp/charts'
 import { inr, fmtDate, timeAgo } from '@/lib/format'
 import {
@@ -18,6 +19,34 @@ import {
 const STAGE_LABELS: Record<string, string> = {
   NEW: 'New', CONTACTED: 'Contacted', COUNSELLING: 'Counselling', APPLICATION: 'Application',
   TEST: 'Test', INTERVIEW: 'Interview', APPROVED: 'Approved', ENROLLED: 'Enrolled',
+}
+
+function greetingFor(): string {
+  const h = new Date().getHours()
+  if (h < 5) return 'Working late'
+  if (h < 12) return 'Good morning'
+  if (h < 17) return 'Good afternoon'
+  return 'Good evening'
+}
+
+function GreetingHeader({ onRefresh }: { onRefresh: () => void }) {
+  const { session } = useErp()
+  const today = new Date().toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long' })
+  const name = session?.name || ''
+  return (
+    <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+      <div className="min-w-0">
+        <p className="text-xs font-semibold uppercase tracking-[0.14em] text-primary">{today}</p>
+        <h1 className="mt-1 font-display text-2xl font-extrabold tracking-tight sm:text-[28px]">
+          {greetingFor()}{name ? `, ${name.split(' ')[0]}` : ''}.
+        </h1>
+        <p className="mt-1 text-sm text-muted-foreground">
+          {session ? `Here's what's happening across ${ROLE_LABELS[session.role] ? 'your' : 'the'} school today.` : 'Live overview across the school.'}
+        </p>
+      </div>
+      <Button variant="outline" size="sm" className="press" onClick={onRefresh}><RefreshCw className="mr-1.5 h-4 w-4" /> Refresh</Button>
+    </div>
+  )
 }
 
 export default function DashboardModule() {
@@ -51,32 +80,29 @@ export default function DashboardModule() {
 
   return (
     <div className="space-y-5">
-      <PageHeader
-        title="School Dashboard"
-        subtitle="Live overview across students, staff, academics, finance and operations."
-        actions={<Button variant="outline" size="sm" onClick={load}><RefreshCw className="mr-1.5 h-4 w-4" /> Refresh</Button>}
-      />
+      <GreetingHeader onRefresh={load} />
 
-      {/* KPI row 1 */}
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4 xl:grid-cols-6">
-        <StatCard label="Total Students" value={k.activeStudents} icon={<GraduationCap className="h-5 w-5" />} tone="info" hint={`${k.totalStudents} on record`} onClick={() => setModule('students')} />
-        <StatCard label="Total Staff" value={k.totalStaff} icon={<Users className="h-5 w-5" />} tone="default" hint="Active employees" onClick={() => setModule('teachers')} />
-        <StatCard label="Today's Attendance" value={`${k.attendancePercent}%`} icon={<CalendarCheck className="h-5 w-5" />} tone="success" hint={`${k.presentToday} present · ${k.absentToday} absent`} onClick={() => setModule('attendance')} />
-        <StatCard label="Pending Admissions" value={k.pendingAdmissions} icon={<UserPlus className="h-5 w-5" />} tone="warning" hint="Applications in review" onClick={() => setModule('admissions')} />
-        <StatCard label="Fee Collection" value={inr(k.feeCollected, true)} icon={<Wallet className="h-5 w-5" />} tone="success" hint={`of ${inr(k.feeBilled, true)} billed`} onClick={() => setModule('fees')} />
-        <StatCard label="Outstanding Fees" value={inr(k.feeOutstanding, true)} icon={<AlertTriangle className="h-5 w-5" />} tone="danger" hint={`${k.overdueInvoices} overdue invoices`} onClick={() => setModule('fees')} />
+      {/* KPI row 1 — sequential entrance + count-up */}
+      <div className="stagger grid grid-cols-2 gap-3 lg:grid-cols-4 xl:grid-cols-6">
+        <StatCard label="Total Students" countTo={k.activeStudents} icon={<GraduationCap className="h-5 w-5" />} tone="info" hint={`${k.totalStudents} on record`} onClick={() => setModule('students')} />
+        <StatCard label="Total Staff" countTo={k.totalStaff} icon={<Users className="h-5 w-5" />} tone="default" hint="Active employees" onClick={() => setModule('teachers')} />
+        <StatCard label="Today's Attendance" countTo={k.attendancePercent} format={n => `${Math.round(n)}%`} icon={<CalendarCheck className="h-5 w-5" />} tone="success" hint={`${k.presentToday} present · ${k.absentToday} absent`} onClick={() => setModule('attendance')}
+          spark={(data.attendanceTrend || []).slice(-14).map((t: any) => t.percent)} sparkColor="#10b981" />
+        <StatCard label="Pending Admissions" countTo={k.pendingAdmissions} icon={<UserPlus className="h-5 w-5" />} tone="warning" hint="Applications in review" onClick={() => setModule('admissions')} />
+        <StatCard label="Fee Collection" countTo={k.feeCollected} format={n => inr(n, true)} icon={<Wallet className="h-5 w-5" />} tone="success" hint={`of ${inr(k.feeBilled, true)} billed`} onClick={() => setModule('fees')} />
+        <StatCard label="Outstanding Fees" countTo={k.feeOutstanding} format={n => inr(n, true)} icon={<AlertTriangle className="h-5 w-5" />} tone="danger" hint={`${k.overdueInvoices} overdue invoices`} onClick={() => setModule('fees')} />
       </div>
 
       {/* KPI row 2 */}
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <StatCard label="Academic Average" value={`${k.avgAcademicScore || 0}%`} icon={<ClipboardCheck className="h-5 w-5" />} tone="default" hint="Across published exams" onClick={() => setModule('examinations')} />
-        <StatCard label="Transport Active" value={k.transportActive} icon={<Bus className="h-5 w-5" />} tone="info" hint={`${data.transport?.vehicles?.length || 0} buses in fleet`} onClick={() => setModule('transport')} />
+      <div className="stagger grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <StatCard label="Academic Average" countTo={k.avgAcademicScore || 0} format={n => `${Math.round(n)}%`} icon={<ClipboardCheck className="h-5 w-5" />} tone="default" hint="Across published exams" onClick={() => setModule('examinations')} />
+        <StatCard label="Transport Active" countTo={k.transportActive} icon={<Bus className="h-5 w-5" />} tone="info" hint={`${data.transport?.vehicles?.length || 0} buses in fleet`} onClick={() => setModule('transport')} />
         <StatCard label="Hostel Occupancy" value={k.hostelTotal ? `${Math.round((k.hostelOccupied / k.hostelTotal) * 100)}%` : '—'} icon={<Building2 className="h-5 w-5" />} tone="warning" hint={`${k.hostelOccupied}/${k.hostelTotal} beds occupied`} onClick={() => setModule('hostel')} />
-        <StatCard label="Pending Approvals" value={data.pendingApprovals.length} icon={<Activity className="h-5 w-5" />} tone="danger" hint="Awaiting your action" onClick={() => setModule('certificates')} />
+        <StatCard label="Pending Approvals" countTo={data.pendingApprovals.length} icon={<Activity className="h-5 w-5" />} tone="danger" hint="Awaiting your action" onClick={() => setModule('certificates')} />
       </div>
 
       {/* Charts row */}
-      <div className="grid grid-cols-1 gap-4 xl:grid-cols-3">
+      <div className="stagger grid grid-cols-1 gap-4 xl:grid-cols-3">
         <SectionCard title="Student Population" description="Active students by grade" className="xl:col-span-2">
           <BarsChart data={data.population} xKey="name" series={[{ key: 'count', label: 'Students', color: '#0ea5e9' }]} height={280} />
         </SectionCard>
@@ -88,7 +114,7 @@ export default function DashboardModule() {
         </SectionCard>
       </div>
 
-      <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
+      <div className="stagger grid grid-cols-1 gap-4 xl:grid-cols-2">
         <SectionCard title="Attendance Trend" description="Present rate — last 30 days">
           <TrendArea data={data.attendanceTrend} xKey="date" yKey="percent" color="#10b981" height={250}
             xFormatter={(v) => fmtDate(v).slice(0, 6)} />

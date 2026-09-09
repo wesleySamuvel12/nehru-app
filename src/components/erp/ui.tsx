@@ -32,13 +32,63 @@ export function PageHeader({ title, subtitle, actions, breadcrumbs }: {
   )
 }
 
+/* ── Count-up animation (respects prefers-reduced-motion) ── */
+export function useCountUp(target: number, duration = 900): number {
+  const [val, setVal] = React.useState(0)
+  React.useEffect(() => {
+    if (!Number.isFinite(target)) return
+    if (typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) {
+      setVal(target)
+      return
+    }
+    let raf = 0
+    const t0 = performance.now()
+    const tick = (t: number) => {
+      const p = Math.min(1, (t - t0) / duration)
+      const eased = 1 - Math.pow(1 - p, 3)
+      setVal(target * eased)
+      if (p < 1) raf = requestAnimationFrame(tick)
+    }
+    raf = requestAnimationFrame(tick)
+    return () => cancelAnimationFrame(raf)
+  }, [target, duration])
+  return val
+}
+
+export function CountUp({ value, format, className }: {
+  value: number; format?: (n: number) => string; className?: string
+}) {
+  const v = useCountUp(value)
+  return <span className={className}>{format ? format(v) : Math.round(v).toLocaleString('en-IN')}</span>
+}
+
+/* ── Mini sparkline (pure SVG, no chart lib overhead) ── */
+export function Sparkline({ points, className, stroke }: { points: number[]; className?: string; stroke?: string }) {
+  if (!points || points.length < 2) return null
+  const w = 64, h = 20, pad = 1
+  const min = Math.min(...points), max = Math.max(...points)
+  const range = max - min || 1
+  const step = (w - pad * 2) / (points.length - 1)
+  const d = points.map((p, i) => `${i === 0 ? 'M' : 'L'}${(pad + i * step).toFixed(1)},${(h - pad - ((p - min) / range) * (h - pad * 2)).toFixed(1)}`).join(' ')
+  return (
+    <svg viewBox={`0 0 ${w} ${h}`} className={cn('h-5 w-16 shrink-0', className)} aria-hidden fill="none">
+      <path d={`${d} L${w - pad},${h} L${pad},${h} Z`} fill={stroke || 'currentColor'} opacity={0.12} stroke="none" />
+      <path d={d} stroke={stroke || 'currentColor'} strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  )
+}
+
 /* ── Stat card ── */
-export function StatCard({ label, value, icon, trend, tone = 'default', hint, onClick }: {
-  label: string; value: React.ReactNode; icon?: React.ReactNode
+export function StatCard({ label, value, countTo, format, icon, trend, tone = 'default', hint, spark, sparkColor, onClick, className }: {
+  label: string; value?: React.ReactNode; countTo?: number; format?: (n: number) => string
+  icon?: React.ReactNode
   trend?: { value: string; up?: boolean }
   tone?: 'default' | 'success' | 'warning' | 'danger' | 'info'
   hint?: string
+  spark?: number[]
+  sparkColor?: string
   onClick?: () => void
+  className?: string
 }) {
   const tones: Record<string, string> = {
     default: 'bg-primary/10 text-primary',
@@ -49,21 +99,27 @@ export function StatCard({ label, value, icon, trend, tone = 'default', hint, on
   }
   return (
     <Card
-      className={cn('transition-shadow', onClick && 'cursor-pointer hover:shadow-md')}
+      className={cn('card-lift', onClick && 'cursor-pointer', className)}
       onClick={onClick}
     >
       <CardContent className="flex items-start justify-between gap-2 p-4 sm:p-5">
         <div className="min-w-0">
-          <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground leading-tight">{label}</p>
-          <p className="mt-1 text-xl font-bold tracking-tight sm:text-2xl">{value}</p>
+          <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground leading-tight">{label}</p>
+          <p className="mt-1.5 font-display text-xl font-bold tracking-tight tabular-nums sm:text-2xl">
+            {countTo !== undefined ? <CountUp value={countTo} format={format} /> : value}
+          </p>
           {trend && (
-            <p className={cn('mt-1 text-xs font-medium', trend.up ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400')}>
+            <p className={cn('mt-1 inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[11px] font-semibold',
+              trend.up ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' : 'bg-rose-500/10 text-rose-600 dark:text-rose-400')}>
               {trend.up ? '▲' : '▼'} {trend.value}
             </p>
           )}
           {hint && <p className="mt-1 text-xs text-muted-foreground leading-snug">{hint}</p>}
         </div>
-        {icon && <div className={cn('flex h-10 w-10 shrink-0 items-center justify-center rounded-lg', tones[tone])}>{icon}</div>}
+        <div className="flex shrink-0 flex-col items-end gap-2">
+          {spark && spark.length > 1 && <Sparkline points={spark} stroke={sparkColor} className="text-primary" />}
+          {icon && <div className={cn('flex h-10 w-10 shrink-0 items-center justify-center rounded-xl transition-transform duration-200', tones[tone])}>{icon}</div>}
+        </div>
       </CardContent>
     </Card>
   )
@@ -192,11 +248,11 @@ export function SectionCard({ title, description, actions, children, className, 
   className?: string; contentClassName?: string
 }) {
   return (
-    <div className={cn('rounded-xl border bg-card text-card-foreground shadow-sm', className)}>
+    <div className={cn('rounded-xl border bg-card text-card-foreground shadow-[var(--shadow-soft)]', className)}>
       {(title || actions) && (
         <div className="flex flex-wrap items-center justify-between gap-2 border-b px-4 py-3 sm:px-5">
           <div>
-            {title && <h3 className="text-sm font-semibold">{title}</h3>}
+            {title && <h3 className="font-display text-sm font-bold tracking-tight">{title}</h3>}
             {description && <p className="text-xs text-muted-foreground">{description}</p>}
           </div>
           {actions && <div className="flex items-center gap-2">{actions}</div>}

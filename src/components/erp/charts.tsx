@@ -16,8 +16,9 @@ function useAxisColor() {
 }
 
 const tooltipStyle = {
-  backgroundColor: 'hsl(var(--popover))', border: '1px solid hsl(var(--border))',
-  borderRadius: 10, fontSize: 12, color: 'hsl(var(--popover-foreground))',
+  backgroundColor: 'var(--popover)', border: '1px solid var(--border)',
+  borderRadius: 12, fontSize: 12, color: 'var(--popover-foreground)',
+  boxShadow: 'var(--shadow-lift)',
 }
 
 export function TrendArea({ data, xKey, yKey, height = 260, color = CHART_COLORS[0], yFormatter, xFormatter }: {
@@ -66,7 +67,7 @@ export function BarsChart({ data, xKey, series, height = 260, stacked, yFormatte
             <YAxis type="category" dataKey={xKey} tick={{ fontSize: 11, fill: tick }} axisLine={false} tickLine={false} width={110} />
           </>
         )}
-        <Tooltip contentStyle={tooltipStyle} cursor={{ fill: 'hsl(var(--muted))', opacity: 0.4 }} formatter={(v: any, n: any) => (yFormatter ? [yFormatter(Number(v)), n] : v)} />
+        <Tooltip contentStyle={tooltipStyle} cursor={{ fill: 'var(--muted)', opacity: 0.4 }} formatter={(v: any, n: any) => (yFormatter ? [yFormatter(Number(v)), n] : v)} />
         {series.length > 1 && <Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: 12 }} />}
         {series.map((s, i) => (
           <Bar key={s.key} dataKey={s.key} name={s.label} stackId={stacked ? 'a' : undefined}
@@ -127,7 +128,7 @@ export function GaugeChart({ value, max = 100, label, height = 180, color = CHAR
     <div className="relative">
       <ResponsiveContainer width="100%" height={height}>
         <RadialBarChart data={data} innerRadius="70%" outerRadius="100%" startAngle={220} endAngle={-40}>
-          <RadialBar background={{ fill: 'hsl(var(--muted))' }} dataKey="value" cornerRadius={10} />
+          <RadialBar background={{ fill: 'var(--muted)' }} dataKey="value" cornerRadius={10} />
         </RadialBarChart>
       </ResponsiveContainer>
       <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center pt-6">
