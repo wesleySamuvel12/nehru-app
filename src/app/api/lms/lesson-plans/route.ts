@@ -44,7 +44,7 @@ export async function GET(req: NextRequest) {
       const sMap = Object.fromEntries(subjects.map(s => [s.id, s]))
       body.data = rows.map(r => ({ ...r, class: cMap[r.classId] || null, subject: sMap[r.subjectId] || null }))
     }
-    return NextResponse.json(body)
+    return NextResponse.json(body, { status: res.status })
   } catch {
     return res
   }

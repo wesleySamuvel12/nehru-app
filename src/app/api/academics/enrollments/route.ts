@@ -47,7 +47,7 @@ export async function GET(req: NextRequest) {
         section: secMap[r.sectionId] || null,
       }))
     }
-    return NextResponse.json(body)
+    return NextResponse.json(body, { status: res.status })
   } catch {
     return res
   }

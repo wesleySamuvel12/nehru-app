@@ -1,5 +1,25 @@
 'use client'
 
+/*
+ * Auth token fallback: the preview panel can embed the app in a cross-site
+ * iframe where browsers block third-party cookies, so the httpOnly session
+ * cookie may never be stored/sent. The JWT is also kept in localStorage and
+ * sent as an Authorization header — the server accepts both.
+ */
+const TOKEN_KEY = 'erp_auth_token'
+
+export function getToken(): string | null {
+  try { return window.localStorage.getItem(TOKEN_KEY) } catch { return null }
+}
+
+export function setToken(token: string) {
+  try { window.localStorage.setItem(TOKEN_KEY, token) } catch { /* storage unavailable */ }
+}
+
+export function clearToken() {
+  try { window.localStorage.removeItem(TOKEN_KEY) } catch { /* storage unavailable */ }
+}
+
 export interface ApiMeta {
   page: number
   pageSize: number
@@ -19,10 +39,15 @@ export class ApiError extends Error {
 
 export async function api<T = any>(path: string, init?: RequestInit): Promise<T> {
   let res: Response
+  const token = getToken()
   try {
     res = await fetch(path, {
       ...init,
-      headers: { 'Content-Type': 'application/json', ...(init?.headers || {}) },
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        ...(init?.headers || {}),
+      },
       credentials: 'same-origin',
     })
   } catch {
@@ -30,6 +55,7 @@ export async function api<T = any>(path: string, init?: RequestInit): Promise<T>
   }
   const body = await res.json().catch(() => ({}))
   if (!res.ok) {
+    if (res.status === 401) clearToken()
     throw new ApiError(res.status, body.error || 'Something went wrong. Please try again.', body.fields)
   }
   return body as T

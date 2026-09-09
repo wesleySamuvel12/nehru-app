@@ -4,7 +4,7 @@ import * as React from 'react'
 import { cn } from '@/lib/utils'
 import { useErp } from '@/lib/store'
 import { NAV_ITEMS, MOBILE_NAV, can, ROLE_LABELS } from '@/lib/rbac'
-import { api, ApiError } from '@/lib/api-client'
+import { api, ApiError, clearToken } from '@/lib/api-client'
 import { timeAgo, initials } from '@/lib/format'
 import { useTheme } from 'next-themes'
 import { Button } from '@/components/ui/button'
@@ -299,6 +299,7 @@ function ProfileMenu() {
   if (!session) return null
   const logout = async () => {
     try { await api('/api/auth/logout', { method: 'POST' }) } catch { }
+    clearToken()
     setSession(null)
     window.location.reload()
   }

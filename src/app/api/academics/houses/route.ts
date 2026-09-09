@@ -22,7 +22,7 @@ export async function GET(req: NextRequest) {
       const map = Object.fromEntries(counts.map(c => [c.house, c._count._all]))
       body.data = body.data.map((h: any) => ({ ...h, members: map[h.name] || 0 }))
     }
-    return NextResponse.json(body)
+    return NextResponse.json(body, { status: res.status })
   } catch {
     return res
   }

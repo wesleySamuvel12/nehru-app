@@ -283,7 +283,20 @@ export function DataTable(props: DataTableProps) {
       sortBy, sortDir, ...filterValues, ...(props.extraQuery || {}),
     }
     list(endpoint, params)
-      .then(res => { if (alive) { setRows(res.data); setMeta(res.meta) } })
+      .then(res => {
+        if (!alive) return
+        if (Array.isArray(res?.data)) {
+          setRows(res.data)
+          setMeta(res.meta)
+        } else if (res && typeof res === 'object' && 'error' in res) {
+          // Malformed response (e.g. auth error wrapped as 200) — show error state, never crash
+          setError(String((res as any).error || 'Unable to load records.'))
+          setRows([])
+        } else {
+          setRows([])
+          setMeta(undefined)
+        }
+      })
       .catch((e: ApiError) => { if (alive) setError(e.message) })
       .finally(() => { if (alive) setLoading(false) })
     return () => { alive = false }

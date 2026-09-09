@@ -39,7 +39,7 @@ export async function GET(req: NextRequest) {
       const aMap = Object.fromEntries(assignments.map(a => [a.id, a]))
       body.data = rows.map(r => ({ ...r, student: sMap[r.studentId] || null, assignment: aMap[r.assignmentId] || null }))
     }
-    return NextResponse.json(body)
+    return NextResponse.json(body, { status: res.status })
   } catch {
     return res
   }

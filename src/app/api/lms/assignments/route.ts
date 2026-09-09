@@ -51,7 +51,7 @@ export async function GET(req: NextRequest) {
         subject: subMap[r.subjectId] || null,
       }))
     }
-    return NextResponse.json(body)
+    return NextResponse.json(body, { status: res.status })
   } catch {
     return res
   }

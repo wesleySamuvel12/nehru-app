@@ -62,7 +62,7 @@ export async function POST(req: NextRequest) {
     await db.loginLog.create({ data: { email, userId: user.id, success: true, ip, userAgent } })
     await audit({ userId: user.id, userName: user.name, userRole: user.role, action: 'LOGIN', entity: 'Auth', entityId: user.id, ip })
 
-    const res = NextResponse.json({ data: session, defaultModule: defaultModuleFor(session) })
+    const res = NextResponse.json({ data: session, token, defaultModule: defaultModuleFor(session) })
     res.cookies.set(SESSION_COOKIE, token, {
       httpOnly: true, sameSite: 'lax', path: '/', maxAge: 7 * 24 * 3600, secure: process.env.NODE_ENV === 'production',
     })

@@ -30,7 +30,7 @@ export async function GET(req: NextRequest) {
       const map = Object.fromEntries(counts.map(c => [c.sectionId, c._count._all]))
       body.data = body.data.map((r: any) => ({ ...r, studentsCount: map[r.id] || 0 }))
     }
-    return NextResponse.json(body)
+    return NextResponse.json(body, { status: res.status })
   } catch {
     return res
   }

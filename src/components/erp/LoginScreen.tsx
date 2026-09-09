@@ -1,7 +1,7 @@
 'use client'
 
 import * as React from 'react'
-import { api, ApiError } from '@/lib/api-client'
+import { api, ApiError, setToken } from '@/lib/api-client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -32,9 +32,10 @@ export function LoginScreen({ onLogin }: { onLogin: (s: Session, defaultModule: 
     setLoading(true)
     setError(null)
     try {
-      const res = await api<{ data: Session; defaultModule: string }>('/api/auth/login', {
+      const res = await api<{ data: Session; token?: string; defaultModule: string }>('/api/auth/login', {
         method: 'POST', body: JSON.stringify({ email: em, password: pw }),
       })
+      if (res.token) setToken(res.token)
       onLogin(res.data, res.defaultModule)
     } catch (err) {
       setError((err as ApiError).message)
