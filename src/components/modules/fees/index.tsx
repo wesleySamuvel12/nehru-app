@@ -22,7 +22,7 @@ export default function FeesModule() {
     <div className="space-y-5">
       <PageHeader
         title="Fees & Finance"
-        subtitle="Billing, collections, school spend and budgets for Greenwood International School."
+        subtitle="Billing, collections, school spend and budgets for Nehru International School."
         breadcrumbs={['Finance', 'Fees & Finance']}
       />
 

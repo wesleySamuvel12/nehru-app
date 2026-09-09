@@ -22,7 +22,7 @@ import { Calendar } from '@/components/ui/calendar'
 import { Separator } from '@/components/ui/separator'
 import {
   CalendarCheck, BookOpen, GraduationCap, Library, Megaphone, CalendarDays, Printer,
-  Send, Loader2, Clock, MapPin, School, CheckCircle2, PenLine, Trophy,
+  Send, Loader2, Clock, MapPin, CheckCircle2, PenLine, Trophy,
 } from 'lucide-react'
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -43,15 +43,16 @@ function BarcodeStrip() {
 
 function StudentIdCard({ profile }: { profile: any }) {
   return (
-    <div className="relative w-full max-w-md overflow-hidden rounded-2xl border bg-gradient-to-br from-emerald-600 via-emerald-700 to-teal-800 p-5 text-white shadow-lg">
+    <div className="relative w-full max-w-md overflow-hidden rounded-2xl border bg-gradient-to-br from-sky-500 via-sky-700 to-[oklch(0.35_0.08_250)] p-5 text-white shadow-lg">
       <div className="pointer-events-none absolute -right-10 -top-10 h-40 w-40 rounded-full bg-white/10" />
       <div className="pointer-events-none absolute -bottom-14 -left-8 h-36 w-36 rounded-full bg-white/10" />
       <div className="mb-3 flex items-center gap-2.5">
-        <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/15">
-          <School className="h-5 w-5" />
+        <span className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-xl bg-white shadow-sm">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/nis-mark.png" alt="NIS" className="h-[80%] w-[88%] object-contain" />
         </span>
         <div>
-          <p className="text-sm font-bold leading-tight">Greenwood International School</p>
+          <p className="text-sm font-bold leading-tight">Nehru International School</p>
           <p className="text-[10px] uppercase tracking-widest text-white/70">Student Identity Card · 2025-26</p>
         </div>
       </div>

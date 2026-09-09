@@ -87,3 +87,24 @@ Work Log:
 Stage Summary:
 - Full premium design system layered on the intact ERP architecture; no functionality removed (RBAC, CRUD, workflows, notifications all preserved)
 - Verified in browser: cinematic login (light + dark), error + success login beats, personalized animated dashboard, command palette quick actions + grouped search, sidebar collapse with tooltips, designed dark theme, mobile bottom nav + menu sheet, module page transitions, skeleton states; 0 lint errors, 0 console errors, all APIs 200
+
+---
+Task ID: nis-rebrand
+Agent: Z.ai Code (main)
+Task: Apply the user-provided school logo (Nehru International School — blue book/NIS emblem + orange dot, "A Tradition of Excellence") as the sole brand asset; rebrand the entire ERP from the placeholder Greenwood identity to NIS without touching any functionality.
+
+Work Log:
+- Processed /upload/pasted_image_1788947709324.png with sharp: public/nis-logo.png (full lockup, trimmed), public/nis-mark.png (emblem only), src/app/icon.png favicon + apple-touch-icon
+- Sampled exact logo pixels: blue #138DCE (oklch 0.62 0.137 240), orange #E76507 (oklch 0.66 0.182 46); rewrote all globals.css tokens for light + designed dark theme (ocean-charcoal surfaces), mesh gradients, 5-colour chart palette (brand blue leads, orange accents), added --brand-orange token
+- brand.tsx: SCHOOL_NAME/SHORT/TAGLINE/LOGO consts, BrandMark = real emblem img on white tile with brand glow, BrandLogo lockup "Nehru International / School · A Tradition of Excellence", BrandSplash on deep navy with blue+orange orbs
+- LoginScreen: all demo emails → @nis.edu.in, sky-950 brand panel with blue/cyan/orange orbs, orange tagline badge, "every corner of Nehru International" copy, orange demo dots, you@nis.edu.in placeholder, support@nis.edu.in
+- AppShell footer "Nehru International School — Unified School ERP" + "Powered by NIS Search"; store.ts default schoolName; layout.tsx title + theme colors (#f8fafc / #0b1320); page.tsx pre-hydration loader with NIS emblem
+- Modules: certificates print/verify (Nehru International School + NIS/CERT codes), fees receipt letterhead (crest N, fees@nis.edu.in, NIS ERP), fees dashboard/HR/integrations subtitles, transport map label, student-portal ID card (real NIS logo on white tile, sky gradient), ResultsTab marksheet header (Main Campus, education@nis.edu.in), settings API default + welcome notification
+- seed.ts fully rebranded (names, NIS-MAIN/NIS-PUNE codes, @nis.edu.in, logoUrl on SchoolSetting) + scripts/rebrand-db.ts executed against live SQLite: 2 schools, SchoolSetting(+logoUrl), 18 users, 30 employees, LoginLog 21, IntegrationSetting 2; admission numbers GWS→NIS (112), certificate no (1), notifications (3); 0 greenwood/GWS remaining (cuid false-positives correctly ignored)
+- Fixed stale Turbopack CSS chunk (old emerald tokens still served) by restarting dev server
+- Browser verification: cinematic login (NIS emblem, blue Sign In), Teacher login via teacher@nis.edu.in works, dashboard KPIs/charts live, sidebar brand lockup, dark theme, command palette, certificates QR verification end-to-end with NIS/CERT/2025/001 → "issued by Nehru International School", mobile 390px bottom nav, 0 page errors, 0 console errors, lint 0 errors
+
+Stage Summary:
+- The ERP is now fully branded as Nehru International School (NIS) using the user's actual logo; brand system: blue #138DCE primary + orange #E76507 accent + tagline everywhere (login, splash, sidebar, footer, ID card, receipts, certificates, marksheets, favicon).
+- All demo logins now use @nis.edu.in (e.g. admin@nis.edu.in / teacher@nis.edu.in, password demo1234); existing DB data preserved, no re-seed needed.
+- Zero functional regressions: CRUD, RBAC, workflows, notifications, print flows all verified working.

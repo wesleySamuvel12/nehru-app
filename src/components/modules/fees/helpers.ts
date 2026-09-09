@@ -132,13 +132,13 @@ export function openPrintWindow(title: string, bodyHtml: string, subHtml = '') {
   w.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>${title}</title><style>${PRINT_CSS}</style></head><body>
     <div class="doc">
       <div class="letterhead">
-        <div class="crest">G</div>
-        <div><div class="school">Greenwood International School</div>
-        <div class="school-sub">MG Road, Andheri West, Mumbai 400058 · +91 22 4567 8900 · fees@greenwood.edu.in</div></div>
+        <div class="crest">N</div>
+        <div><div class="school">Nehru International School</div>
+        <div class="school-sub">MG Road, Andheri West, Mumbai 400058 · +91 22 4567 8900 · fees@nis.edu.in</div></div>
       </div>
       ${subHtml}
       ${bodyHtml}
-      <div class="foot">This is a computer-generated document from Greenwood ERP and does not require a physical stamp.</div>
+      <div class="foot">This is a computer-generated document from NIS ERP and does not require a physical stamp.</div>
     </div>
     <script>window.onload = function(){ setTimeout(function(){ window.print(); }, 250); }<\/script>
   </body></html>`)

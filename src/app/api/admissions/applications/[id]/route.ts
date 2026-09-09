@@ -49,7 +49,7 @@ async function createStudentFromApplication(app: any) {
     const klass = app.classApplied ? await db.class.findFirst({ where: { name: app.classApplied } }) : null
     const student = await db.student.create({
       data: {
-        admissionNo: `GWS${String(count + 1).padStart(4, '0')}`,
+        admissionNo: `NIS${String(count + 1).padStart(4, '0')}`,
         firstName,
         lastName,
         gender: app.gender || 'MALE',

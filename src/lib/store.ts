@@ -40,7 +40,7 @@ export const useErp = create<ErpState>()(
       academicYearId: '',
       academicYearName: '',
       schoolId: 'main',
-      schoolName: 'Greenwood International School',
+      schoolName: 'Nehru International School',
       sidebarOpen: false,
       sidebarCollapsed: false,
       setSession: (s) => set({ session: s }),

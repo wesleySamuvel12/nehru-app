@@ -55,7 +55,7 @@ export async function POST(req: NextRequest) {
     })
     await notify({
       userId: row.id,
-      title: 'Welcome to Greenwood ERP',
+      title: 'Welcome to NIS ERP',
       message: `Your ${role.replace(/_/g, ' ').toLowerCase()} account was created. Sign in with the password shared by the admin.`,
       type: 'SUCCESS',
     })

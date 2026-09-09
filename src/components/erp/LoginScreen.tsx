@@ -17,12 +17,12 @@ import {
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
 const DEMO_ACCOUNTS: { role: string; email: string; label: string }[] = [
-  { role: 'Super Admin', email: 'admin@greenwood.edu.in', label: 'Full system control' },
-  { role: 'Principal', email: 'principal@greenwood.edu.in', label: 'Management & approvals' },
-  { role: 'Teacher', email: 'teacher@greenwood.edu.in', label: 'Classes & academics' },
-  { role: 'Accountant', email: 'accounts@greenwood.edu.in', label: 'Fees & finance' },
-  { role: 'Parent', email: 'parent@greenwood.edu.in', label: 'Child dashboard' },
-  { role: 'Student', email: 'student@greenwood.edu.in', label: 'My learning space' },
+  { role: 'Super Admin', email: 'admin@nis.edu.in', label: 'Full system control' },
+  { role: 'Principal', email: 'principal@nis.edu.in', label: 'Management & approvals' },
+  { role: 'Teacher', email: 'teacher@nis.edu.in', label: 'Classes & academics' },
+  { role: 'Accountant', email: 'accounts@nis.edu.in', label: 'Fees & finance' },
+  { role: 'Parent', email: 'parent@nis.edu.in', label: 'Child dashboard' },
+  { role: 'Student', email: 'student@nis.edu.in', label: 'My learning space' },
 ]
 
 type LoginPhase = 'idle' | 'checking' | 'success'
@@ -74,18 +74,18 @@ export function LoginScreen({ onLogin }: { onLogin: (s: Session, defaultModule: 
   return (
     <div className="flex min-h-screen bg-background">
       {/* ─────────── Brand panel ─────────── */}
-      <div className="mesh-bg relative hidden w-[46%] flex-col justify-between overflow-hidden bg-emerald-950 p-10 text-emerald-50 lg:flex xl:w-[52%]">
-        {/* Ambient floating orbs */}
-        <div className="pointer-events-none absolute left-[10%] top-[14%] h-56 w-56 rounded-full bg-emerald-500/20 blur-3xl anim-float" style={{ ['--delay' as string]: '0.6s' }} />
-        <div className="pointer-events-none absolute right-[8%] top-[38%] h-72 w-72 rounded-full bg-teal-400/15 blur-3xl anim-float" style={{ ['--delay' as string]: '2s' }} />
-        <div className="pointer-events-none absolute bottom-[10%] left-[30%] h-64 w-64 rounded-full bg-lime-300/10 blur-3xl anim-float" style={{ ['--delay' as string]: '3.2s' }} />
+      <div className="mesh-bg relative hidden w-[46%] flex-col justify-between overflow-hidden bg-sky-950 p-10 text-sky-50 lg:flex xl:w-[52%]">
+        {/* Ambient floating orbs — brand blue + the signature orange dot */}
+        <div className="pointer-events-none absolute left-[10%] top-[14%] h-56 w-56 rounded-full bg-sky-500/20 blur-3xl anim-float" style={{ ['--delay' as string]: '0.6s' }} />
+        <div className="pointer-events-none absolute right-[8%] top-[38%] h-72 w-72 rounded-full bg-cyan-400/15 blur-3xl anim-float" style={{ ['--delay' as string]: '2s' }} />
+        <div className="pointer-events-none absolute bottom-[10%] left-[30%] h-64 w-64 rounded-full bg-orange-400/10 blur-3xl anim-float" style={{ ['--delay' as string]: '3.2s' }} />
         {/* drifting motes */}
         {[
           { l: '18%', t: '22%', d: '0s' }, { l: '64%', t: '16%', d: '1.4s' }, { l: '78%', t: '64%', d: '2.2s' },
           { l: '36%', t: '72%', d: '0.9s' }, { l: '52%', t: '44%', d: '2.8s' },
         ].map((p, i) => (
           <span key={i} aria-hidden
-            className="pointer-events-none absolute h-1.5 w-1.5 rounded-full bg-emerald-200/40 anim-float"
+            className="pointer-events-none absolute h-1.5 w-1.5 rounded-full bg-sky-200/40 anim-float"
             style={{ left: p.l, top: p.t, ['--delay' as string]: p.d }} />
         ))}
 
@@ -93,22 +93,22 @@ export function LoginScreen({ onLogin }: { onLogin: (s: Session, defaultModule: 
         <div className="anim-rise relative z-10 flex items-center gap-3.5" style={{ ['--delay' as string]: '80ms' }}>
           <BrandMark tileClassName="h-12 w-12" breathe />
           <div>
-            <p className="font-display text-lg font-bold tracking-tight">Greenwood International</p>
-            <p className="text-[11px] font-medium uppercase tracking-[0.2em] text-emerald-300/80">School · Est. 1998</p>
+            <p className="font-display text-lg font-bold tracking-tight">Nehru International</p>
+            <p className="text-[11px] font-medium uppercase tracking-[0.2em] text-sky-300/80">School · A Tradition of Excellence</p>
           </div>
         </div>
 
         {/* Headline reveal */}
         <div className="relative z-10 max-w-lg">
-          <div className="anim-rise mb-5 inline-flex items-center gap-2 rounded-full border border-emerald-400/25 bg-emerald-400/10 px-3 py-1 text-[11px] font-semibold tracking-wide text-emerald-200" style={{ ['--delay' as string]: '200ms' }}>
-            <Sparkles className="h-3.5 w-3.5" /> One platform for your whole school
+          <div className="anim-rise mb-5 inline-flex items-center gap-2 rounded-full border border-orange-400/30 bg-orange-400/10 px-3 py-1 text-[11px] font-semibold tracking-wide text-orange-200" style={{ ['--delay' as string]: '200ms' }}>
+            <Sparkles className="h-3.5 w-3.5" /> A Tradition of Excellence
           </div>
           <h1 className="anim-rise font-display text-[2.6rem] font-extrabold leading-[1.12] tracking-tight" style={{ ['--delay' as string]: '300ms' }}>
             Where great schools<br />run beautifully.
           </h1>
-          <p className="anim-rise mt-5 text-[15px] leading-relaxed text-emerald-100/75" style={{ ['--delay' as string]: '420ms' }}>
+          <p className="anim-rise mt-5 text-[15px] leading-relaxed text-sky-100/75" style={{ ['--delay' as string]: '420ms' }}>
             Admissions, academics, attendance, fees, transport, hostel, library and health —
-            every corner of Greenwood, connected in a single secure system.
+            every corner of Nehru International, connected in a single secure system.
           </p>
           <div className="anim-rise mt-9 grid max-w-md grid-cols-3 gap-4 text-center" style={{ ['--delay' as string]: '540ms' }}>
             {[
@@ -116,16 +116,16 @@ export function LoginScreen({ onLogin }: { onLogin: (s: Session, defaultModule: 
               { v: '14', l: 'Roles', icon: <Users className="h-4 w-4" /> },
               { v: '100%', l: 'Connected', icon: <BookOpenCheck className="h-4 w-4" /> },
             ].map(s => (
-              <div key={s.l} className="rounded-2xl border border-emerald-700/40 bg-emerald-900/45 px-3 py-4 backdrop-blur-sm transition-colors hover:border-emerald-500/40">
-                <span className="mx-auto mb-1.5 flex h-7 w-7 items-center justify-center rounded-lg bg-emerald-400/15 text-emerald-300">{s.icon}</span>
-                <p className="font-display text-xl font-bold text-emerald-100">{s.v}</p>
-                <p className="mt-0.5 text-[11px] text-emerald-200/70">{s.l}</p>
+              <div key={s.l} className="rounded-2xl border border-sky-700/40 bg-sky-900/45 px-3 py-4 backdrop-blur-sm transition-colors hover:border-sky-500/40">
+                <span className="mx-auto mb-1.5 flex h-7 w-7 items-center justify-center rounded-lg bg-sky-400/15 text-sky-300">{s.icon}</span>
+                <p className="font-display text-xl font-bold text-sky-100">{s.v}</p>
+                <p className="mt-0.5 text-[11px] text-sky-200/70">{s.l}</p>
               </div>
             ))}
           </div>
         </div>
 
-        <p className="anim-rise relative z-10 flex items-center gap-2 text-xs text-emerald-300/60" style={{ ['--delay' as string]: '640ms' }}>
+        <p className="anim-rise relative z-10 flex items-center gap-2 text-xs text-sky-300/60" style={{ ['--delay' as string]: '640ms' }}>
           <ShieldCheck className="h-4 w-4" /> Role-based access · Audit logged · Encrypted sessions
         </p>
       </div>
@@ -137,7 +137,7 @@ export function LoginScreen({ onLogin }: { onLogin: (s: Session, defaultModule: 
           <div className="anim-rise mb-8 flex items-center gap-3 lg:hidden" style={{ ['--delay' as string]: '60ms' }}>
             <BrandMark tileClassName="h-10 w-10" />
             <div>
-              <p className="font-display font-bold tracking-tight">Greenwood International</p>
+              <p className="font-display font-bold tracking-tight">Nehru International</p>
               <p className="text-[11px] text-muted-foreground">Unified School ERP</p>
             </div>
           </div>
@@ -169,7 +169,7 @@ export function LoginScreen({ onLogin }: { onLogin: (s: Session, defaultModule: 
                   </Label>
                   <div className="group relative">
                     <Mail className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground transition-all duration-200 group-focus-within:scale-110 group-focus-within:text-primary" />
-                    <Input id="email" type="email" autoComplete="email" placeholder="you@greenwood.edu.in"
+                    <Input id="email" type="email" autoComplete="email" placeholder="you@nis.edu.in"
                       className={cn('h-11 rounded-xl pl-9 transition-all duration-200 hover:shadow-sm focus-visible:shadow-sm',
                         errorField === 'email' && 'border-rose-400 focus-visible:ring-rose-300')}
                       value={email} onChange={e => setEmail(e.target.value)} disabled={loading} />
@@ -206,7 +206,7 @@ export function LoginScreen({ onLogin }: { onLogin: (s: Session, defaultModule: 
                     Remember me
                   </label>
                   <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
-                    <ShieldCheck className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" /> Secured
+                    <ShieldCheck className="h-3.5 w-3.5 text-primary" /> Secured
                   </span>
                 </div>
 
@@ -241,7 +241,7 @@ export function LoginScreen({ onLogin }: { onLogin: (s: Session, defaultModule: 
                   className="card-lift press group rounded-xl border bg-card p-2.5 text-left disabled:opacity-50"
                   style={{ ['--delay' as string]: `${620 + i * 40}ms` }}>
                   <p className="flex items-center gap-1.5 text-sm font-semibold">
-                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 transition-transform duration-200 group-hover:scale-125" />
+                    <span className="h-1.5 w-1.5 rounded-full bg-orange-500 transition-transform duration-200 group-hover:scale-125" />
                     {acc.role}
                   </p>
                   <p className="truncate pl-3 text-xs text-muted-foreground">{acc.label}</p>
@@ -254,7 +254,7 @@ export function LoginScreen({ onLogin }: { onLogin: (s: Session, defaultModule: 
           </div>
 
           <p className="anim-rise mt-6 flex items-center justify-center gap-1.5 text-center text-xs text-muted-foreground" style={{ ['--delay' as string]: '860ms' }}>
-            <LifeBuoy className="h-3.5 w-3.5" /> Need help? Contact <span className="font-medium text-foreground">support@greenwood.edu.in</span>
+            <LifeBuoy className="h-3.5 w-3.5" /> Need help? Contact <span className="font-medium text-foreground">support@nis.edu.in</span>
           </p>
         </div>
       </div>

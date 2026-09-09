@@ -45,99 +45,105 @@
 }
 
 /* ─────────────────────────────────────────────────────────────
-   GREENWOOD INTERNATIONAL SCHOOL — DESIGN TOKENS
+   NEHRU INTERNATIONAL SCHOOL — DESIGN TOKENS
+   Brand: logo blue #138DCE + orange #E76507 · "A Tradition of Excellence"
    Elegant · Intelligent · Trustworthy · Modern · Academic
    ───────────────────────────────────────────────────────────── */
 
 :root {
   --radius: 0.625rem;
 
-  /* Light — refined warm-neutral with a whisper of the brand hue */
-  --background: oklch(0.984 0.004 155);
-  --foreground: oklch(0.22 0.022 168);
+  /* Light — refined cool-neutral with a whisper of the brand blue */
+  --background: oklch(0.984 0.004 240);
+  --foreground: oklch(0.23 0.022 245);
   --card: oklch(1 0 0);
-  --card-foreground: oklch(0.22 0.022 168);
-  --popover: oklch(0.995 0.002 155);
-  --popover-foreground: oklch(0.22 0.022 168);
+  --card-foreground: oklch(0.23 0.022 245);
+  --popover: oklch(0.995 0.002 240);
+  --popover-foreground: oklch(0.23 0.022 245);
 
-  /* Brand — emerald, derived from the Greenwood identity */
-  --primary: oklch(0.55 0.128 165);
-  --primary-foreground: oklch(0.985 0.01 160);
+  /* Brand — NIS logo blue, deepened one step for WCAG-safe text & fills */
+  --primary: oklch(0.52 0.118 242);
+  --primary-foreground: oklch(0.985 0.008 240);
 
-  --secondary: oklch(0.963 0.007 160);
-  --secondary-foreground: oklch(0.3 0.03 168);
-  --muted: oklch(0.963 0.007 160);
-  --muted-foreground: oklch(0.5 0.022 165);
+  --secondary: oklch(0.962 0.008 240);
+  --secondary-foreground: oklch(0.31 0.035 246);
+  --muted: oklch(0.962 0.008 240);
+  --muted-foreground: oklch(0.5 0.024 243);
 
-  --accent: oklch(0.955 0.028 162);
-  --accent-foreground: oklch(0.36 0.07 167);
+  --accent: oklch(0.953 0.022 238);
+  --accent-foreground: oklch(0.38 0.08 243);
   --destructive: oklch(0.577 0.215 25);
 
-  --border: oklch(0.912 0.009 158);
-  --input: oklch(0.9 0.01 158);
-  --ring: oklch(0.62 0.12 163 / 55%);
+  /* Signature highlight — the orange dot from the NIS emblem */
+  --brand-orange: oklch(0.66 0.18 46);
 
-  /* Data-viz palette — harmonised, colour-blind aware */
-  --chart-1: oklch(0.62 0.13 163);
-  --chart-2: oklch(0.6 0.11 226);
-  --chart-3: oklch(0.75 0.14 75);
-  --chart-4: oklch(0.58 0.19 295);
-  --chart-5: oklch(0.62 0.19 22);
+  --border: oklch(0.912 0.011 240);
+  --input: oklch(0.9 0.012 240);
+  --ring: oklch(0.62 0.13 240 / 55%);
 
-  --sidebar: oklch(0.978 0.006 158);
-  --sidebar-foreground: oklch(0.24 0.02 168);
-  --sidebar-primary: oklch(0.55 0.128 165);
-  --sidebar-primary-foreground: oklch(0.985 0.01 160);
-  --sidebar-accent: oklch(0.945 0.022 162);
-  --sidebar-accent-foreground: oklch(0.33 0.06 167);
-  --sidebar-border: oklch(0.915 0.01 158);
-  --sidebar-ring: oklch(0.62 0.12 163 / 55%);
+  /* Data-viz palette — brand blue leads, orange accents, colour-blind aware */
+  --chart-1: oklch(0.58 0.13 241);
+  --chart-2: oklch(0.66 0.17 46);
+  --chart-3: oklch(0.68 0.1 200);
+  --chart-4: oklch(0.6 0.15 300);
+  --chart-5: oklch(0.65 0.18 15);
+
+  --sidebar: oklch(0.977 0.007 240);
+  --sidebar-foreground: oklch(0.25 0.022 246);
+  --sidebar-primary: oklch(0.52 0.118 242);
+  --sidebar-primary-foreground: oklch(0.985 0.008 240);
+  --sidebar-accent: oklch(0.943 0.018 238);
+  --sidebar-accent-foreground: oklch(0.35 0.07 242);
+  --sidebar-border: oklch(0.915 0.011 240);
+  --sidebar-ring: oklch(0.62 0.13 240 / 55%);
 
   /* Elevation — soft, layered, low-contrast */
-  --shadow-soft: 0 1px 2px oklch(0.2 0.02 168 / 5%), 0 2px 8px oklch(0.2 0.02 168 / 4%);
-  --shadow-lift: 0 2px 4px oklch(0.2 0.02 168 / 6%), 0 12px 28px -8px oklch(0.2 0.02 168 / 14%);
-  --shadow-pop: 0 4px 12px oklch(0.2 0.02 168 / 8%), 0 24px 48px -12px oklch(0.2 0.02 168 / 22%);
+  --shadow-soft: 0 1px 2px oklch(0.22 0.03 245 / 5%), 0 2px 8px oklch(0.22 0.03 245 / 4%);
+  --shadow-lift: 0 2px 4px oklch(0.22 0.03 245 / 6%), 0 12px 28px -8px oklch(0.22 0.03 245 / 14%);
+  --shadow-pop: 0 4px 12px oklch(0.22 0.03 245 / 8%), 0 24px 48px -12px oklch(0.22 0.03 245 / 22%);
 }
 
 .dark {
-  /* Dark — designed surface hierarchy on deep green-charcoal (never a plain inversion) */
-  --background: oklch(0.168 0.014 170);
-  --foreground: oklch(0.94 0.008 160);
-  --card: oklch(0.213 0.016 170);
-  --card-foreground: oklch(0.94 0.008 160);
-  --popover: oklch(0.226 0.016 170);
-  --popover-foreground: oklch(0.94 0.008 160);
+  /* Dark — designed surface hierarchy on deep ocean-charcoal (never a plain inversion) */
+  --background: oklch(0.165 0.016 246);
+  --foreground: oklch(0.94 0.008 240);
+  --card: oklch(0.212 0.018 246);
+  --card-foreground: oklch(0.94 0.008 240);
+  --popover: oklch(0.226 0.018 246);
+  --popover-foreground: oklch(0.94 0.008 240);
 
-  --primary: oklch(0.72 0.15 163);
-  --primary-foreground: oklch(0.17 0.04 170);
+  --primary: oklch(0.7 0.125 240);
+  --primary-foreground: oklch(0.16 0.04 246);
 
-  --secondary: oklch(0.262 0.016 170);
-  --secondary-foreground: oklch(0.93 0.01 160);
-  --muted: oklch(0.262 0.016 170);
-  --muted-foreground: oklch(0.7 0.016 162);
+  --secondary: oklch(0.262 0.018 246);
+  --secondary-foreground: oklch(0.93 0.01 240);
+  --muted: oklch(0.262 0.018 246);
+  --muted-foreground: oklch(0.7 0.018 242);
 
-  --accent: oklch(0.29 0.03 168);
-  --accent-foreground: oklch(0.9 0.05 162);
+  --accent: oklch(0.288 0.032 244);
+  --accent-foreground: oklch(0.9 0.04 238);
   --destructive: oklch(0.66 0.19 24);
+
+  --brand-orange: oklch(0.72 0.16 50);
 
   --border: oklch(1 0 0 / 9%);
   --input: oklch(1 0 0 / 14%);
-  --ring: oklch(0.72 0.15 163 / 45%);
+  --ring: oklch(0.7 0.125 240 / 45%);
 
-  --chart-1: oklch(0.72 0.15 163);
-  --chart-2: oklch(0.68 0.12 226);
-  --chart-3: oklch(0.78 0.14 75);
-  --chart-4: oklch(0.66 0.17 295);
-  --chart-5: oklch(0.68 0.18 22);
+  --chart-1: oklch(0.72 0.12 240);
+  --chart-2: oklch(0.72 0.15 50);
+  --chart-3: oklch(0.74 0.09 200);
+  --chart-4: oklch(0.68 0.13 300);
+  --chart-5: oklch(0.7 0.16 15);
 
-  --sidebar: oklch(0.188 0.015 170);
-  --sidebar-foreground: oklch(0.93 0.01 160);
-  --sidebar-primary: oklch(0.72 0.15 163);
-  --sidebar-primary-foreground: oklch(0.17 0.04 170);
-  --sidebar-accent: oklch(0.28 0.026 168);
-  --sidebar-accent-foreground: oklch(0.93 0.02 162);
+  --sidebar: oklch(0.186 0.017 246);
+  --sidebar-foreground: oklch(0.93 0.01 240);
+  --sidebar-primary: oklch(0.7 0.125 240);
+  --sidebar-primary-foreground: oklch(0.16 0.04 246);
+  --sidebar-accent: oklch(0.28 0.028 244);
+  --sidebar-accent-foreground: oklch(0.93 0.02 238);
   --sidebar-border: oklch(1 0 0 / 8%);
-  --sidebar-ring: oklch(0.72 0.15 163 / 45%);
+  --sidebar-ring: oklch(0.7 0.125 240 / 45%);
 
   --shadow-soft: 0 1px 2px oklch(0 0 0 / 30%), 0 2px 8px oklch(0 0 0 / 20%);
   --shadow-lift: 0 2px 4px oklch(0 0 0 / 35%), 0 12px 28px -8px oklch(0 0 0 / 45%);
@@ -293,10 +299,10 @@
   inset: -20%;
   z-index: -2;
   background:
-    radial-gradient(38rem 26rem at 18% 12%, oklch(0.5 0.11 168 / 0.4), transparent 62%),
-    radial-gradient(30rem 24rem at 84% 22%, oklch(0.55 0.1 195 / 0.26), transparent 60%),
-    radial-gradient(34rem 30rem at 72% 88%, oklch(0.48 0.09 150 / 0.32), transparent 62%),
-    radial-gradient(26rem 22rem at 8% 82%, oklch(0.52 0.08 120 / 0.2), transparent 60%);
+    radial-gradient(38rem 26rem at 18% 12%, oklch(0.5 0.12 243 / 0.42), transparent 62%),
+    radial-gradient(30rem 24rem at 84% 22%, oklch(0.55 0.1 210 / 0.28), transparent 60%),
+    radial-gradient(34rem 30rem at 72% 88%, oklch(0.45 0.1 250 / 0.34), transparent 62%),
+    radial-gradient(26rem 22rem at 8% 82%, oklch(0.62 0.15 46 / 0.16), transparent 60%);
   animation: drift 22s ease-in-out infinite alternate;
   will-change: transform;
 }

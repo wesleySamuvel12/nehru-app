@@ -11,7 +11,7 @@ import { fmtDate } from '@/lib/format'
 
 /** Deterministic 21×21 QR-style pattern derived from the verify code (char-code seeded LCG). */
 function qrGrid(code: string, size = 21): boolean[][] {
-  const s = String(code || 'GWS-CERT')
+  const s = String(code || 'NIS-CERT')
   let seed = 7
   for (let i = 0; i < s.length; i++) seed = (seed * 131 + s.charCodeAt(i)) >>> 0
   const rnd = () => {
@@ -87,7 +87,7 @@ export default function CertificatePrintDialog({ open, onOpenChange, cert }: {
             <div className="border border-amber-700/40 px-6 py-8 sm:px-10 sm:py-10">
               {/* Header */}
               <div className="text-center">
-                <p className="font-serif text-[11px] uppercase tracking-[0.3em] text-amber-800">Greenwood International School</p>
+                <p className="font-serif text-[11px] uppercase tracking-[0.3em] text-amber-800">Nehru International School</p>
                 <h2 className="mt-1 font-serif text-2xl font-bold uppercase tracking-wide text-neutral-900 sm:text-3xl">
                   {cert.title || 'Certificate'}
                 </h2>
@@ -101,7 +101,7 @@ export default function CertificatePrintDialog({ open, onOpenChange, cert }: {
                 <p className="mx-auto mt-4 max-w-md font-serif text-sm leading-relaxed text-neutral-700">
                   {typeLabel === 'Academic Transcript'
                     ? 'has been issued this official academic transcript of records, verified against the school register.'
-                    : 'is a bonafide student of Greenwood International School, Mumbai, and has been granted this certificate on the strength of the school records.'}
+                    : 'is a bonafide student of Nehru International School, Mumbai, and has been granted this certificate on the strength of the school records.'}
                 </p>
                 {cert.contentJson && (() => {
                   try {
@@ -133,7 +133,7 @@ export default function CertificatePrintDialog({ open, onOpenChange, cert }: {
                 <div className="text-center">
                   <div className="mb-1 h-8 w-40 border-b border-neutral-400" />
                   <p className="text-[10px] uppercase tracking-widest">{cert.issuedBy || 'Authorised Signatory'}</p>
-                  <p className="text-[10px] text-neutral-500">Principal, Greenwood International School</p>
+                  <p className="text-[10px] text-neutral-500">Principal, Nehru International School</p>
                 </div>
               </div>
             </div>

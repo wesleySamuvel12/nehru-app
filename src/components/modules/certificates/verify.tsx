@@ -42,7 +42,7 @@ export default function VerifyTab() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2"><QrCode className="h-5 w-5" /> Verify a certificate</CardTitle>
           <CardDescription>
-            Enter the verification code (VRF-XXXXXX) or certificate number (GWS/CERT/2025/XXX) printed at the bottom of the certificate.
+            Enter the verification code (VRF-XXXXXX) or certificate number (NIS/CERT/2025/XXX) printed at the bottom of the certificate.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-3">
@@ -89,7 +89,7 @@ export default function VerifyTab() {
               </div>
               <div>
                 <p className="font-semibold text-emerald-700 dark:text-emerald-400">Valid certificate</p>
-                <p className="mt-0.5 text-sm text-muted-foreground">This certificate was issued by Greenwood International School.</p>
+                <p className="mt-0.5 text-sm text-muted-foreground">This certificate was issued by Nehru International School.</p>
               </div>
             </div>
             <Separator className="my-4" />

@@ -1,6 +1,6 @@
 /**
  * School ERP — Demo data seeder.
- * Realistic Indian school data (Greenwood International School, Mumbai).
+ * Realistic Indian school data (Nehru International School, Mumbai).
  * Run: bun prisma/seed.ts
  */
 import { PrismaClient } from '@prisma/client'
@@ -102,9 +102,9 @@ async function main() {
     db.term.create({ data: { academicYearId: ay.id, name: 'Term 2', startDate: new Date(yearStart.getFullYear(), 9, 1), endDate: new Date(yearStart.getFullYear() + 1, 2, 31), isCurrent: true } }),
   ])
 
-  await db.school.create({ data: { name: 'Greenwood International School', code: 'GRW-MAIN', address: '18 Hill Road, Bandra West, Mumbai 400050', phone: '+91 22 2640 1200', email: 'office@greenwood.edu.in', isMaster: true } })
-  await db.school.create({ data: { name: 'Greenwood International — Pune Campus', code: 'GRW-PUNE', address: 'Baner Road, Pune 411045', phone: '+91 20 2712 3300', email: 'pune@greenwood.edu.in' } })
-  await db.schoolSetting.create({ data: { schoolName: 'Greenwood International School', address: '18 Hill Road, Bandra West, Mumbai 400050', phone: '+91 22 2640 1200', email: 'office@greenwood.edu.in', currentYearId: ay.id } })
+  await db.school.create({ data: { name: 'Nehru International School', code: 'NIS-MAIN', address: '18 Hill Road, Bandra West, Mumbai 400050', phone: '+91 22 2640 1200', email: 'office@nis.edu.in', isMaster: true } })
+  await db.school.create({ data: { name: 'Nehru International — Pune Campus', code: 'NIS-PUNE', address: 'Baner Road, Pune 411045', phone: '+91 20 2712 3300', email: 'pune@nis.edu.in' } })
+  await db.schoolSetting.create({ data: { schoolName: 'Nehru International School', logoUrl: '/nis-logo.png', address: '18 Hill Road, Bandra West, Mumbai 400050', phone: '+91 22 2640 1200', email: 'office@nis.edu.in', currentYearId: ay.id } })
 
   const departments = await Promise.all([
     db.department.create({ data: { name: 'Academics', headName: 'Rajesh Malhotra' } }),
@@ -144,7 +144,7 @@ async function main() {
         employeeNo: `EMP${String(i + 1).padStart(4, '0')}`, firstName: first, lastName: last,
         gender: ['Priya','Kavita','Meera','Divya','Neha','Pooja','Ritu','Shalini','Anita','Swati','Lata','Geeta','Deepa'].includes(first) ? 'FEMALE' : 'MALE',
         dob: new Date(1975 + int(0, 20), int(0, 11), int(1, 28)),
-        email: `${first.toLowerCase().replace(/\W/g, '')}.${last.toLowerCase()}@greenwood.edu.in`,
+        email: `${first.toLowerCase().replace(/\W/g, '')}.${last.toLowerCase()}@nis.edu.in`,
         phone: `+9198${String(int(10000000, 99999999))}`,
         designation, departmentId: departments[i % departments.length].id,
         isTeacher: !!isTeacher, qualification: isTeacher ? pick(['M.Ed', 'B.Ed, M.Sc', 'M.A, B.Ed', 'Ph.D', 'M.Com, B.Ed']) : pick(['MBA', 'M.Com', 'B.Sc', 'GNM', 'MBBS']),
@@ -163,19 +163,19 @@ async function main() {
   /* ── Users ── */
   console.log('Users…')
   const roleUsers: [string, string, string, string][] = [
-    ['admin@greenwood.edu.in', 'Arvind Khanna', 'SUPER_ADMIN'],
-    ['schooladmin@greenwood.edu.in', 'Sunita Desai', 'SCHOOL_ADMIN'],
-    ['principal@greenwood.edu.in', 'Rajesh Malhotra', 'PRINCIPAL'],
-    ['teacher@greenwood.edu.in', 'Priya Nair', 'TEACHER'],
-    ['teacher2@greenwood.edu.in', 'Amit Verma', 'TEACHER'],
-    ['accounts@greenwood.edu.in', 'Vikram Rao', 'ACCOUNTANT'],
-    ['hr@greenwood.edu.in', 'Lata Mishra', 'HR'],
-    ['counsellor@greenwood.edu.in', 'Deepa Kamath', 'COUNSELLOR'],
-    ['librarian@greenwood.edu.in', 'Mahesh Tiwari', 'LIBRARIAN'],
-    ['transport@greenwood.edu.in', 'Imran Sheikh', 'TRANSPORT'],
-    ['warden@greenwood.edu.in', 'Geeta Singh', 'WARDEN'],
-    ['nurse@greenwood.edu.in', 'Anita Bose', 'NURSE'],
-    ['security@greenwood.edu.in', 'Ravi Naik', 'SECURITY'],
+    ['admin@nis.edu.in', 'Arvind Khanna', 'SUPER_ADMIN'],
+    ['schooladmin@nis.edu.in', 'Sunita Desai', 'SCHOOL_ADMIN'],
+    ['principal@nis.edu.in', 'Rajesh Malhotra', 'PRINCIPAL'],
+    ['teacher@nis.edu.in', 'Priya Nair', 'TEACHER'],
+    ['teacher2@nis.edu.in', 'Amit Verma', 'TEACHER'],
+    ['accounts@nis.edu.in', 'Vikram Rao', 'ACCOUNTANT'],
+    ['hr@nis.edu.in', 'Lata Mishra', 'HR'],
+    ['counsellor@nis.edu.in', 'Deepa Kamath', 'COUNSELLOR'],
+    ['librarian@nis.edu.in', 'Mahesh Tiwari', 'LIBRARIAN'],
+    ['transport@nis.edu.in', 'Imran Sheikh', 'TRANSPORT'],
+    ['warden@nis.edu.in', 'Geeta Singh', 'WARDEN'],
+    ['nurse@nis.edu.in', 'Anita Bose', 'NURSE'],
+    ['security@nis.edu.in', 'Ravi Naik', 'SECURITY'],
   ]
   for (const [email, name, role] of roleUsers) {
     const emp = employees.find(e => e.name === name)
@@ -264,7 +264,7 @@ async function main() {
       const dobYear = new Date().getFullYear() - c.level - 5
       const student = await db.student.create({
         data: {
-          admissionNo: `GWS${String(admCounter++).padStart(5, '0')}`, rollNo: String(i + 1).padStart(2, '0'),
+          admissionNo: `NIS${String(admCounter++).padStart(5, '0')}`, rollNo: String(i + 1).padStart(2, '0'),
           firstName, lastName, gender: male ? 'MALE' : 'FEMALE',
           dob: new Date(dobYear, int(0, 11), int(1, 28)),
           bloodGroup: pick(['A+', 'B+', 'O+', 'AB+', 'A-', 'O-']),
@@ -288,12 +288,12 @@ async function main() {
     db.parent.findUnique({ where: { id: fam1.parentId } }), db.parent.findUnique({ where: { id: fam2.parentId } }),
     db.parent.findUnique({ where: { id: fam3.parentId } }),
   ])
-  await db.user.create({ data: { email: 'parent@greenwood.edu.in', passwordHash, name: pu1!.name, role: 'PARENT', linkedParentId: pu1!.id, phone: pu1!.phone } })
-  await db.user.create({ data: { email: 'parent2@greenwood.edu.in', passwordHash, name: pu2!.name, role: 'PARENT', linkedParentId: pu2!.id, phone: pu2!.phone } })
-  await db.user.create({ data: { email: 'parent3@greenwood.edu.in', passwordHash, name: pu3!.name, role: 'PARENT', linkedParentId: pu3!.id, phone: pu3!.phone } })
-  await db.user.create({ data: { email: 'student@greenwood.edu.in', passwordHash, name: fam1.name, role: 'STUDENT', linkedStudentId: fam1.id } })
+  await db.user.create({ data: { email: 'parent@nis.edu.in', passwordHash, name: pu1!.name, role: 'PARENT', linkedParentId: pu1!.id, phone: pu1!.phone } })
+  await db.user.create({ data: { email: 'parent2@nis.edu.in', passwordHash, name: pu2!.name, role: 'PARENT', linkedParentId: pu2!.id, phone: pu2!.phone } })
+  await db.user.create({ data: { email: 'parent3@nis.edu.in', passwordHash, name: pu3!.name, role: 'PARENT', linkedParentId: pu3!.id, phone: pu3!.phone } })
+  await db.user.create({ data: { email: 'student@nis.edu.in', passwordHash, name: fam1.name, role: 'STUDENT', linkedStudentId: fam1.id } })
   const s2 = students.find(s => s.className === 'Grade 9')!
-  await db.user.create({ data: { email: 'student2@greenwood.edu.in', passwordHash, name: s2.name, role: 'STUDENT', linkedStudentId: s2.id } })
+  await db.user.create({ data: { email: 'student2@nis.edu.in', passwordHash, name: s2.name, role: 'STUDENT', linkedStudentId: s2.id } })
 
   /* ── Attendance (last 30 days, weekdays) ── */
   console.log('Attendance…')
@@ -749,8 +749,8 @@ async function main() {
     { title: 'Winter uniform from Dec 1', body: 'Students must wear the full winter uniform including blazers from December 1.', type: 'CIRCULAR', audience: 'ALL', priority: 'NORMAL', channels: 'IN_APP,EMAIL', publishedBy: 'Sunita Desai', publishAt: daysAgo(4) },
     { title: 'Sports team selection results', body: 'Congratulations to all selected for the district football and basketball squads!', type: 'ANNOUNCEMENT', audience: 'STUDENTS', priority: 'NORMAL', channels: 'IN_APP', publishedBy: 'Vikram Shetty', publishAt: daysAgo(6) },
   ] })
-  const parentUser1 = await db.user.findFirst({ where: { email: 'parent@greenwood.edu.in' } })
-  const teacherUser = await db.user.findFirst({ where: { email: 'teacher@greenwood.edu.in' } })
+  const parentUser1 = await db.user.findFirst({ where: { email: 'parent@nis.edu.in' } })
+  const teacherUser = await db.user.findFirst({ where: { email: 'teacher@nis.edu.in' } })
   if (parentUser1 && teacherUser) {
     const thId = `${parentUser1.id}_${teacherUser.id}`
     await db.message.createMany({ data: [
@@ -769,7 +769,7 @@ async function main() {
       { userId: parentUser1.id, title: 'Clinic visit', message: `${fam1.name} visited the clinic (headache). Student is fine now.`, type: 'INFO', link: 'health', createdAt: daysAgo(3) },
     )
   }
-  const studentUser = await db.user.findFirst({ where: { email: 'student@greenwood.edu.in' } })
+  const studentUser = await db.user.findFirst({ where: { email: 'student@nis.edu.in' } })
   if (studentUser) {
     notifRows.push(
       { userId: studentUser.id, title: 'New homework assigned', message: 'Algebra Worksheet — Linear Equations, due in 3 days.', type: 'INFO', link: 'lms', createdAt: daysAgo(1) },
@@ -806,7 +806,7 @@ async function main() {
     db.certificateRequest.create({ data: { studentId: students[20].id, type: 'CHARACTER', purpose: 'Scholarship application', status: 'REJECTED', requestedBy: 'Parent', remarks: 'Duplicate request — already issued this term.', approvedBy: 'Sunita Desai', approvedAt: daysAgo(2) } }),
     db.certificateRequest.create({ data: { studentId: students[25].id, type: 'TRANSCRIPT', purpose: 'School transfer abroad', status: 'PENDING', requestedBy: 'Parent' } }),
   ])
-  await db.certificate.create({ data: { requestId: certReqs[0].id, studentId: students[0].id, type: 'BONAFIDE', certificateNo: 'GWS/CERT/2025/001', title: 'Bonafide Certificate', verifyCode: `VRF-${int(100000, 999999)}`, issuedBy: 'Rajesh Malhotra', contentJson: '{"body":"This is to certify that the student is bonafide."}' } })
+  await db.certificate.create({ data: { requestId: certReqs[0].id, studentId: students[0].id, type: 'BONAFIDE', certificateNo: 'NIS/CERT/2025/001', title: 'Bonafide Certificate', verifyCode: `VRF-${int(100000, 999999)}`, issuedBy: 'Rajesh Malhotra', contentJson: '{"body":"This is to certify that the student is bonafide."}' } })
   await db.approvalTask.createMany({ data: [
     { type: 'LEAVE', entityId: 'seed-leave-2', title: 'Leave request — Family wedding (Grade 4)', requestedById: 'parent', requestedBy: 'Parent', approverRole: 'TEACHER' },
     { type: 'LEAVE', entityId: 'seed-leave-3', title: 'Leave request — Personal errands (Kavita Iyer)', requestedById: 'staff', requestedBy: 'Kavita Iyer', approverRole: 'PRINCIPAL' },
@@ -819,14 +819,14 @@ async function main() {
   await db.integrationSetting.createMany({ data: [
     { key: 'razorpay', name: 'Razorpay Payment Gateway', category: 'PAYMENT', provider: 'Razorpay', status: 'CONNECTED', configJson: '{"keyId":"rzp_test_••••4821","webhook":"/api/integrations/razorpay"}', lastSyncAt: daysAgo(0) },
     { key: 'msg91', name: 'MSG91 SMS Gateway', category: 'SMS', provider: 'MSG91', status: 'CONNECTED', configJson: '{"senderId":"GRWSCH","route":"transactional"}', lastSyncAt: daysAgo(0) },
-    { key: 'sendgrid', name: 'SendGrid Email', category: 'EMAIL', provider: 'SendGrid', status: 'CONNECTED', configJson: '{"from":"noreply@greenwood.edu.in"}', lastSyncAt: daysAgo(1) },
+    { key: 'sendgrid', name: 'SendGrid Email', category: 'EMAIL', provider: 'SendGrid', status: 'CONNECTED', configJson: '{"from":"noreply@nis.edu.in"}', lastSyncAt: daysAgo(1) },
     { key: 'gupshup', name: 'Gupshup WhatsApp Business', category: 'WHATSAPP', provider: 'Gupshup', status: 'DISCONNECTED', configJson: '{}' },
     { key: 'gps-tracker', name: 'Fleet GPS Tracking', category: 'GPS', provider: 'LocoNav', status: 'CONNECTED', configJson: '{"pollSeconds":30}', lastSyncAt: daysAgo(0) },
     { key: 'biometric', name: 'ZKTeco Biometric Attendance', category: 'BIOMETRIC', provider: 'ZKTeco', status: 'ERROR', configJson: '{"deviceIp":"192.168.1.45"}' },
     { key: 'rfid', name: 'RFID Student Cards', category: 'RFID', provider: 'HID Global', status: 'DISCONNECTED', configJson: '{}' },
     { key: 'cctv', name: 'CCTV — SecureVision', category: 'CCTV', provider: 'SecureVision', status: 'CONNECTED', configJson: '{"cams":42}', lastSyncAt: daysAgo(0) },
     { key: 'tally', name: 'Tally Accounting Sync', category: 'ACCOUNTING', provider: 'TallyPrime', status: 'DISCONNECTED', configJson: '{}' },
-    { key: 'google-classroom', name: 'Google Classroom', category: 'LMS', provider: 'Google Workspace', status: 'CONNECTED', configJson: '{"domain":"greenwood.edu.in"}', lastSyncAt: daysAgo(2) },
+    { key: 'google-classroom', name: 'Google Classroom', category: 'LMS', provider: 'Google Workspace', status: 'CONNECTED', configJson: '{"domain":"nis.edu.in"}', lastSyncAt: daysAgo(2) },
     { key: 'saral', name: 'Saral Data Portal (Govt)', category: 'GOVERNMENT', provider: 'Maharashtra Education Dept', status: 'DISCONNECTED', configJson: '{}' },
     { key: 'stripe', name: 'Stripe (Intl fees)', category: 'PAYMENT', provider: 'Stripe', status: 'DISCONNECTED', configJson: '{}' },
   ] })

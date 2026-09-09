@@ -24,7 +24,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Greenwood International School — Unified School ERP",
+  title: "Nehru International School — Unified School ERP",
   description:
     "Premium school operating system: admissions, academics, attendance, examinations, fees, HR, transport, hostel, library, health, communication and analytics in one connected platform.",
   keywords: ["school ERP", "school management", "education software", "student information system"],
@@ -32,8 +32,8 @@ export const metadata: Metadata = {
 
 export const viewport: Viewport = {
   themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#f7faf8" },
-    { media: "(prefers-color-scheme: dark)", color: "#0f1a16" },
+    { media: "(prefers-color-scheme: light)", color: "#f8fafc" },
+    { media: "(prefers-color-scheme: dark)", color: "#0b1320" },
   ],
   width: "device-width",
   initialScale: 1,

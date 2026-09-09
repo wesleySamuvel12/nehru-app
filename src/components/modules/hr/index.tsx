@@ -21,7 +21,7 @@ export default function HrModule() {
     <div className="space-y-5">
       <PageHeader
         title="HR & Payroll"
-        subtitle="Payroll processing, appraisals, staff attendance and compliance for Greenwood International School."
+        subtitle="Payroll processing, appraisals, staff attendance and compliance for Nehru International School."
         breadcrumbs={['Finance', 'HR & Payroll']}
       />
 

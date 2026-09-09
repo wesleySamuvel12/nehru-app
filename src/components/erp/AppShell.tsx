@@ -314,7 +314,7 @@ function CommandPalette() {
             <div className="flex items-center gap-4 border-t bg-muted/30 px-4 py-2 text-[10.5px] text-muted-foreground">
               <span className="flex items-center gap-1"><ArrowUp className="h-3 w-3" /><ArrowDown className="h-3 w-3" /> navigate</span>
               <span className="flex items-center gap-1"><CornerDownLeft className="h-3 w-3" /> open</span>
-              <span className="ml-auto flex items-center gap-1"><Sparkles className="h-3 w-3 text-primary" /> Powered by Greenwood Search</span>
+              <span className="ml-auto flex items-center gap-1"><Sparkles className="h-3 w-3 text-primary" /> Powered by NIS Search</span>
             </div>
           </div>
         </div>
@@ -582,7 +582,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             <div className="flex-1">{children}</div>
             <footer className="mt-auto pt-6">
               <div className="flex flex-col items-center justify-between gap-1 border-t py-3.5 text-[11px] text-muted-foreground sm:flex-row">
-                <p className="flex items-center gap-1.5"><BrandMark tileClassName="h-4 w-4" /> Greenwood International School — Unified School ERP</p>
+                <p className="flex items-center gap-1.5"><BrandMark tileClassName="h-4 w-4" /> Nehru International School — Unified School ERP</p>
                 <p>© {new Date().getFullYear()} · Demo environment with sample data</p>
               </div>
             </footer>

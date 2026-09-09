@@ -202,8 +202,8 @@ export default function ResultsTab() {
 <body>
   <div class="sheet">
     <div class="school">
-      <h1>Greenwood International School</h1>
-      <p>Greenwood Campus, Bandra West, Mumbai · education@greenwood.edu.in · +91 22 4000 1234</p>
+      <h1>Nehru International School</h1>
+      <p>Main Campus, Bandra West, Mumbai · education@nis.edu.in · +91 22 4000 1234</p>
     </div>
     <p class="title">Student Report Card</p>
     <div class="meta">

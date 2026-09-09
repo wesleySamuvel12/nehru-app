@@ -195,7 +195,7 @@ export default function FinanceDashboard({ onGoTo }: { onGoTo: (tab: string) => 
       </div>
 
       <p className="text-center text-xs text-muted-foreground">
-        Figures computed live from {invoices.length} invoices and {payments.length} receipts · <Badge variant="outline" className="mx-0.5">INR</Badge> Greenwood International School, Mumbai
+        Figures computed live from {invoices.length} invoices and {payments.length} receipts · <Badge variant="outline" className="mx-0.5">INR</Badge> Nehru International School, Mumbai
       </p>
     </div>
   )

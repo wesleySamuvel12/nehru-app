@@ -175,7 +175,7 @@ export default function IntegrationsModule() {
     <div className="space-y-5">
       <PageHeader
         title="Integrations"
-        subtitle="Connect Greenwood ERP with payment gateways, messaging, GPS, biometrics and more."
+        subtitle="Connect NIS ERP with payment gateways, messaging, GPS, biometrics and more."
         breadcrumbs={['System', 'Integrations']}
         actions={<Badge variant="outline" className="h-9 px-3 text-xs">{connected}/{items.length} connected</Badge>}
       />

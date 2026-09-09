@@ -76,7 +76,7 @@ export const certificateRequestCrud = defineCrud({
             requestId: row.id,
             studentId: row.studentId,
             type: row.type,
-            certificateNo: `GWS/CERT/2025/${String(count + 1).padStart(3, '0')}`,
+            certificateNo: `NIS/CERT/2025/${String(count + 1).padStart(3, '0')}`,
             title: CERT_TITLES[row.type] || 'Certificate',
             verifyCode: `VRF-${Math.floor(100000 + Math.random() * 900000)}`,
             issuedById: session.sub,

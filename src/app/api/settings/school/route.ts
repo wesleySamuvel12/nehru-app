@@ -16,7 +16,7 @@ const EDITABLE = [
 async function ensureSingleton() {
   let row = await db.schoolSetting.findFirst()
   if (!row) {
-    row = await db.schoolSetting.create({ data: { schoolName: 'Greenwood International School' } })
+    row = await db.schoolSetting.create({ data: { schoolName: 'Nehru International School' } })
   }
   return row
 }

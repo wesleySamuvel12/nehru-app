@@ -9,11 +9,11 @@ const STATUS_VALUES = ['ACTIVE', 'ALUMNI', 'WITHDRAWN', 'TRANSFERRED', 'GRADUATE
 async function nextAdmissionNo(): Promise<string> {
   const count = await db.student.count()
   for (let n = count + 1; n < count + 500; n++) {
-    const candidate = `GWS${String(n).padStart(5, '0')}`
+    const candidate = `NIS${String(n).padStart(5, '0')}`
     const exists = await db.student.findUnique({ where: { admissionNo: candidate }, select: { id: true } })
     if (!exists) return candidate
   }
-  return `GWS${Date.now().toString().slice(-8)}`
+  return `NIS${Date.now().toString().slice(-8)}`
 }
 
 const crud = defineCrud({

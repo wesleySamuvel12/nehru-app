@@ -49,7 +49,7 @@ const fields: FormField[] = [
   { name: 'lastName', label: 'Last Name', type: 'text', required: true },
   { name: 'gender', label: 'Gender', type: 'select', options: [{ label: 'Male', value: 'MALE' }, { label: 'Female', value: 'FEMALE' }], defaultValue: 'MALE' },
   { name: 'dob', label: 'Date of Birth', type: 'date' },
-  { name: 'admissionNo', label: 'Admission No', type: 'text', placeholder: 'GWS00001', help: 'Leave blank to auto-generate' },
+  { name: 'admissionNo', label: 'Admission No', type: 'text', placeholder: 'NIS00001', help: 'Leave blank to auto-generate' },
   { name: 'rollNo', label: 'Roll No', type: 'text', placeholder: '01' },
   {
     name: 'classId', label: 'Class', type: 'select',

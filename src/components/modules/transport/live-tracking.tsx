@@ -181,7 +181,7 @@ export default function LiveTracking() {
               <span className="flex h-7 w-7 items-center justify-center rounded-full border-2 border-white bg-primary text-primary-foreground shadow-md">
                 <MapPin className="h-3.5 w-3.5" />
               </span>
-              <span className="mt-1 whitespace-nowrap rounded-md border bg-popover/95 px-1.5 py-0.5 text-[10px] font-semibold shadow-sm">Greenwood Intl. School</span>
+              <span className="mt-1 whitespace-nowrap rounded-md border bg-popover/95 px-1.5 py-0.5 text-[10px] font-semibold shadow-sm">Nehru Intl. School</span>
             </div>
 
             {vehicles.map(v => (
