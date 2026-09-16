@@ -11,6 +11,7 @@ import PayrollRunsTable from './payroll-runs'
 import PayslipsView from './payslips'
 import PerformanceTable from './performance'
 import StaffAttendanceView from './staff'
+import ComplianceView from './compliance'
 import { useErp } from '@/lib/store'
 
 export default function HrModule() {
