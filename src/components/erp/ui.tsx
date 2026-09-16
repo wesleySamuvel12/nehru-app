@@ -5,15 +5,29 @@ import { cn } from '@/lib/utils'
 import { Card, CardContent } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Button } from '@/components/ui/button'
-import { AlertTriangle, Inbox, RefreshCw } from 'lucide-react'
+import { useErp } from '@/lib/store'
+import { ArrowLeft, AlertTriangle, Inbox, RefreshCw } from 'lucide-react'
 
 /* ── Page header ── */
-export function PageHeader({ title, subtitle, actions, breadcrumbs }: {
-  title: string; subtitle?: string; actions?: React.ReactNode; breadcrumbs?: string[]
+export function PageHeader({ title, subtitle, actions, breadcrumbs, showBack = true }: {
+  title: string; subtitle?: string; actions?: React.ReactNode; breadcrumbs?: string[]; showBack?: boolean
 }) {
+  const activeModule = useErp(s => s.activeModule)
+  const setModule = useErp(s => s.setModule)
+  const canGoBack = showBack && activeModule && activeModule !== 'dashboard'
+
   return (
     <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
       <div className="min-w-0">
+        {canGoBack && (
+          <button
+            onClick={() => setModule('dashboard')}
+            className="group mb-2.5 inline-flex items-center gap-1.5 rounded-lg border border-border/80 bg-background/90 px-2.5 py-1 text-xs font-semibold text-muted-foreground shadow-2xs transition-all duration-200 hover:border-primary/40 hover:bg-primary/5 hover:text-primary"
+          >
+            <ArrowLeft className="h-3.5 w-3.5 transition-transform duration-200 group-hover:-translate-x-0.5 text-primary" />
+            <span>Back to Dashboard</span>
+          </button>
+        )}
         {breadcrumbs && breadcrumbs.length > 0 && (
           <div className="mb-1 flex items-center gap-1 text-xs text-muted-foreground">
             {breadcrumbs.map((b, i) => (

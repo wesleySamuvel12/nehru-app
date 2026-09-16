@@ -20,7 +20,7 @@ import {
   ClipboardList, Wallet, BadgeCheck, Bus, Building2, ShieldCheck, HeartPulse, Library, Boxes,
   Megaphone, CalendarDays, FileBadge, BarChart3, Plug, Settings, ScrollText, Search, Bell, Sun,
   Moon, LogOut, Menu, ChevronsUpDown, X, PanelLeftClose, PanelLeftOpen, User,
-  Activity, CornerDownLeft, ArrowUp, ArrowDown, AlertTriangle,
+  Activity, CornerDownLeft, ArrowUp, ArrowDown, AlertTriangle, ArrowLeft,
 } from 'lucide-react'
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -559,7 +559,18 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           <Button variant="outline" size="icon" className="h-9 w-9 rounded-xl lg:hidden" onClick={() => setMobileOpen(true)} aria-label="Open menu">
             <Menu className="h-4 w-4" />
           </Button>
-          {/* Breadcrumb */}
+          {/* Breadcrumb & Back to Dashboard */}
+          {activeModule !== 'dashboard' && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setModule('dashboard')}
+              className="h-8.5 gap-1.5 rounded-xl border-primary/30 bg-primary/10 text-xs font-bold text-primary hover:bg-primary/20 hover:text-primary transition-all shadow-2xs"
+            >
+              <ArrowLeft className="h-3.5 w-3.5" />
+              <span>Back to Dashboard</span>
+            </Button>
+          )}
           <div className="hidden min-w-0 items-center gap-1.5 text-sm md:flex" aria-label="Breadcrumb">
             {current?.group && (
               <>
