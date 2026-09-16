@@ -13,6 +13,7 @@ import PaymentsTable from './payments'
 import StructuresTable from './structures'
 import ExpensesTable from './expenses'
 import BudgetsTable from './budgets'
+import DiscountsTable from './discounts'
 import { useErp } from '@/lib/store'
 
 export default function FeesModule() {
