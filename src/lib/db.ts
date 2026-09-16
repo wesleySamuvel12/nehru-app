@@ -22,7 +22,7 @@ function setupDatabaseUrl(): string | undefined {
         path.join('/var/task', 'custom.db'),
       ]
       for (const candidate of candidates) {
-        if (fs.existsSync(candidate)) {
+        if (fs.existsSync(/* turbopackIgnore: true */ candidate)) {
           try {
             fs.copyFileSync(candidate, tmpDbPath)
             console.log(`[db] Copied SQLite database from ${candidate} to ${tmpDbPath}`)
