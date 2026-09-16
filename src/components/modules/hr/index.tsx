@@ -11,11 +11,18 @@ import PayrollRunsTable from './payroll-runs'
 import PayslipsView from './payslips'
 import PerformanceTable from './performance'
 import StaffAttendanceView from './staff'
-import ComplianceView from './compliance'
+import { useErp } from '@/lib/store'
 
 export default function HrModule() {
+  const moduleParams = useErp(s => s.moduleParams)
   const [tab, setTab] = React.useState('payroll')
   const [payrollVersion, setPayrollVersion] = React.useState(0)
+
+  React.useEffect(() => {
+    if (moduleParams?.tab && ['payroll', 'payslips', 'performance', 'staff', 'compliance'].includes(moduleParams.tab)) {
+      setTab(moduleParams.tab)
+    }
+  }, [moduleParams?.tab])
 
   return (
     <div className="space-y-5">

@@ -238,12 +238,22 @@ function StudentLeaveDialog({ open, onOpenChange }: { open: boolean; onOpenChang
   )
 }
 
+import { useErp } from '@/lib/store'
+
 export default function StudentPortalModule() {
+  const moduleParams = useErp(s => s.moduleParams)
+  const [tab, setTab] = React.useState('timetable')
   const [data, setData] = React.useState<any>(null)
   const [loading, setLoading] = React.useState(true)
   const [error, setError] = React.useState<string | null>(null)
   const [submitHw, setSubmitHw] = React.useState<any | null>(null)
   const [leaveOpen, setLeaveOpen] = React.useState(false)
+
+  React.useEffect(() => {
+    if (moduleParams?.tab && ['timetable', 'homework', 'grades', 'attendance', 'library', 'notices'].includes(moduleParams.tab)) {
+      setTab(moduleParams.tab)
+    }
+  }, [moduleParams?.tab])
 
   const load = React.useCallback(async () => {
     setLoading(true)
@@ -309,7 +319,7 @@ export default function StudentPortalModule() {
         </div>
       </div>
 
-      <Tabs defaultValue="timetable" className="space-y-4">
+      <Tabs value={tab} onValueChange={setTab} className="space-y-4">
         <TabsList className="flex h-auto w-full flex-wrap justify-start gap-1 overflow-x-auto">
           <TabsTrigger value="timetable">My Timetable</TabsTrigger>
           <TabsTrigger value="homework">Homework</TabsTrigger>

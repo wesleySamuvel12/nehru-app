@@ -12,14 +12,31 @@ const dayKey = (d: Date) => d.toISOString().slice(0, 10)
 export async function GET(req: NextRequest) {
   const session = await requireAuth(req)
   if (!session) return err(401, 'Please sign in to continue.')
-  if (session.role !== 'STUDENT') return err(403, 'This portal is only available to student accounts.')
-  if (!session.studentId) return err(403, 'Your account is not linked to a student profile. Please contact the school office.')
+  let studentId = session.studentId
+
+  if (!studentId && ['SUPER_ADMIN', 'SCHOOL_ADMIN', 'PRINCIPAL', 'TEACHER'].includes(session.role)) {
+    const sampleStudent = await db.student.findFirst({ where: { status: 'ACTIVE' } }) || await db.student.findFirst()
+    if (sampleStudent) studentId = sampleStudent.id
+  }
+
+  if (!studentId) {
+    if (session.role === 'STUDENT') {
+      return err(403, 'Your account is not linked to a student profile. Please contact the school office.')
+    }
+    return err(404, 'No student profiles found in the database. Please add a student record first.')
+  }
 
   try {
-    const student = await db.student.findUnique({
-      where: { id: session.studentId },
+    let student = await db.student.findUnique({
+      where: { id: studentId },
       include: { klass: true, section: true },
     })
+    if (!student && ['SUPER_ADMIN', 'SCHOOL_ADMIN', 'PRINCIPAL', 'TEACHER'].includes(session.role)) {
+      student = await db.student.findFirst({
+        where: { status: 'ACTIVE' },
+        include: { klass: true, section: true },
+      })
+    }
     if (!student) return err(404, 'Student profile not found.')
 
     const since30 = new Date(Date.now() - 30 * DAY)

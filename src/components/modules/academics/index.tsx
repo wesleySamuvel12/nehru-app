@@ -13,9 +13,13 @@ import HousesTab from './houses-tab'
 
 export default function AcademicsModule() {
   const moduleParams = useErp(s => s.moduleParams)
-  const initial = moduleParams?.tab && ['classes', 'subjects', 'timetable', 'enrollments', 'years', 'houses'].includes(moduleParams.tab)
-    ? moduleParams.tab
-    : 'classes'
+  const [tab, setTab] = React.useState('classes')
+
+  React.useEffect(() => {
+    if (moduleParams?.tab && ['classes', 'subjects', 'timetable', 'enrollments', 'years', 'houses'].includes(moduleParams.tab)) {
+      setTab(moduleParams.tab)
+    }
+  }, [moduleParams?.tab])
 
   return (
     <div className="space-y-4">
@@ -24,7 +28,7 @@ export default function AcademicsModule() {
         subtitle="Classes, sections, subjects, timetables, enrollments and academic calendar"
         breadcrumbs={['Home', 'Academics']}
       />
-      <Tabs defaultValue={initial}>
+      <Tabs value={tab} onValueChange={setTab}>
         <TabsList className="flex h-auto w-full flex-wrap justify-start gap-1 overflow-x-auto">
           <TabsTrigger value="classes">Classes &amp; Sections</TabsTrigger>
           <TabsTrigger value="subjects">Subjects</TabsTrigger>

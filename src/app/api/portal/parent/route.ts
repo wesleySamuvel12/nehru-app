@@ -13,18 +13,41 @@ function dayKey(d: Date) { return d.toISOString().slice(0, 10) }
 export async function GET(req: NextRequest) {
   const session = await requireAuth(req)
   if (!session) return err(401, 'Please sign in to continue.')
-  if (session.role !== 'PARENT') return err(403, 'This portal is only available to parent accounts.')
-  if (!session.parentId) return err(403, 'Your account is not linked to a parent profile. Please contact the school office.')
+  let parentId = session.parentId
+
+  if (!parentId && ['SUPER_ADMIN', 'SCHOOL_ADMIN', 'PRINCIPAL'].includes(session.role)) {
+    const sampleParent = await db.parent.findFirst()
+    if (sampleParent) parentId = sampleParent.id
+  }
+
+  if (!parentId) {
+    if (session.role === 'PARENT') {
+      return err(403, 'Your account is not linked to a parent profile. Please contact the school office.')
+    }
+    return err(404, 'No parent profiles found in the database. Please add a parent record first.')
+  }
 
   try {
-    const parent = await db.parent.findUnique({ where: { id: session.parentId } })
+    let parent = await db.parent.findUnique({ where: { id: parentId } })
+    if (!parent && ['SUPER_ADMIN', 'SCHOOL_ADMIN', 'PRINCIPAL'].includes(session.role)) {
+      parent = await db.parent.findFirst()
+      if (parent) parentId = parent.id
+    }
     if (!parent) return err(404, 'Parent profile not found.')
 
-    const children = await db.student.findMany({
-      where: { parentId: session.parentId },
+    let children = await db.student.findMany({
+      where: { parentId: parentId },
       include: { klass: true, section: true },
       orderBy: { firstName: 'asc' },
     })
+
+    if (children.length === 0 && ['SUPER_ADMIN', 'SCHOOL_ADMIN', 'PRINCIPAL'].includes(session.role)) {
+      children = await db.student.findMany({
+        where: { status: 'ACTIVE' },
+        take: 2,
+        include: { klass: true, section: true },
+      })
+    }
 
     const since30 = new Date(Date.now() - 30 * DAY)
     const today = new Date(); today.setHours(0, 0, 0, 0)

@@ -12,9 +12,13 @@ import OnlineClassesTab from './online-classes-tab'
 
 export default function LmsModule() {
   const moduleParams = useErp(s => s.moduleParams)
-  const initial = moduleParams?.tab && ['materials', 'assignments', 'submissions', 'lesson-plans', 'online-classes'].includes(moduleParams.tab)
-    ? moduleParams.tab
-    : 'materials'
+  const [tab, setTab] = React.useState('materials')
+
+  React.useEffect(() => {
+    if (moduleParams?.tab && ['materials', 'assignments', 'submissions', 'lesson-plans', 'online-classes'].includes(moduleParams.tab)) {
+      setTab(moduleParams.tab)
+    }
+  }, [moduleParams?.tab])
 
   return (
     <div className="space-y-4">
@@ -23,7 +27,7 @@ export default function LmsModule() {
         subtitle="Materials, assignments & homework, grading, lesson plans and online classes"
         breadcrumbs={['Home', 'LMS']}
       />
-      <Tabs defaultValue={initial}>
+      <Tabs value={tab} onValueChange={setTab}>
         <TabsList className="flex h-auto w-full flex-wrap justify-start gap-1 overflow-x-auto">
           <TabsTrigger value="materials">Learning Materials</TabsTrigger>
           <TabsTrigger value="assignments">Assignments &amp; Homework</TabsTrigger>

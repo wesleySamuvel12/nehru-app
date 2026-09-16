@@ -92,13 +92,23 @@ const departmentFields: FormField[] = [
   { name: 'headName', label: 'Department Head', type: 'text', placeholder: 'Dr. Meera Iyer' },
 ]
 
+import { useErp } from '@/lib/store'
+
 export default function TeachersModule() {
+  const moduleParams = useErp(s => s.moduleParams)
+  const [tab, setTab] = React.useState('all')
   const [stats, setStats] = React.useState<any>(null)
   const [statsLoading, setStatsLoading] = React.useState(true)
   const [lookups, setLookups] = React.useState<any>(null)
   const [refreshKey, setRefreshKey] = React.useState(0)
   const [sheetId, setSheetId] = React.useState<string | null>(null)
   const [sheetOpen, setSheetOpen] = React.useState(false)
+
+  React.useEffect(() => {
+    if (moduleParams?.tab && ['all', 'teaching', 'departments'].includes(moduleParams.tab)) {
+      setTab(moduleParams.tab)
+    }
+  }, [moduleParams?.tab])
 
   const loadStats = React.useCallback(() => {
     let alive = true
@@ -155,7 +165,7 @@ export default function TeachersModule() {
         </div>
       )}
 
-      <Tabs defaultValue="all" className="space-y-4">
+      <Tabs value={tab} onValueChange={setTab} className="space-y-4">
         <TabsList className="flex w-full flex-wrap sm:w-auto">
           <TabsTrigger value="all" className="flex-1 sm:flex-none">All Staff</TabsTrigger>
           <TabsTrigger value="teaching" className="flex-1 sm:flex-none">Teaching Staff</TabsTrigger>

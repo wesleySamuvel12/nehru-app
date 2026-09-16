@@ -7,22 +7,31 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Checkbox } from '@/components/ui/checkbox'
-import { BrandMark, BrandLogo } from '@/components/erp/brand'
+import { BrandMark } from '@/components/erp/brand'
 import { Session } from '@/lib/store'
+import { CursorFlowCanvas } from '@/components/erp/CursorFlowCanvas'
 import {
-  GraduationCap, Lock, Mail, Loader2, ShieldCheck, ArrowRight, Eye, EyeOff,
-  CheckCircle2, Sparkles, BookOpenCheck, Users, LifeBuoy,
+  Lock, Mail, Loader2, ShieldCheck, ArrowRight, Eye, EyeOff,
+  CheckCircle2, Sparkles, KeyRound, Crown, ShieldAlert, BookOpen,
+  Briefcase, HeartHandshake, GraduationCap, Users, Heart, Library,
+  Bus, Home, Stethoscope, Layers, Search
 } from 'lucide-react'
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
-
-const DEMO_ACCOUNTS: { role: string; email: string; label: string }[] = [
-  { role: 'Super Admin', email: 'admin@nis.edu.in', label: 'Full system control' },
-  { role: 'Principal', email: 'principal@nis.edu.in', label: 'Management & approvals' },
-  { role: 'Teacher', email: 'teacher@nis.edu.in', label: 'Classes & academics' },
-  { role: 'Accountant', email: 'accounts@nis.edu.in', label: 'Fees & finance' },
-  { role: 'Parent', email: 'parent@nis.edu.in', label: 'Child dashboard' },
-  { role: 'Student', email: 'student@nis.edu.in', label: 'My learning space' },
+const QUICK_ACCOUNTS = [
+  { role: 'Super Admin', email: 'admin@nis.edu.in', category: 'Admin', label: 'Full System Control', icon: <ShieldAlert className="h-3.5 w-3.5 text-amber-400" /> },
+  { role: 'School Admin', email: 'schooladmin@nis.edu.in', category: 'Admin', label: 'Campus Administration', icon: <ShieldCheck className="h-3.5 w-3.5 text-orange-400" /> },
+  { role: 'Principal', email: 'principal@nis.edu.in', category: 'Admin', label: 'Management & Approvals', icon: <Crown className="h-3.5 w-3.5 text-yellow-400" /> },
+  { role: 'Teacher', email: 'teacher@nis.edu.in', category: 'Staff', label: 'Academics & Grading', icon: <BookOpen className="h-3.5 w-3.5 text-emerald-400" /> },
+  { role: 'Accountant', email: 'accounts@nis.edu.in', category: 'Staff', label: 'Fees, Payroll & Finance', icon: <Briefcase className="h-3.5 w-3.5 text-teal-400" /> },
+  { role: 'HR Manager', email: 'hr@nis.edu.in', category: 'Staff', label: 'Staff & Recruitment', icon: <Users className="h-3.5 w-3.5 text-blue-400" /> },
+  { role: 'Counsellor', email: 'counsellor@nis.edu.in', category: 'Staff', label: 'Admissions & Welfare', icon: <Heart className="h-3.5 w-3.5 text-rose-400" /> },
+  { role: 'Librarian', email: 'librarian@nis.edu.in', category: 'Staff', label: 'Library Catalog & Books', icon: <Library className="h-3.5 w-3.5 text-purple-400" /> },
+  { role: 'Transport', email: 'transport@nis.edu.in', category: 'Staff', label: 'Routes, Vehicles & Fleet', icon: <Bus className="h-3.5 w-3.5 text-sky-400" /> },
+  { role: 'Warden', email: 'warden@nis.edu.in', category: 'Staff', label: 'Hostel & Dormitories', icon: <Home className="h-3.5 w-3.5 text-cyan-400" /> },
+  { role: 'Nurse', email: 'nurse@nis.edu.in', category: 'Staff', label: 'Clinic & Student Health', icon: <Stethoscope className="h-3.5 w-3.5 text-pink-400" /> },
+  { role: 'Security', email: 'security@nis.edu.in', category: 'Staff', label: 'Gate Pass & Visitors', icon: <ShieldCheck className="h-3.5 w-3.5 text-slate-400" /> },
+  { role: 'Parent', email: 'parent@nis.edu.in', category: 'Portals', label: 'Child Dashboard & Fees', icon: <HeartHandshake className="h-3.5 w-3.5 text-rose-400" /> },
+  { role: 'Student', email: 'student@nis.edu.in', category: 'Portals', label: 'My Learning & Grades', icon: <GraduationCap className="h-3.5 w-3.5 text-indigo-400" /> },
 ]
 
 type LoginPhase = 'idle' | 'checking' | 'success'
@@ -38,29 +47,59 @@ export function LoginScreen({ onLogin }: { onLogin: (s: Session, defaultModule: 
   const [errorField, setErrorField] = React.useState<'email' | 'password' | null>(null)
   const [shake, setShake] = React.useState(0)
 
+  // Quick Access Category and Search Filter
+  const [activeCategory, setActiveCategory] = React.useState<'All' | 'Admin' | 'Staff' | 'Portals'>('All')
+  const [quickSearch, setQuickSearch] = React.useState('')
+
+  // Card 3D tilt & dynamic spotlight tracking
+  const cardRef = React.useRef<HTMLDivElement | null>(null)
+  const [transformStyle, setTransformStyle] = React.useState('perspective(1000px) rotateX(0deg) rotateY(0deg)')
+
+  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (!cardRef.current) return
+    const rect = cardRef.current.getBoundingClientRect()
+    const x = e.clientX - rect.left
+    const y = e.clientY - rect.top
+
+    cardRef.current.style.setProperty('--mouse-x', `${(x / rect.width) * 100}%`)
+    cardRef.current.style.setProperty('--mouse-y', `${(y / rect.height) * 100}%`)
+
+    const centerX = rect.width / 2
+    const centerY = rect.height / 2
+    const rotateX = ((y - centerY) / centerY) * -4
+    const rotateY = ((x - centerX) / centerX) * 4
+    setTransformStyle(`perspective(1000px) rotateX(${rotateX.toFixed(2)}deg) rotateY(${rotateY.toFixed(2)}deg) scale3d(1.005, 1.005, 1.005)`)
+  }
+
+  const handleMouseLeave = () => {
+    setTransformStyle('perspective(1000px) rotateX(0deg) rotateY(0deg) scale3d(1, 1, 1)')
+  }
+
   const submit = async (e?: React.FormEvent, overrideEmail?: string, overridePw?: string) => {
     e?.preventDefault()
     if (loading) return
-    const em = overrideEmail || email
-    const pw = overridePw || password
-    if (!em || !pw) {
+    const targetEmail = (overrideEmail || email).trim()
+    const targetPw = overridePw || password
+
+    if (!targetEmail || !targetPw) {
       setError('Please enter both email and password.')
-      setErrorField(!em ? 'email' : 'password')
+      setErrorField(!targetEmail ? 'email' : 'password')
       setShake(s => s + 1)
       return
     }
+
     setLoading(true)
     setPhase('checking')
     setError(null)
     setErrorField(null)
+
     try {
       const res = await api<{ data: Session; token?: string; defaultModule: string }>('/api/auth/login', {
-        method: 'POST', body: JSON.stringify({ email: em, password: pw, remember }),
+        method: 'POST', body: JSON.stringify({ email: targetEmail, password: targetPw, remember }),
       })
       if (res.token) setToken(res.token)
       setPhase('success')
-      // A brief, deliberate success beat before the workspace takes over
-      setTimeout(() => onLogin(res.data, res.defaultModule), 650)
+      setTimeout(() => onLogin(res.data, res.defaultModule), 550)
     } catch (err) {
       setPhase('idle')
       setLoading(false)
@@ -71,191 +110,291 @@ export function LoginScreen({ onLogin }: { onLogin: (s: Session, defaultModule: 
     }
   }
 
+  const handleQuickLogin = (accEmail: string) => {
+    setEmail(accEmail)
+    setPassword('demo1234')
+    submit(undefined, accEmail, 'demo1234')
+  }
+
+  // Password strength calculation
+  const pwStrength = React.useMemo(() => {
+    if (!password) return 0
+    if (password.length >= 8 && /[A-Z]/.test(password) && /[0-9]/.test(password)) return 3
+    if (password.length >= 6) return 2
+    return 1
+  }, [password])
+
   return (
-    <div className="flex min-h-screen bg-background">
-      {/* ─────────── Brand panel ─────────── */}
-      <div className="mesh-bg relative hidden w-[46%] flex-col justify-between overflow-hidden bg-sky-950 p-10 text-sky-50 lg:flex xl:w-[52%]">
-        {/* Ambient floating orbs — brand blue + the signature orange dot */}
-        <div className="pointer-events-none absolute left-[10%] top-[14%] h-56 w-56 rounded-full bg-sky-500/20 blur-3xl anim-float" style={{ ['--delay' as string]: '0.6s' }} />
-        <div className="pointer-events-none absolute right-[8%] top-[38%] h-72 w-72 rounded-full bg-cyan-400/15 blur-3xl anim-float" style={{ ['--delay' as string]: '2s' }} />
-        <div className="pointer-events-none absolute bottom-[10%] left-[30%] h-64 w-64 rounded-full bg-orange-400/10 blur-3xl anim-float" style={{ ['--delay' as string]: '3.2s' }} />
-        {/* drifting motes */}
-        {[
-          { l: '18%', t: '22%', d: '0s' }, { l: '64%', t: '16%', d: '1.4s' }, { l: '78%', t: '64%', d: '2.2s' },
-          { l: '36%', t: '72%', d: '0.9s' }, { l: '52%', t: '44%', d: '2.8s' },
-        ].map((p, i) => (
-          <span key={i} aria-hidden
-            className="pointer-events-none absolute h-1.5 w-1.5 rounded-full bg-sky-200/40 anim-float"
-            style={{ left: p.l, top: p.t, ['--delay' as string]: p.d }} />
-        ))}
+    <div className="mesh-bg relative flex min-h-screen w-full flex-col items-center justify-center overflow-hidden bg-slate-950 px-4 py-8 text-slate-100 selection:bg-sky-500 selection:text-white sm:px-6 lg:px-8">
+      {/* Dynamic Cursor Flow Canvas */}
+      <CursorFlowCanvas />
 
-        {/* Logo reveal */}
-        <div className="anim-rise relative z-10 flex items-center gap-3.5" style={{ ['--delay' as string]: '80ms' }}>
-          <BrandMark tileClassName="h-12 w-12" breathe />
-          <div>
-            <p className="font-display text-lg font-bold tracking-tight">Nehru International</p>
-            <p className="text-[11px] font-medium uppercase tracking-[0.2em] text-sky-300/80">School · A Tradition of Excellence</p>
-          </div>
-        </div>
+      {/* Ambient glowing color halos */}
+      <div className="pointer-events-none absolute -top-40 -left-40 h-[500px] w-[500px] rounded-full bg-sky-600/15 blur-[130px] anim-float" style={{ ['--delay' as string]: '0s' }} />
+      <div className="pointer-events-none absolute top-1/3 -right-40 h-[600px] w-[600px] rounded-full bg-orange-500/10 blur-[140px] anim-float" style={{ ['--delay' as string]: '2s' }} />
 
-        {/* Headline reveal */}
-        <div className="relative z-10 max-w-lg">
-          <div className="anim-rise mb-5 inline-flex items-center gap-2 rounded-full border border-orange-400/30 bg-orange-400/10 px-3 py-1 text-[11px] font-semibold tracking-wide text-orange-200" style={{ ['--delay' as string]: '200ms' }}>
-            <Sparkles className="h-3.5 w-3.5" /> A Tradition of Excellence
+      {/* Main Centered Universal Form Container */}
+      <div className="relative z-20 flex w-full max-w-[560px] flex-col items-center">
+        
+        {/* School Logo & Brand Header */}
+        <div className="anim-rise mb-6 flex flex-col items-center text-center" style={{ ['--delay' as string]: '60ms' }}>
+          <div className="group relative mb-3 flex items-center justify-center">
+            <div className="absolute inset-0 rounded-2xl bg-gradient-to-r from-sky-500 to-orange-500 blur-md opacity-40 transition-opacity duration-300 group-hover:opacity-75" />
+            <BrandMark tileClassName="relative h-14 w-14 shadow-xl" breathe />
           </div>
-          <h1 className="anim-rise font-display text-[2.6rem] font-extrabold leading-[1.12] tracking-tight" style={{ ['--delay' as string]: '300ms' }}>
-            Where great schools<br />run beautifully.
+          <h1 className="font-display text-2xl font-black tracking-tight text-white sm:text-3xl">
+            Nehru International
           </h1>
-          <p className="anim-rise mt-5 text-[15px] leading-relaxed text-sky-100/75" style={{ ['--delay' as string]: '420ms' }}>
-            Admissions, academics, attendance, fees, transport, hostel, library and health —
-            every corner of Nehru International, connected in a single secure system.
-          </p>
-          <div className="anim-rise mt-9 grid max-w-md grid-cols-3 gap-4 text-center" style={{ ['--delay' as string]: '540ms' }}>
-            {[
-              { v: '20+', l: 'Modules', icon: <GraduationCap className="h-4 w-4" /> },
-              { v: '14', l: 'Roles', icon: <Users className="h-4 w-4" /> },
-              { v: '100%', l: 'Connected', icon: <BookOpenCheck className="h-4 w-4" /> },
-            ].map(s => (
-              <div key={s.l} className="rounded-2xl border border-sky-700/40 bg-sky-900/45 px-3 py-4 backdrop-blur-sm transition-colors hover:border-sky-500/40">
-                <span className="mx-auto mb-1.5 flex h-7 w-7 items-center justify-center rounded-lg bg-sky-400/15 text-sky-300">{s.icon}</span>
-                <p className="font-display text-xl font-bold text-sky-100">{s.v}</p>
-                <p className="mt-0.5 text-[11px] text-sky-200/70">{s.l}</p>
-              </div>
-            ))}
+          <div className="mt-1 flex items-center gap-2 text-xs font-semibold tracking-wider text-sky-400 uppercase">
+            <span>School ERP</span>
+            <span className="h-1 w-1 rounded-full bg-orange-400" />
+            <span className="text-slate-400">A Tradition of Excellence</span>
           </div>
         </div>
 
-        <p className="anim-rise relative z-10 flex items-center gap-2 text-xs text-sky-300/60" style={{ ['--delay' as string]: '640ms' }}>
-          <ShieldCheck className="h-4 w-4" /> Role-based access · Audit logged · Encrypted sessions
-        </p>
-      </div>
-
-      {/* ─────────── Auth panel ─────────── */}
-      <div className="relative flex flex-1 flex-col items-center justify-center px-5 py-10">
-        <div className="w-full max-w-[400px]">
-          {/* Compact brand for small screens */}
-          <div className="anim-rise mb-8 flex items-center gap-3 lg:hidden" style={{ ['--delay' as string]: '60ms' }}>
-            <BrandMark tileClassName="h-10 w-10" />
-            <div>
-              <p className="font-display font-bold tracking-tight">Nehru International</p>
-              <p className="text-[11px] text-muted-foreground">Unified School ERP</p>
+        {/* Universal 3D Glassmorphic Card */}
+        <div
+          key={shake}
+          ref={cardRef}
+          onMouseMove={handleMouseMove}
+          onMouseLeave={handleMouseLeave}
+          style={{ transform: transformStyle, ['--delay' as string]: '180ms' }}
+          className={cn(
+            'spotlight-card anim-rise relative w-full rounded-3xl border border-white/15 bg-slate-900/85 p-6 sm:p-8 backdrop-blur-2xl shadow-[0_25px_60px_rgba(0,0,0,0.7)] transition-all duration-200 ease-out',
+            shake > 0 && 'anim-nudge'
+          )}
+        >
+          {/* Card Header */}
+          <div className="relative z-10 mb-6 text-center">
+            <div className="mx-auto mb-2 inline-flex items-center gap-1.5 rounded-full border border-sky-500/30 bg-sky-500/10 px-3 py-1 text-[11px] font-semibold text-sky-300">
+              <Sparkles className="h-3 w-3 text-orange-400" /> Unified Portal Sign-In
             </div>
-          </div>
-
-          <div
-            key={shake}
-            className={cn(
-              'anim-rise rounded-2xl border bg-card p-7 shadow-[var(--shadow-lift)] sm:p-8',
-              shake > 0 && 'anim-nudge',
-            )}
-            style={{ ['--delay' as string]: '240ms' }}
-          >
-              <div className="mb-6 flex items-center gap-3">
-                <span className="hidden sm:block"><BrandMark tileClassName="h-10 w-10" /></span>
-                <div>
-                  <h2 className="font-display text-[22px] font-bold tracking-tight">
-                    {phase === 'success' ? 'Welcome back' : 'Welcome back'}
-                  </h2>
-                  <p className="text-sm text-muted-foreground">
-                    {phase === 'success' ? 'Taking you to your workspace…' : 'Sign in to your school workspace.'}
-                  </p>
-                </div>
-              </div>
-
-              <form onSubmit={submit} className="space-y-4" noValidate>
-                <div className="anim-rise space-y-1.5" style={{ ['--delay' as string]: '320ms' }}>
-                  <Label htmlFor="email" className={cn('transition-colors', errorField === 'email' && 'text-rose-600 dark:text-rose-400')}>
-                    Email address
-                  </Label>
-                  <div className="group relative">
-                    <Mail className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground transition-all duration-200 group-focus-within:scale-110 group-focus-within:text-primary" />
-                    <Input id="email" type="email" autoComplete="email" placeholder="you@nis.edu.in"
-                      className={cn('h-11 rounded-xl pl-9 transition-all duration-200 hover:shadow-sm focus-visible:shadow-sm',
-                        errorField === 'email' && 'border-rose-400 focus-visible:ring-rose-300')}
-                      value={email} onChange={e => setEmail(e.target.value)} disabled={loading} />
-                  </div>
-                </div>
-
-                <div className="anim-rise space-y-1.5" style={{ ['--delay' as string]: '380ms' }}>
-                  <div className="flex items-center justify-between">
-                    <Label htmlFor="password" className={cn('transition-colors', errorField === 'password' && 'text-rose-600 dark:text-rose-400')}>
-                      Password
-                    </Label>
-                    <button type="button" tabIndex={0}
-                      className="text-xs font-medium text-muted-foreground transition-colors hover:text-primary"
-                      onClick={() => setError('Password reset is handled by your system administrator in this demo.')}>
-                      Forgot password?
-                    </button>
-                  </div>
-                  <div className="group relative">
-                    <Lock className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground transition-all duration-200 group-focus-within:scale-110 group-focus-within:text-primary" />
-                    <Input id="password" type={showPw ? 'text' : 'password'} autoComplete="current-password"
-                      placeholder="••••••••" className={cn('h-11 rounded-xl pl-9 pr-10 transition-all duration-200 hover:shadow-sm focus-visible:shadow-sm',
-                        errorField === 'password' && 'border-rose-400 focus-visible:ring-rose-300')}
-                      value={password} onChange={e => setPassword(e.target.value)} disabled={loading} />
-                    <button type="button" onClick={() => setShowPw(v => !v)} aria-label={showPw ? 'Hide password' : 'Show password'}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 rounded p-0.5 text-muted-foreground transition-all duration-200 hover:scale-110 hover:text-foreground">
-                      {showPw ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                    </button>
-                  </div>
-                </div>
-
-                <div className="anim-rise flex items-center justify-between" style={{ ['--delay' as string]: '440ms' }}>
-                  <label className="flex cursor-pointer items-center gap-2 text-sm text-muted-foreground transition-colors hover:text-foreground">
-                    <Checkbox checked={remember} onCheckedChange={v => setRemember(v === true)} className="transition-transform" />
-                    Remember me
-                  </label>
-                  <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
-                    <ShieldCheck className="h-3.5 w-3.5 text-primary" /> Secured
-                  </span>
-                </div>
-
-                {error && (
-                  <div role="alert" className="anim-pop rounded-xl border border-rose-500/25 bg-rose-500/10 px-3.5 py-2.5 text-sm text-rose-600 dark:text-rose-400">
-                    {error}
-                  </div>
-                )}
-
-                <Button type="submit" size="lg" disabled={loading || phase === 'success'}
-                  className={cn('press h-11 w-full rounded-xl text-[15px] font-semibold shadow-[var(--shadow-soft)] transition-all duration-300',
-                    phase === 'success' && 'bg-emerald-600 hover:bg-emerald-600')}
-                  style={{ ['--delay' as string]: '500ms' }}>
-                  {phase === 'idle' && (<>Sign In <ArrowRight className="ml-2 h-4 w-4 transition-transform duration-200 group-hover:translate-x-0.5" /></>)}
-                  {phase === 'checking' && (<><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Checking credentials…</>)}
-                  {phase === 'success' && (<><CheckCircle2 className="mr-2 h-4 w-4" /> Welcome back</>)}
-                </Button>
-              </form>
-          </div>
-
-          {/* Demo accounts */}
-          <div className="anim-rise mt-6" style={{ ['--delay' as string]: '560ms' }}>
-            <div className="mb-3 flex items-center gap-3">
-              <div className="h-px flex-1 bg-border" />
-              <span className="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">Demo accounts</span>
-              <div className="h-px flex-1 bg-border" />
-            </div>
-            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-              {DEMO_ACCOUNTS.map((acc, i) => (
-                <button key={acc.email} type="button" disabled={loading || phase === 'success'}
-                  onClick={() => { setEmail(acc.email); submit(undefined, acc.email, 'demo1234') }}
-                  className="card-lift press group rounded-xl border bg-card p-2.5 text-left disabled:opacity-50"
-                  style={{ ['--delay' as string]: `${620 + i * 40}ms` }}>
-                  <p className="flex items-center gap-1.5 text-sm font-semibold">
-                    <span className="h-1.5 w-1.5 rounded-full bg-orange-500 transition-transform duration-200 group-hover:scale-125" />
-                    {acc.role}
-                  </p>
-                  <p className="truncate pl-3 text-xs text-muted-foreground">{acc.label}</p>
-                </button>
-              ))}
-            </div>
-            <p className="mt-3.5 text-center text-xs text-muted-foreground">
-              All demo accounts use password <kbd className="rounded-md border bg-muted px-1.5 py-0.5 font-mono text-[11px]">demo1234</kbd>
+            <h2 className="font-display text-xl font-bold text-white sm:text-2xl">
+              {phase === 'success' ? 'Authenticated' : 'Welcome Back'}
+            </h2>
+            <p className="mt-1 text-xs text-slate-400 sm:text-sm">
+              {phase === 'success'
+                ? 'Resolving permissions & generating sidebar…'
+                : 'Sign in to access your school workspace.'}
             </p>
           </div>
 
-          <p className="anim-rise mt-6 flex items-center justify-center gap-1.5 text-center text-xs text-muted-foreground" style={{ ['--delay' as string]: '860ms' }}>
-            <LifeBuoy className="h-3.5 w-3.5" /> Need help? Contact <span className="font-medium text-foreground">support@nis.edu.in</span>
-          </p>
+          {/* Form */}
+          <form onSubmit={submit} className="relative z-10 space-y-4" noValidate>
+            {/* Email / Username Input */}
+            <div className="space-y-1.5 text-left">
+              <Label htmlFor="email" className={cn('text-xs font-semibold text-slate-300 transition-colors', errorField === 'email' && 'text-rose-400')}>
+                Email Address
+              </Label>
+              <div className="group relative">
+                <Mail className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400 transition-colors group-focus-within:text-sky-400" />
+                <Input
+                  id="email"
+                  type="email"
+                  autoComplete="email"
+                  placeholder="you@nis.edu.in"
+                  value={email}
+                  onChange={e => setEmail(e.target.value)}
+                  disabled={loading}
+                  className={cn(
+                    'h-11 rounded-xl border-white/10 bg-slate-950/60 pl-10 text-sm text-white placeholder:text-slate-500 transition-all duration-200 hover:border-white/20 focus:border-sky-500 focus:bg-slate-950/80 focus:ring-2 focus:ring-sky-500/30',
+                    errorField === 'email' && 'border-rose-500/60 focus:ring-rose-500/30'
+                  )}
+                />
+              </div>
+            </div>
+
+            {/* Password Input */}
+            <div className="space-y-1.5 text-left">
+              <div className="flex items-center justify-between">
+                <Label htmlFor="password" className={cn('text-xs font-semibold text-slate-300 transition-colors', errorField === 'password' && 'text-rose-400')}>
+                  Password
+                </Label>
+                <button
+                  type="button"
+                  onClick={() => setError('Password reset is handled by system administrators.')}
+                  className="text-[11px] text-slate-400 hover:text-sky-400 transition-colors"
+                >
+                  Forgot password?
+                </button>
+              </div>
+              <div className="group relative">
+                <Lock className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400 transition-colors group-focus-within:text-sky-400" />
+                <Input
+                  id="password"
+                  type={showPw ? 'text' : 'password'}
+                  autoComplete="current-password"
+                  placeholder="••••••••"
+                  value={password}
+                  onChange={e => setPassword(e.target.value)}
+                  disabled={loading}
+                  className={cn(
+                    'h-11 rounded-xl border-white/10 bg-slate-950/60 pl-10 pr-10 text-sm text-white placeholder:text-slate-500 transition-all duration-200 hover:border-white/20 focus:border-sky-500 focus:bg-slate-950/80 focus:ring-2 focus:ring-sky-500/30',
+                    errorField === 'password' && 'border-rose-500/60 focus:ring-rose-500/30'
+                  )}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPw(v => !v)}
+                  aria-label={showPw ? 'Hide password' : 'Show password'}
+                  className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white transition-colors"
+                >
+                  {showPw ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
+              </div>
+
+              {/* Password Strength Indicator */}
+              {password.length > 0 && (
+                <div className="flex items-center gap-1.5 pt-1">
+                  <div className="flex flex-1 gap-1">
+                    <div className={cn('h-1 flex-1 rounded-full transition-colors duration-300', pwStrength >= 1 ? 'bg-amber-400' : 'bg-slate-700')} />
+                    <div className={cn('h-1 flex-1 rounded-full transition-colors duration-300', pwStrength >= 2 ? 'bg-emerald-400' : 'bg-slate-700')} />
+                    <div className={cn('h-1 flex-1 rounded-full transition-colors duration-300', pwStrength >= 3 ? 'bg-sky-400' : 'bg-slate-700')} />
+                  </div>
+                  <span className="text-[10px] font-medium text-slate-400">
+                    {pwStrength === 1 ? 'Basic' : pwStrength === 2 ? 'Good' : 'Strong'}
+                  </span>
+                </div>
+              )}
+            </div>
+
+            {/* Remember Me & Security Badge */}
+            <div className="flex items-center justify-between pt-1 text-xs">
+              <label className="flex cursor-pointer items-center gap-2 text-slate-300 hover:text-white transition-colors">
+                <Checkbox
+                  checked={remember}
+                  onCheckedChange={v => setRemember(v === true)}
+                  className="border-white/20 data-[state=checked]:bg-sky-500 data-[state=checked]:border-sky-500"
+                />
+                Remember me
+              </label>
+              <span className="inline-flex items-center gap-1 text-[11px] text-slate-400">
+                <ShieldCheck className="h-3.5 w-3.5 text-emerald-400" /> SSL Encrypted
+              </span>
+            </div>
+
+            {/* Error Alert */}
+            {error && (
+              <div role="alert" className="anim-pop rounded-xl border border-rose-500/30 bg-rose-500/15 px-3.5 py-2.5 text-xs text-rose-300 text-left">
+                {error}
+              </div>
+            )}
+
+            {/* Submit Button */}
+            <Button
+              type="submit"
+              disabled={loading || phase === 'success'}
+              className={cn(
+                'group relative h-12 w-full overflow-hidden rounded-xl font-semibold text-white shadow-xl transition-all duration-300',
+                phase === 'success'
+                  ? 'bg-emerald-600 hover:bg-emerald-600 scale-[1.01]'
+                  : 'bg-gradient-to-r from-sky-600 via-sky-500 to-orange-500 hover:from-sky-500 hover:to-orange-400 hover:shadow-sky-500/25'
+              )}
+            >
+              <div className="relative z-10 flex items-center justify-center gap-2">
+                {phase === 'idle' && (
+                  <>
+                    Sign In
+                    <ArrowRight className="h-4 w-4 transition-transform duration-200 group-hover:translate-x-1" />
+                  </>
+                )}
+                {phase === 'checking' && (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" /> Verifying Credentials…
+                  </>
+                )}
+                {phase === 'success' && (
+                  <>
+                    <CheckCircle2 className="h-4 w-4 animate-bounce" /> Authentication Successful
+                  </>
+                )}
+              </div>
+            </Button>
+          </form>
+
+          {/* Quick Access Demo Login Section (All 14 Roles) */}
+          <div className="relative z-10 mt-6 border-t border-white/10 pt-4">
+            <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+              <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-300 flex items-center gap-1.5">
+                <KeyRound className="h-3.5 w-3.5 text-orange-400" /> Quick Access (All 14 User Roles)
+              </span>
+              <span className="text-[10px] text-slate-400 font-mono bg-slate-950/60 px-2 py-0.5 rounded-full border border-white/10">
+                Password: demo1234
+              </span>
+            </div>
+
+            {/* Category Filter Tabs & Quick Search */}
+            <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex flex-wrap items-center gap-1 rounded-xl bg-slate-950/60 p-1 border border-white/10">
+                {(['All', 'Admin', 'Staff', 'Portals'] as const).map(cat => {
+                  const count = cat === 'All' ? QUICK_ACCOUNTS.length : QUICK_ACCOUNTS.filter(a => a.category === cat).length
+                  return (
+                    <button
+                      key={cat}
+                      type="button"
+                      onClick={() => setActiveCategory(cat)}
+                      className={cn(
+                        'px-2.5 py-1 text-[11px] font-medium rounded-lg transition-all duration-200',
+                        activeCategory === cat
+                          ? 'bg-sky-500 text-white shadow-sm font-semibold'
+                          : 'text-slate-400 hover:text-white hover:bg-white/5'
+                      )}
+                    >
+                      {cat} <span className="opacity-70 text-[10px]">({count})</span>
+                    </button>
+                  )
+                })}
+              </div>
+
+              {/* Quick Search */}
+              <div className="relative w-full sm:w-36">
+                <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3 w-3 -translate-y-1/2 text-slate-500" />
+                <input
+                  type="text"
+                  placeholder="Filter role..."
+                  value={quickSearch}
+                  onChange={e => setQuickSearch(e.target.value)}
+                  className="h-7 w-full rounded-lg border border-white/10 bg-slate-950/80 pl-7 pr-2 text-[11px] text-slate-200 placeholder:text-slate-500 focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500"
+                />
+              </div>
+            </div>
+
+            {/* Quick Access Account Cards Grid */}
+            <div className="max-h-[220px] overflow-y-auto pr-1 custom-scrollbar grid grid-cols-2 gap-2 sm:grid-cols-3">
+              {QUICK_ACCOUNTS.filter(acc => {
+                const matchCat = activeCategory === 'All' || acc.category === activeCategory
+                const q = quickSearch.toLowerCase().trim()
+                const matchQuery = !q || acc.role.toLowerCase().includes(q) || acc.label.toLowerCase().includes(q) || acc.email.toLowerCase().includes(q)
+                return matchCat && matchQuery
+              }).map(acc => (
+                <button
+                  key={acc.email}
+                  type="button"
+                  disabled={loading || phase === 'success'}
+                  onClick={() => handleQuickLogin(acc.email)}
+                  className="group relative flex flex-col items-start rounded-xl border border-white/10 bg-slate-950/50 p-2.5 text-left transition-all duration-200 hover:border-sky-500/50 hover:bg-sky-500/10 hover:shadow-md disabled:opacity-50"
+                >
+                  <span className="flex items-center gap-1.5 text-xs font-bold text-slate-200 group-hover:text-sky-300">
+                    {acc.icon} {acc.role}
+                  </span>
+                  <span className="mt-0.5 text-[10px] text-slate-400 truncate w-full">
+                    {acc.label}
+                  </span>
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* Footer Info */}
+        <div className="anim-rise mt-6 flex flex-wrap items-center justify-center gap-4 text-center text-xs text-slate-400" style={{ ['--delay' as string]: '300ms' }}>
+          <span className="flex items-center gap-1.5">
+            <ShieldCheck className="h-3.5 w-3.5 text-sky-400" /> Dynamic Role-Based Access Control
+          </span>
+          <span className="h-1 w-1 rounded-full bg-slate-600" />
+          <span className="flex items-center gap-1.5">
+            <Sparkles className="h-3.5 w-3.5 text-orange-400" /> Nehru International ERP v2.4
+          </span>
         </div>
       </div>
     </div>

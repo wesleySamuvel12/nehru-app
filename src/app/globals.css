@@ -355,3 +355,46 @@
   }
   .mesh-bg::before { transform: none; }
 }
+
+/* Spotlight & 3D Tilt Utilities */
+.spotlight-card {
+  position: relative;
+  overflow: hidden;
+  transition: transform 0.15s cubic-bezier(0.2, 0, 0.2, 1), box-shadow 0.3s ease, border-color 0.3s ease;
+}
+.spotlight-card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(
+    600px circle at var(--mouse-x, 50%) var(--mouse-y, 50%),
+    rgba(19, 141, 206, 0.12),
+    transparent 60%
+  );
+  z-index: 1;
+}
+.spotlight-card::after {
+  content: "";
+  position: absolute;
+  inset: -1px;
+  border-radius: inherit;
+  padding: 1px;
+  background: radial-gradient(
+    400px circle at var(--mouse-x, 50%) var(--mouse-y, 50%),
+    rgba(231, 101, 7, 0.4),
+    rgba(19, 141, 206, 0.2),
+    transparent 60%
+  );
+  mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  mask-composite: exclude;
+  -webkit-mask-composite: xor;
+  pointer-events: none;
+  z-index: 2;
+}
+
+.perspective-container {
+  perspective: 1200px;
+}
+

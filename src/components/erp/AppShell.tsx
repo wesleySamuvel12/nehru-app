@@ -3,6 +3,7 @@
 import * as React from 'react'
 import { cn } from '@/lib/utils'
 import { useErp } from '@/lib/store'
+import { DynamicSidebar } from '@/components/erp/DynamicSidebar'
 import { NAV_ITEMS, MOBILE_NAV, can, ROLE_LABELS } from '@/lib/rbac'
 import { api, ApiError, clearToken } from '@/lib/api-client'
 import { timeAgo, initials } from '@/lib/format'
@@ -18,7 +19,7 @@ import {
   LayoutDashboard, GraduationCap, UserPlus, Users, Briefcase, BookOpen, MonitorPlay, CalendarCheck,
   ClipboardList, Wallet, BadgeCheck, Bus, Building2, ShieldCheck, HeartPulse, Library, Boxes,
   Megaphone, CalendarDays, FileBadge, BarChart3, Plug, Settings, ScrollText, Search, Bell, Sun,
-  Moon, LogOut, Menu, ChevronsUpDown, X, Sparkles, PanelLeftClose, PanelLeftOpen, User,
+  Moon, LogOut, Menu, ChevronsUpDown, X, PanelLeftClose, PanelLeftOpen, User,
   Activity, CornerDownLeft, ArrowUp, ArrowDown, AlertTriangle,
 } from 'lucide-react'
 
@@ -483,36 +484,40 @@ function ThemeToggle() {
 }
 
 function ProfileMenu() {
-  const { session, setSession } = useErp()
+  const { session, setSession, setModule } = useErp()
+
   if (!session) return null
+
   const logout = async () => {
     try { await api('/api/auth/logout', { method: 'POST' }) } catch { }
     clearToken()
     setSession(null)
     window.location.reload()
   }
+
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <button className="flex items-center gap-2 rounded-xl border px-2 py-1.5 transition-all duration-200 hover:bg-muted hover:shadow-sm" aria-label="Profile menu">
-          <span className="flex h-6 w-6 items-center justify-center rounded-full bg-gradient-to-br from-emerald-500 to-emerald-700 text-[10px] font-bold text-white">
+          <span className="flex h-6 w-6 items-center justify-center rounded-full bg-gradient-to-br from-sky-500 to-sky-700 text-[10px] font-bold text-white shadow-sm">
             {initials(session.name)}
           </span>
           <span className="hidden max-w-[120px] truncate text-sm font-medium sm:block">{session.name}</span>
           <ChevronsUpDown className="hidden h-3.5 w-3.5 text-muted-foreground sm:block" />
         </button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-60 rounded-xl">
+      <DropdownMenuContent align="end" className="w-64 rounded-xl p-1.5">
         <DropdownMenuLabel className="pb-2">
-          <p className="text-sm font-semibold">{session.name}</p>
+          <p className="text-sm font-bold">{session.name}</p>
           <p className="truncate text-xs font-normal text-muted-foreground">{session.email}</p>
-          <p className="mt-1.5 inline-flex rounded-md bg-primary/10 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-primary">{ROLE_LABELS[session.role]}</p>
+          <p className="mt-1.5 inline-flex rounded-md bg-primary/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-primary">
+            {ROLE_LABELS[session.role] || session.role}
+          </p>
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
-        <DropdownMenuItem onClick={() => useErp.getState().setModule('settings')} className="rounded-lg"><User className="mr-2 h-4 w-4" /> Profile</DropdownMenuItem>
-        <DropdownMenuItem onClick={() => useErp.getState().setModule('settings')} className="rounded-lg"><Settings className="mr-2 h-4 w-4" /> Settings</DropdownMenuItem>
-        <DropdownMenuItem onClick={() => useErp.getState().setModule('settings')} className="rounded-lg"><ShieldCheck className="mr-2 h-4 w-4" /> Security</DropdownMenuItem>
-        <DropdownMenuItem onClick={() => useErp.getState().setModule('audit-logs')} className="rounded-lg"><Activity className="mr-2 h-4 w-4" /> Activity</DropdownMenuItem>
+        <DropdownMenuItem onClick={() => setModule('settings')} className="rounded-lg"><User className="mr-2 h-4 w-4" /> Profile</DropdownMenuItem>
+        <DropdownMenuItem onClick={() => setModule('settings')} className="rounded-lg"><Settings className="mr-2 h-4 w-4" /> Settings</DropdownMenuItem>
+        <DropdownMenuItem onClick={() => setModule('audit-logs')} className="rounded-lg"><Activity className="mr-2 h-4 w-4" /> Activity Logs</DropdownMenuItem>
         <DropdownMenuSeparator />
         <DropdownMenuItem onClick={logout} className="rounded-lg text-rose-600 focus:text-rose-600 dark:text-rose-400 dark:focus:text-rose-400">
           <LogOut className="mr-2 h-4 w-4" /> Sign out
@@ -537,14 +542,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       {/* Desktop sidebar */}
       <aside className={cn('relative hidden shrink-0 border-r bg-sidebar text-sidebar-foreground transition-[width] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] lg:block',
         sidebarCollapsed ? 'w-[76px]' : 'w-64')}>
-        <SidebarContent collapsed={sidebarCollapsed} onToggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed)} />
+        <DynamicSidebar collapsed={sidebarCollapsed} onToggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed)} />
       </aside>
 
       {/* Mobile sidebar */}
       <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
-        <SheetContent side="left" className="w-72 p-0">
-          <SheetTitle className="sr-only">Navigation menu</SheetTitle>
-          <SidebarContent onNavigate={() => setMobileOpen(false)} />
+        <SheetContent side="left" className="w-72 p-0 border-r bg-sidebar">
+          <SheetTitle className="sr-only">Navigation Menu</SheetTitle>
+          <DynamicSidebar onNavigate={() => setMobileOpen(false)} />
         </SheetContent>
       </Sheet>
 

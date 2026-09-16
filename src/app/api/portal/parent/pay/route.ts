@@ -15,8 +15,10 @@ import { json, err } from '@/lib/crud'
 export async function POST(req: NextRequest) {
   const session = await requireAuth(req)
   if (!session) return err(401, 'Please sign in to continue.')
-  if (session.role !== 'PARENT') return err(403, 'Only parent accounts can pay through this portal.')
-  if (!session.parentId) return err(403, 'Your account is not linked to a parent profile.')
+  const isStaff = ['SUPER_ADMIN', 'SCHOOL_ADMIN', 'PRINCIPAL', 'ACCOUNTANT'].includes(session.role)
+  if (session.role !== 'PARENT' && !isStaff) {
+    return err(403, 'Only parent accounts can pay through this portal.')
+  }
 
   try {
     const body = await req.json()
@@ -27,8 +29,10 @@ export async function POST(req: NextRequest) {
     const invoice = await db.feeInvoice.findUnique({ where: { id: invoiceId } })
     if (!invoice) return err(404, 'Invoice not found.')
 
-    // Ownership check — the invoice must belong to one of this parent's children
-    const child = await db.student.findFirst({ where: { id: invoice.studentId, parentId: session.parentId } })
+    // Ownership check — invoice must belong to parent's children (or any student if staff preview)
+    const child = session.parentId
+      ? await db.student.findFirst({ where: { id: invoice.studentId, parentId: session.parentId } })
+      : await db.student.findUnique({ where: { id: invoice.studentId } })
     if (!child) return err(403, 'This invoice does not belong to your children.')
 
     if (invoice.status === 'PAID' || invoice.status === 'CANCELLED') {

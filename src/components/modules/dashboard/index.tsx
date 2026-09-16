@@ -1,6 +1,7 @@
 'use client'
 
 import * as React from 'react'
+import { cn } from '@/lib/utils'
 import { api, ApiError } from '@/lib/api-client'
 import { useErp } from '@/lib/store'
 import { Card, CardContent } from '@/components/ui/card'
@@ -11,7 +12,7 @@ import { TrendArea, BarsChart, LineTrend, DonutChart, GaugeChart } from '@/compo
 import { inr, fmtDate, timeAgo } from '@/lib/format'
 import {
   Users, GraduationCap, CalendarCheck, UserPlus, Wallet, AlertTriangle, Bus, Building2,
-  ClipboardCheck, Activity, RefreshCw, CalendarDays, ChevronRight,
+  ClipboardCheck, Activity, RefreshCw, CalendarDays, ChevronRight, Sparkles,
 } from 'lucide-react'
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -30,21 +31,76 @@ function greetingFor(): string {
 }
 
 function GreetingHeader({ onRefresh }: { onRefresh: () => void }) {
-  const { session } = useErp()
+  const { session, setModule } = useErp()
   const today = new Date().toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long' })
   const name = session?.name || ''
+  const role = session?.role || 'SUPER_ADMIN'
+
+  const ROLE_THEMES: Record<string, { bannerBg: string; badge: string; sub: string }> = {
+    SUPER_ADMIN: {
+      bannerBg: 'from-amber-500/10 via-orange-500/5 to-transparent border-amber-500/20',
+      badge: 'bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/30',
+      sub: 'System Control Center · Live Monitoring & Multi-Tenant Analytics',
+    },
+    PRINCIPAL: {
+      bannerBg: 'from-yellow-500/10 via-amber-500/5 to-transparent border-yellow-500/20',
+      badge: 'bg-yellow-500/15 text-yellow-600 dark:text-yellow-400 border-yellow-500/30',
+      sub: 'Executive Management · Academic Quality, Approvals & Operations',
+    },
+    TEACHER: {
+      bannerBg: 'from-emerald-500/10 via-teal-500/5 to-transparent border-emerald-500/20',
+      badge: 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/30',
+      sub: 'Academic Hub · My Classes, Attendance, Gradebook & Assignments',
+    },
+    ACCOUNTANT: {
+      bannerBg: 'from-teal-500/10 via-cyan-500/5 to-transparent border-teal-500/20',
+      badge: 'bg-teal-500/15 text-teal-600 dark:text-teal-400 border-teal-500/30',
+      sub: 'Finance Portal · Invoicing, Fee Collection, Ledgers & Payroll',
+    },
+    PARENT: {
+      bannerBg: 'from-rose-500/10 via-pink-500/5 to-transparent border-rose-500/20',
+      badge: 'bg-rose-500/15 text-rose-600 dark:text-rose-400 border-rose-500/30',
+      sub: 'Parent Portal · Track Child Academics, Attendance & Fee Payments',
+    },
+    STUDENT: {
+      bannerBg: 'from-indigo-500/10 via-purple-500/5 to-transparent border-indigo-500/20',
+      badge: 'bg-indigo-500/15 text-indigo-600 dark:text-indigo-400 border-indigo-500/30',
+      sub: 'Student Learning Space · Timetables, Online Exams & Homework',
+    },
+  }
+
+  const theme = ROLE_THEMES[role] || ROLE_THEMES.SUPER_ADMIN
+
   return (
-    <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-      <div className="min-w-0">
-        <p className="text-xs font-semibold uppercase tracking-[0.14em] text-primary">{today}</p>
-        <h1 className="mt-1 font-display text-2xl font-extrabold tracking-tight sm:text-[28px]">
-          {greetingFor()}{name ? `, ${name.split(' ')[0]}` : ''}.
-        </h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          {session ? `Here's what's happening across ${ROLE_LABELS[session.role] ? 'your' : 'the'} school today.` : 'Live overview across the school.'}
-        </p>
+    <div className={cn('relative overflow-hidden rounded-2xl border bg-gradient-to-r p-5 sm:p-6 backdrop-blur-md shadow-sm transition-all duration-300', theme.bannerBg)}>
+      <div className="relative z-10 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="min-w-0">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground/80">{today}</span>
+            <span className="h-1 w-1 rounded-full bg-border" />
+            <span className={cn('inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-wide', theme.badge)}>
+              <Activity className="h-3 w-3 animate-pulse" /> {ROLE_LABELS[role] || role}
+            </span>
+          </div>
+
+          <h1 className="mt-2 font-display text-2xl font-black tracking-tight text-foreground sm:text-3xl">
+            {greetingFor()}{name ? `, ${name.split(' ')[0]}` : ''}
+          </h1>
+
+          <p className="mt-1 text-xs text-muted-foreground sm:text-sm">
+            {theme.sub}
+          </p>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" className="press h-9 rounded-xl border-border/80 bg-background/80 shadow-sm" onClick={onRefresh}>
+            <RefreshCw className="mr-1.5 h-3.5 w-3.5" /> Sync Data
+          </Button>
+          <Button size="sm" className="press h-9 rounded-xl shadow-md" onClick={() => setModule('settings')}>
+            <Sparkles className="mr-1.5 h-3.5 w-3.5" /> Preferences
+          </Button>
+        </div>
       </div>
-      <Button variant="outline" size="sm" className="press" onClick={onRefresh}><RefreshCw className="mr-1.5 h-4 w-4" /> Refresh</Button>
     </div>
   )
 }

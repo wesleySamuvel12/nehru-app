@@ -8,15 +8,25 @@ import IssueReturnTab from './IssueReturnTab'
 import TransactionsTab from './TransactionsTab'
 import ReservationsTab from './ReservationsTab'
 import ReportsTab from './ReportsTab'
+import { useErp } from '@/lib/store'
 
 export default function LibraryModule() {
+  const moduleParams = useErp(s => s.moduleParams)
+  const [tab, setTab] = React.useState('catalogue')
+
+  React.useEffect(() => {
+    if (moduleParams?.tab && ['catalogue', 'circulation', 'transactions', 'reservations', 'reports'].includes(moduleParams.tab)) {
+      setTab(moduleParams.tab)
+    }
+  }, [moduleParams?.tab])
+
   return (
     <div className="space-y-4">
       <PageHeader
         title="Library"
         subtitle="Catalogue, circulation desk, reservations and reading insights"
       />
-      <Tabs defaultValue="catalogue" className="gap-4">
+      <Tabs value={tab} onValueChange={setTab} className="gap-4">
         <TabsList className="h-auto w-full flex-wrap justify-start sm:w-auto">
           <TabsTrigger value="catalogue">Catalogue</TabsTrigger>
           <TabsTrigger value="circulation">Issue &amp; Return</TabsTrigger>

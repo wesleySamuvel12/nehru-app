@@ -8,15 +8,25 @@ import VehiclesTab from './vehicles-tab'
 import RoutesStopsTab from './routes-stops'
 import AllocationsTab from './allocations-tab'
 import ExpiryDocsTab from './expiry-docs'
+import { useErp } from '@/lib/store'
 
 export default function TransportModule() {
+  const moduleParams = useErp(s => s.moduleParams)
+  const [tab, setTab] = React.useState('tracking')
+
+  React.useEffect(() => {
+    if (moduleParams?.tab && ['tracking', 'vehicles', 'routes', 'allocations', 'alerts'].includes(moduleParams.tab)) {
+      setTab(moduleParams.tab)
+    }
+  }, [moduleParams?.tab])
+
   return (
     <div className="space-y-5">
       <PageHeader
         title="Transport"
         subtitle="Fleet & drivers, routes and stops, student allocations, live GPS tracking and document renewals."
       />
-      <Tabs defaultValue="tracking">
+      <Tabs value={tab} onValueChange={setTab}>
         <TabsList className="h-auto w-full flex-wrap justify-start">
           <TabsTrigger value="tracking">Live Tracking</TabsTrigger>
           <TabsTrigger value="vehicles">Vehicles</TabsTrigger>

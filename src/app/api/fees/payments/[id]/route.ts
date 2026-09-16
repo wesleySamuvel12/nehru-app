@@ -1,6 +1,6 @@
 import { NextRequest } from 'next/server'
 import { getId } from '@/lib/crud'
-import { financeGuard } from '../invoices/_shared'
+import { financeGuard } from '../../invoices/_shared'
 import { paymentsCrud as pc } from '../_shared'
 
 /** GET /api/fees/payments/[id] */

@@ -7,15 +7,25 @@ import RecordsTab from './RecordsTab'
 import VisitsTab from './VisitsTab'
 import VaccinationsTab from './VaccinationsTab'
 import ScreeningsTab from './ScreeningsTab'
+import { useErp } from '@/lib/store'
 
 export default function HealthModule() {
+  const moduleParams = useErp(s => s.moduleParams)
+  const [tab, setTab] = React.useState('records')
+
+  React.useEffect(() => {
+    if (moduleParams?.tab && ['records', 'visits', 'vaccinations', 'screenings'].includes(moduleParams.tab)) {
+      setTab(moduleParams.tab)
+    }
+  }, [moduleParams?.tab])
+
   return (
     <div className="space-y-4">
       <PageHeader
         title="Health & Clinic"
         subtitle="Student health records, clinic visits, vaccinations and screening reports"
       />
-      <Tabs defaultValue="records" className="gap-4">
+      <Tabs value={tab} onValueChange={setTab} className="gap-4">
         <TabsList className="h-auto w-full flex-wrap justify-start sm:w-auto">
           <TabsTrigger value="records">Health Records</TabsTrigger>
           <TabsTrigger value="visits">Clinic Visits</TabsTrigger>

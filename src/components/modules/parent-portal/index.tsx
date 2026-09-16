@@ -330,13 +330,20 @@ function RecentGrades({ child }: { child: PortalChild }) {
 }
 
 export default function ParentPortalModule() {
-  const { session } = useErp()
+  const { session, moduleParams } = useErp()
+  const [tab, setTab] = React.useState('overview')
   const [data, setData] = React.useState<PortalPayload | null>(null)
   const [loading, setLoading] = React.useState(true)
   const [error, setError] = React.useState<string | null>(null)
   const [selectedId, setSelectedId] = React.useState<string>('')
   const [payInvoice, setPayInvoice] = React.useState<any | null>(null)
   const [leaveOpen, setLeaveOpen] = React.useState(false)
+
+  React.useEffect(() => {
+    if (moduleParams?.tab && ['overview', 'attendance', 'fees', 'academics', 'transport', 'health', 'notices'].includes(moduleParams.tab)) {
+      setTab(moduleParams.tab)
+    }
+  }, [moduleParams?.tab])
 
   const load = React.useCallback(async () => {
     setLoading(true)
@@ -412,7 +419,7 @@ export default function ParentPortalModule() {
         <StatCard label="Latest Grade" value={rc?.grade ?? '—'} tone="default" icon={<GraduationCap className="h-5 w-5" />} hint={rc ? `${rc.examName} · ${rc.percentage}%` : 'No published results'} />
       </div>
 
-      <Tabs defaultValue="overview" className="space-y-4">
+      <Tabs value={tab} onValueChange={setTab} className="space-y-4">
         <TabsList className="flex h-auto w-full flex-wrap justify-start gap-1 overflow-x-auto">
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="attendance">Attendance</TabsTrigger>

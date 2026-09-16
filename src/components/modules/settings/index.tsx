@@ -31,6 +31,15 @@ const CURRENCIES = ['INR', 'USD', 'AED', 'GBP', 'EUR']
 
 export default function SettingsModule() {
   const setModule = useErp((s) => s.setModule)
+  const moduleParams = useErp((s) => s.moduleParams)
+  const [tab, setTab] = React.useState('profile')
+
+  React.useEffect(() => {
+    if (moduleParams?.tab && ['profile', 'academic', 'users', 'security', 'notifications', 'data'].includes(moduleParams.tab)) {
+      setTab(moduleParams.tab)
+    }
+  }, [moduleParams?.tab])
+
   const [settings, setSettings] = React.useState<SchoolSettings | null>(null)
   const [stats, setStats] = React.useState<SettingsStats | null>(null)
   const [grades, setGrades] = React.useState<any[] | null>(null)
@@ -150,7 +159,7 @@ export default function SettingsModule() {
           <Skel className="h-72 rounded-xl" />
         </div>
       ) : (
-        <Tabs defaultValue="profile" className="space-y-4">
+        <Tabs value={tab} onValueChange={setTab} className="space-y-4">
           <TabsList className="flex h-auto w-full flex-wrap justify-start gap-1 overflow-x-auto">
             <TabsTrigger value="profile" className="gap-1.5"><SchoolIcon className="h-3.5 w-3.5" /> School Profile</TabsTrigger>
             <TabsTrigger value="academic" className="gap-1.5"><BookOpen className="h-3.5 w-3.5" /> Academic Setup</TabsTrigger>

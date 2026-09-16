@@ -7,15 +7,25 @@ import VisitorLog from './visitor-log'
 import CheckInOut from './checkin-out'
 import StudentPickup from './student-pickup'
 import AlertsTab from './alerts-tab'
+import { useErp } from '@/lib/store'
 
 export default function SecurityModule() {
+  const moduleParams = useErp(s => s.moduleParams)
+  const [tab, setTab] = React.useState('visitors')
+
+  React.useEffect(() => {
+    if (moduleParams?.tab && ['visitors', 'inout', 'pickup', 'alerts'].includes(moduleParams.tab)) {
+      setTab(moduleParams.tab)
+    }
+  }, [moduleParams?.tab])
+
   return (
     <div className="space-y-5">
       <PageHeader
         title="Security & Visitors"
         subtitle="Gate register, visitor passes, verified student pickups and security alerts."
       />
-      <Tabs defaultValue="visitors">
+      <Tabs value={tab} onValueChange={setTab}>
         <TabsList className="h-auto w-full flex-wrap justify-start">
           <TabsTrigger value="visitors">Visitor Log</TabsTrigger>
           <TabsTrigger value="inout">Check In/Out</TabsTrigger>

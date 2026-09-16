@@ -10,6 +10,8 @@ import MarksEntry from './MarksEntry'
 import ResultsTab from './ResultsTab'
 import GradingTab from './GradingTab'
 
+import { useErp } from '@/lib/store'
+
 const SCROLL_CSS = `
 .erp-scroll::-webkit-scrollbar{width:6px;height:6px}
 .erp-scroll::-webkit-scrollbar-thumb{background:hsl(var(--muted-foreground)/.25);border-radius:9999px}
@@ -17,6 +19,15 @@ const SCROLL_CSS = `
 `
 
 export default function ExaminationsModule() {
+  const moduleParams = useErp(s => s.moduleParams)
+  const [tab, setTab] = React.useState('exams')
+
+  React.useEffect(() => {
+    if (moduleParams?.tab && ['exams', 'schedule', 'questions', 'marks', 'results', 'grading'].includes(moduleParams.tab)) {
+      setTab(moduleParams.tab)
+    }
+  }, [moduleParams?.tab])
+
   return (
     <>
       <style>{SCROLL_CSS}</style>
@@ -26,7 +37,7 @@ export default function ExaminationsModule() {
           subtitle="Plan exams, schedule papers, maintain the question bank, enter marks and publish report cards."
           breadcrumbs={['Academics', 'Examinations']}
         />
-        <Tabs defaultValue="exams">
+        <Tabs value={tab} onValueChange={setTab}>
           <TabsList className="h-auto w-full flex-wrap justify-start gap-1 sm:w-auto">
             <TabsTrigger value="exams">Exams</TabsTrigger>
             <TabsTrigger value="schedule">Schedule</TabsTrigger>

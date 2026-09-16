@@ -13,10 +13,17 @@ import PaymentsTable from './payments'
 import StructuresTable from './structures'
 import ExpensesTable from './expenses'
 import BudgetsTable from './budgets'
-import DiscountsTable from './discounts'
+import { useErp } from '@/lib/store'
 
 export default function FeesModule() {
+  const moduleParams = useErp(s => s.moduleParams)
   const [tab, setTab] = React.useState('dashboard')
+
+  React.useEffect(() => {
+    if (moduleParams?.tab && ['dashboard', 'invoices', 'payments', 'structures', 'expenses', 'budgets', 'discounts'].includes(moduleParams.tab)) {
+      setTab(moduleParams.tab)
+    }
+  }, [moduleParams?.tab])
 
   return (
     <div className="space-y-5">

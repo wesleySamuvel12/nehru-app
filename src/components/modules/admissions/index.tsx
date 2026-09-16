@@ -12,9 +12,13 @@ import AnalyticsTab from './analytics'
 
 export default function AdmissionsModule() {
   const moduleParams = useErp(s => s.moduleParams)
-  const initial = moduleParams?.tab && ['pipeline', 'leads', 'applications', 'campaigns', 'analytics'].includes(moduleParams.tab)
-    ? moduleParams.tab
-    : 'pipeline'
+  const [tab, setTab] = React.useState('pipeline')
+
+  React.useEffect(() => {
+    if (moduleParams?.tab && ['pipeline', 'leads', 'applications', 'campaigns', 'analytics'].includes(moduleParams.tab)) {
+      setTab(moduleParams.tab)
+    }
+  }, [moduleParams?.tab])
 
   return (
     <div className="space-y-4">
@@ -23,7 +27,7 @@ export default function AdmissionsModule() {
         subtitle="Enquiries, counselling pipeline, applications and enrolment analytics"
         breadcrumbs={['Home', 'Admissions']}
       />
-      <Tabs defaultValue={initial}>
+      <Tabs value={tab} onValueChange={setTab}>
         <TabsList className="flex h-auto w-full flex-wrap justify-start gap-1 overflow-x-auto">
           <TabsTrigger value="pipeline">Pipeline</TabsTrigger>
           <TabsTrigger value="leads">Leads</TabsTrigger>

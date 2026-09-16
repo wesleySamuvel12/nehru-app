@@ -16,8 +16,10 @@ import { json, err } from '@/lib/crud'
 export async function POST(req: NextRequest) {
   const session = await requireAuth(req)
   if (!session) return err(401, 'Please sign in to continue.')
-  if (session.role !== 'PARENT') return err(403, 'Only parent accounts can use this endpoint.')
-  if (!session.parentId) return err(403, 'Your account is not linked to a parent profile.')
+  const isStaff = ['SUPER_ADMIN', 'SCHOOL_ADMIN', 'PRINCIPAL', 'TEACHER'].includes(session.role)
+  if (session.role !== 'PARENT' && !isStaff) {
+    return err(403, 'Only parent accounts can use this endpoint.')
+  }
 
   try {
     const body = await req.json()
@@ -30,8 +32,10 @@ export async function POST(req: NextRequest) {
     if (!studentId || !fromDate || !toDate || reason.length < 5) {
       return err(400, 'Please provide the student, date range and a short reason.')
     }
-    const child = await db.student.findFirst({ where: { id: studentId, parentId: session.parentId } })
-    if (!child) return err(403, 'Leave can only be requested for your own children.')
+    const child = session.parentId
+      ? await db.student.findFirst({ where: { id: studentId, parentId: session.parentId } })
+      : await db.student.findUnique({ where: { id: studentId } })
+    if (!child) return err(403, 'Leave can only be requested for active students.')
     if (toDate < fromDate) return err(400, 'The “to” date cannot be before the “from” date.')
 
     const row = await db.leaveRequest.create({
