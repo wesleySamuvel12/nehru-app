@@ -34,19 +34,8 @@ export function DynamicSidebar({
   collapsed?: boolean
   onToggleCollapse?: () => void
 }) {
-  const { session, activeModule, setModule, setSession, moduleParams } = useErp()
+  const { session, activeModule, setModule, setSession } = useErp()
   const [filterQuery, setFilterQuery] = React.useState('')
-  const [openSubMenus, setOpenSubMenus] = React.useState<Record<string, boolean>>({})
-
-  // Auto-initialize open submenu for activeModule
-  React.useEffect(() => {
-    if (activeModule) {
-      setOpenSubMenus(prev => {
-        if (prev[activeModule] !== undefined) return prev
-        return { ...prev, [activeModule]: true }
-      })
-    }
-  }, [activeModule])
 
   if (!session) return null
 
@@ -64,42 +53,12 @@ export function DynamicSidebar({
   const filteredItems = authorizedItems.filter(item => {
     if (!filterQuery.trim()) return true
     const q = filterQuery.toLowerCase()
-    const matchLabel = item.label.toLowerCase().includes(q)
-    const matchSub = item.subItems?.some(s => s.label.toLowerCase().includes(q))
-    return matchLabel || matchSub
+    return item.label.toLowerCase().includes(q)
   })
 
-  const toggleSubMenu = (key: string, e?: React.MouseEvent) => {
-    if (e) e.stopPropagation()
-    setOpenSubMenus(prev => {
-      const isCurrentlyOpen = !!prev[key]
-      if (isCurrentlyOpen) {
-        return { ...prev, [key]: false }
-      } else {
-        return { [key]: true }
-      }
-    })
-  }
-
-  const handleParentClick = (itemKey: string, hasSubMenu: boolean) => {
-    const isCurrentlyOpen = !!openSubMenus[itemKey]
-
-    if (activeModule === itemKey && hasSubMenu) {
-      // Toggle accordion open/closed when clicking active parent
-      setOpenSubMenus(prev => ({
-        ...prev,
-        [itemKey]: !isCurrentlyOpen
-      }))
-    } else {
-      // Navigate to new module & set accordion state
-      setModule(itemKey)
-      if (hasSubMenu) {
-        setOpenSubMenus({ [itemKey]: true })
-      } else {
-        setOpenSubMenus({})
-      }
-      onNavigate?.()
-    }
+  const handleNavClick = (itemKey: string) => {
+    setModule(itemKey)
+    onNavigate?.()
   }
 
   const handleLogout = async () => {
@@ -185,69 +144,28 @@ export function DynamicSidebar({
                   {groupItems.map(item => {
                     const Icon = ICONS[item.icon] || LayoutDashboard
                     const isActive = activeModule === item.key
-                    const hasSubMenu = item.subItems && item.subItems.length > 0
-                    const isSubOpen = !collapsed && hasSubMenu && !!openSubMenus[item.key]
 
                     const itemButton = (
-                      <div key={item.key} className="space-y-0.5">
-                        <button
-                          onClick={() => handleParentClick(item.key, !!hasSubMenu)}
-                          aria-current={isActive ? 'page' : undefined}
-                          className={cn(
-                            'group relative flex w-full items-center gap-2.5 rounded-xl text-xs font-semibold transition-all duration-200',
-                            collapsed ? 'justify-center px-0 py-2.5' : 'px-2.5 py-2.5',
-                            isActive
-                              ? 'bg-primary/10 text-primary font-bold dark:bg-primary/15 shadow-sm'
-                              : 'text-muted-foreground hover:bg-muted/80 hover:text-foreground'
-                          )}
-                        >
-                          {isActive && (
-                            <span className="anim-pop absolute left-0 top-1/2 h-5 w-1 -translate-y-1/2 rounded-r-full bg-primary" />
-                          )}
-                          
-                          <Icon className={cn('h-4 w-4 shrink-0 transition-transform duration-200 group-hover:scale-110', isActive && 'text-primary')} />
-                          
-                          {!collapsed && <span className="flex-1 truncate text-left">{item.label}</span>}
-                          
-                          {!collapsed && hasSubMenu && (
-                            <span
-                              onClick={(e) => toggleSubMenu(item.key, e)}
-                              className="rounded-md p-0.5 text-muted-foreground/60 hover:bg-muted hover:text-foreground transition-transform"
-                              aria-label={isSubOpen ? 'Collapse menu' : 'Expand menu'}
-                            >
-                              {isSubOpen ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
-                            </span>
-                          )}
-                        </button>
-
-                        {/* Collapsible Sub-menu Items */}
-                        {isSubOpen && (
-                          <div className="ml-5 border-l border-border/50 pl-2 space-y-0.5 pt-1">
-                            {item.subItems?.map(sub => {
-                              const isSubActive = isActive && moduleParams?.tab === sub.key
-                              return (
-                                <button
-                                  key={sub.key}
-                                  onClick={(e) => {
-                                    e.stopPropagation()
-                                    setModule(item.key, { tab: sub.key })
-                                    onNavigate?.()
-                                  }}
-                                  className={cn(
-                                    'flex w-full items-center justify-between rounded-lg px-2.5 py-1.5 text-[11px] font-medium transition-colors',
-                                    isSubActive
-                                      ? 'bg-primary/15 font-bold text-primary shadow-xs'
-                                      : 'text-muted-foreground hover:bg-muted/80 hover:text-foreground'
-                                  )}
-                                >
-                                  <span>{sub.label}</span>
-                                  {isSubActive && <span className="h-1.5 w-1.5 rounded-full bg-primary" />}
-                                </button>
-                              )
-                            })}
-                          </div>
+                      <button
+                        key={item.key}
+                        onClick={() => handleNavClick(item.key)}
+                        aria-current={isActive ? 'page' : undefined}
+                        className={cn(
+                          'group relative flex w-full items-center gap-2.5 rounded-xl text-xs font-semibold transition-all duration-200',
+                          collapsed ? 'justify-center px-0 py-2.5' : 'px-2.5 py-2.5',
+                          isActive
+                            ? 'bg-primary/10 text-primary font-bold dark:bg-primary/15 shadow-sm'
+                            : 'text-muted-foreground hover:bg-muted/80 hover:text-foreground'
                         )}
-                      </div>
+                      >
+                        {isActive && (
+                          <span className="anim-pop absolute left-0 top-1/2 h-5 w-1 -translate-y-1/2 rounded-r-full bg-primary" />
+                        )}
+                        
+                        <Icon className={cn('h-4 w-4 shrink-0 transition-transform duration-200 group-hover:scale-110', isActive && 'text-primary')} />
+                        
+                        {!collapsed && <span className="flex-1 truncate text-left">{item.label}</span>}
+                      </button>
                     )
 
                     return collapsed ? (
