@@ -1,0 +1,9 @@
+[build]
+  command = "npm run build"
+  publish = ".next"
+
+[functions]
+  included_files = ["db/**", "prisma/**"]
+
+[[plugins]]
+  package = "@netlify/plugin-nextjs"
