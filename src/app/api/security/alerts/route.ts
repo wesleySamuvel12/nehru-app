@@ -1,7 +1,7 @@
 import { defineCrud } from '@/lib/crud'
 import { notifyRoles } from '@/lib/notify'
 
-const SEVERITY_ORDER: Record<string, string> = { LOW: 'INFO', MEDIUM: 'WARNING', HIGH: 'DANGER', CRITICAL: 'ALERT' }
+const SEVERITY_ORDER: Record<string, 'INFO' | 'WARNING' | 'DANGER' | 'ALERT'> = { LOW: 'INFO', MEDIUM: 'WARNING', HIGH: 'DANGER', CRITICAL: 'ALERT' }
 
 const crud = defineCrud({
   model: 'securityAlert',

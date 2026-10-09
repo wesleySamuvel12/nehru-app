@@ -8,6 +8,7 @@ import { db } from '@/lib/db'
 import { can } from '@/lib/rbac'
 import { notify } from '@/lib/notify'
 import { inr } from '@/lib/format'
+import { requireAuth } from '@/lib/auth'
 import { nextNumberedNo, recalcInvoice, ownStudentIds } from '../invoices/_shared'
 
 /* eslint-disable @typescript-eslint/no-explicit-any */

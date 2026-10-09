@@ -25,7 +25,7 @@ const crud = defineCrud({
         row.studentId,
         'Clinic visit — parent notified',
         `${row.attendedBy || 'Clinic staff'} attended to your child today for “${row.reason}”. Severity: ${(row.severity || 'MINOR').toLowerCase()}.`,
-        row.severity === 'SERIOUS' ? 'ALERT' : row.severity === 'MODERATE' ? 'WARNING' : 'INFO',
+        row.severity === 'SERIOUS' ? 'DANGER' : row.severity === 'MODERATE' ? 'WARNING' : 'INFO',
       )
     }
   },

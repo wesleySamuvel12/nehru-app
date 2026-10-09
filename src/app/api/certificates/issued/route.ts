@@ -37,12 +37,13 @@ export async function GET(req: NextRequest) {
     const q = sp.get('q')
     if (q) where.OR = [{ certificateNo: { contains: q } }, { title: { contains: q } }, { verifyCode: { contains: q } }]
 
+    const findManyArgs: any = {
+      where,
+      orderBy: { [sortBy]: sortDir },
+      ...(all ? { take: 5000 } : { skip: (page - 1) * pageSize, take: pageSize }),
+    }
     const [rows, total] = await Promise.all([
-      db.certificate.findMany({
-        where,
-        orderBy: { [sortBy]: sortDir },
-        ...(all ? { take: 5000 } : { skip: (page - 1) * pageSize, take: pageSize }),
-      }),
+      db.certificate.findMany(findManyArgs),
       db.certificate.count({ where }),
     ])
     const data = await withStudentNames(rows)
@@ -55,5 +56,3 @@ export async function GET(req: NextRequest) {
     return err(500, 'Unable to load issued certificates right now. Please try again.')
   }
 }
-
-export const DELETE = crud.remove

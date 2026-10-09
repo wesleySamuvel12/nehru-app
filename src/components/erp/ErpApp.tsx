@@ -4,10 +4,26 @@ import * as React from 'react'
 import { useErp, Session } from '@/lib/store'
 import { api, ApiError } from '@/lib/api-client'
 import { can } from '@/lib/rbac'
-import { LoginScreen } from './LoginScreen'
 import { AppShell } from './AppShell'
 import { BrandSplash, BrandMark } from './brand'
-import { MODULE_REGISTRY } from '@/lib/registry'
+import { LoginScreen } from './LoginScreen'
+import { SUPER_ADMIN_MODULE_REGISTRY } from '@/role/super-admin/modules/registry'
+import { SCHOOL_ADMIN_MODULE_REGISTRY } from '@/role/school-admin/modules/registry'
+import { PRINCIPAL_MODULE_REGISTRY } from '@/role/principal/modules/registry'
+import { HOD_MODULE_REGISTRY } from '@/role/hod/modules/registry'
+import { TEACHER_MODULE_REGISTRY } from '@/role/teacher/modules/registry'
+import { STUDENT_MODULE_REGISTRY } from '@/role/student/modules/registry'
+import { PARENT_MODULE_REGISTRY } from '@/role/parent/modules/registry'
+import { ACCOUNTANT_MODULE_REGISTRY } from '@/role/accountant/modules/registry'
+import { HR_MODULE_REGISTRY } from '@/role/hr/modules/registry'
+import { LIBRARIAN_MODULE_REGISTRY } from '@/role/librarian/modules/registry'
+import { TRANSPORT_MODULE_REGISTRY } from '@/role/transport/modules/registry'
+import { HOSTEL_MODULE_REGISTRY } from '@/role/hostel/modules/registry'
+import { SECURITY_MODULE_REGISTRY } from '@/role/security/modules/registry'
+import { HEALTH_MODULE_REGISTRY } from '@/role/health/modules/registry'
+import { COUNSELLOR_MODULE_REGISTRY } from '@/role/counsellor/modules/registry'
+import { getRoleLandingModule } from '@/role'
+import { ROLE_APPLICATIONS } from '@/role/client'
 import { Button } from '@/components/ui/button'
 import { ShieldAlert } from 'lucide-react'
 
@@ -43,14 +59,35 @@ export function ErpApp() {
   // Enforce RBAC on the client too (API enforces server-side)
   const allowed = can(session.role, activeModule) ||
     (activeModule === 'dashboard' && session.role !== 'PARENT' && session.role !== 'STUDENT')
-  const ModuleView = MODULE_REGISTRY[activeModule] || MODULE_REGISTRY.dashboard
+  const roleModuleRegistries = {
+    SUPER_ADMIN: SUPER_ADMIN_MODULE_REGISTRY,
+    SCHOOL_ADMIN: SCHOOL_ADMIN_MODULE_REGISTRY,
+    PRINCIPAL: PRINCIPAL_MODULE_REGISTRY,
+    HOD: HOD_MODULE_REGISTRY,
+    TEACHER: TEACHER_MODULE_REGISTRY,
+    STUDENT: STUDENT_MODULE_REGISTRY,
+    PARENT: PARENT_MODULE_REGISTRY,
+    ACCOUNTANT: ACCOUNTANT_MODULE_REGISTRY,
+    HR: HR_MODULE_REGISTRY,
+    LIBRARIAN: LIBRARIAN_MODULE_REGISTRY,
+    TRANSPORT: TRANSPORT_MODULE_REGISTRY,
+    WARDEN: HOSTEL_MODULE_REGISTRY,
+    SECURITY: SECURITY_MODULE_REGISTRY,
+    NURSE: HEALTH_MODULE_REGISTRY,
+    COUNSELLOR: COUNSELLOR_MODULE_REGISTRY,
+  } as const
+  const roleModuleRegistry = roleModuleRegistries[session.role as keyof typeof roleModuleRegistries]
+  const ModuleView = roleModuleRegistry[activeModule] || roleModuleRegistry.dashboard
+  const roleApplication = ROLE_APPLICATIONS[session.role as keyof typeof ROLE_APPLICATIONS]
+  const isRoleLanding = activeModule === getRoleLandingModule(session.role)
+  const ActiveView = isRoleLanding && roleApplication ? roleApplication : ModuleView
 
   return (
     <AppShell>
       {allowed ? (
         <div key={activeModule} className="anim-page-in">
           <React.Suspense fallback={<ModuleFallback />}>
-            <ModuleView />
+            <ActiveView />
           </React.Suspense>
         </div>
       ) : (

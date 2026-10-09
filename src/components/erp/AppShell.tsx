@@ -20,7 +20,7 @@ import {
   ClipboardList, Wallet, BadgeCheck, Bus, Building2, ShieldCheck, HeartPulse, Library, Boxes,
   Megaphone, CalendarDays, FileBadge, BarChart3, Plug, Settings, ScrollText, Search, Bell, Sun,
   Moon, LogOut, Menu, ChevronsUpDown, X, PanelLeftClose, PanelLeftOpen, User,
-  Activity, CornerDownLeft, ArrowUp, ArrowDown, AlertTriangle, ArrowLeft,
+  Activity, CornerDownLeft, ArrowUp, ArrowDown, AlertTriangle, ArrowLeft, Sparkles,
 } from 'lucide-react'
 
 /* eslint-disable @typescript-eslint/no-explicit-any */

@@ -161,9 +161,10 @@ export function defineCrud(config: CrudConfig) {
     }
   }
 
-  const detail = async (req: NextRequest, id: string) => {
+  const detail = async (req: NextRequest, context: IdContext | string) => {
     const g = await guard(req)
     if (g.error) return g.error
+    const id = typeof context === 'string' ? context : await getId(context)
     try {
       const d = delegate(config)
       const row = await d.findUnique({ where: { id }, ...(config.include ? { include: config.include } : {}) })
@@ -175,10 +176,11 @@ export function defineCrud(config: CrudConfig) {
     }
   }
 
-  const update = async (req: NextRequest, id: string) => {
+  const update = async (req: NextRequest, context: IdContext | string) => {
     const g = await guard(req)
     if (g.error) return g.error
     const session = g.session!
+    const id = typeof context === 'string' ? context : await getId(context)
     try {
       const d = delegate(config)
       const before = await d.findUnique({ where: { id } })
@@ -200,10 +202,11 @@ export function defineCrud(config: CrudConfig) {
     }
   }
 
-  const remove = async (req: NextRequest, id: string) => {
+  const remove = async (req: NextRequest, context: IdContext | string) => {
     const g = await guard(req)
     if (g.error) return g.error
     const session = g.session!
+    const id = typeof context === 'string' ? context : await getId(context)
     try {
       const d = delegate(config)
       const row = await d.delete({ where: { id } })
@@ -221,7 +224,9 @@ export function defineCrud(config: CrudConfig) {
 }
 
 /** Helper for item routes ([id] folder): extract id from params */
-export async function getId(ctx: { params: Promise<{ id: string }> | { id: string } }): Promise<string> {
+export type IdContext = { params: Promise<{ id: string }> | { id: string } }
+
+export async function getId(ctx: IdContext): Promise<string> {
   const p = (ctx.params as any)
   const resolved = typeof p?.then === 'function' ? await p : p
   return resolved?.id

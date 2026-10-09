@@ -215,7 +215,7 @@ export function FormFields({ fields, values, setValues, errors, mode }: {
             ) : (
               <Input
                 id={id}
-                type={f.type === 'number' ? 'number' : f.type === 'date' ? 'date' : f.type === 'time' ? 'time' : f.type}
+                type={f.type === 'number' ? 'number' : f.type === 'time' ? 'time' : f.type}
                 placeholder={f.placeholder}
                 value={values[f.name] ?? ''}
                 min={f.min}

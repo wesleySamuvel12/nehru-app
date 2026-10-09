@@ -64,7 +64,7 @@ export async function GET(req: NextRequest) {
         let sumPct = 0, count = 0
         rows.forEach(r => {
           if (r._sum.maxMarks && r._sum.maxMarks > 0) {
-            sumPct += (r._sum.marksObtained / r._sum.maxMarks) * 100
+            sumPct += ((r._sum.marksObtained || 0) / r._sum.maxMarks) * 100
             count++
           }
         })
@@ -82,7 +82,7 @@ export async function GET(req: NextRequest) {
     // Class-wise student counts with class names
     const classes = await db.class.findMany({ select: { id: true, name: true, level: true }, orderBy: { level: 'asc' } })
     const classMap = new Map(classes.map(c => [c.id, c.name]))
-    const population = studentsByClass.map(r => ({ name: classMap.get(r.classId) || 'Unassigned', count: r._count }))
+    const population = studentsByClass.map(r => ({ name: (r.classId ? classMap.get(r.classId) : undefined) || 'Unassigned', count: r._count }))
 
     // Outstanding = sum(total - paid) for unpaid invoices
     const outstanding = outstandingInvoices.reduce((s, i) => s + (i.totalAmount - i.paidAmount), 0)

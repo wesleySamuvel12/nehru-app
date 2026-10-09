@@ -3,41 +3,14 @@ import { db } from '@/lib/db'
 import { verifyPassword, signSession, SESSION_COOKIE, Session } from '@/lib/auth'
 import { audit } from '@/lib/audit'
 import { can } from '@/lib/rbac'
+import { getRoleLandingModule } from '@/role'
 
 const MAX_ATTEMPTS = 5
 const LOCK_MINUTES = 15
 
 export function defaultModuleFor(s: Session): string {
-  switch (s.role) {
-    case 'SUPER_ADMIN':
-    case 'SCHOOL_ADMIN':
-    case 'PRINCIPAL':
-      return 'dashboard'
-    case 'TEACHER':
-      return 'academics'
-    case 'ACCOUNTANT':
-      return 'fees'
-    case 'HR':
-      return 'hr'
-    case 'COUNSELLOR':
-      return 'admissions'
-    case 'LIBRARIAN':
-      return 'library'
-    case 'TRANSPORT':
-      return 'transport'
-    case 'WARDEN':
-      return 'hostel'
-    case 'NURSE':
-      return 'health'
-    case 'SECURITY':
-      return 'security'
-    case 'PARENT':
-      return 'parent-portal'
-    case 'STUDENT':
-      return 'student-portal'
-    default:
-      return can(s.role, 'dashboard') ? 'dashboard' : 'events'
-  }
+  const landingModule = getRoleLandingModule(s.role)
+  return landingModule === 'events' && can(s.role, 'dashboard') ? 'dashboard' : landingModule
 }
 
 export async function POST(req: NextRequest) {
@@ -82,6 +55,8 @@ export async function POST(req: NextRequest) {
         Teacher: ['TEACHER'],
         Staff: ['ACCOUNTANT', 'HR', 'LIBRARIAN', 'TRANSPORT', 'WARDEN', 'NURSE', 'SECURITY', 'COUNSELLOR'],
         Administration: ['SUPER_ADMIN', 'SCHOOL_ADMIN', 'PRINCIPAL'],
+        'Super Admin': ['SUPER_ADMIN'],
+        'School Admin': ['SCHOOL_ADMIN'],
       }
       const allowedRoles = roleMap[selectedLoginType]
       if (allowedRoles && !allowedRoles.includes(user.role)) {

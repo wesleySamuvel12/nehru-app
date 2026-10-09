@@ -35,6 +35,7 @@ const QUICK_ACCOUNTS = [
 ]
 
 type LoginPhase = 'idle' | 'checking' | 'success'
+type LoginType = 'Auto' | 'Super Admin' | 'School Admin'
 
 export function LoginScreen({ onLogin }: { onLogin: (s: Session, defaultModule: string) => void }) {
   const [email, setEmail] = React.useState('')
@@ -50,6 +51,7 @@ export function LoginScreen({ onLogin }: { onLogin: (s: Session, defaultModule: 
   // Quick Access Category and Search Filter
   const [activeCategory, setActiveCategory] = React.useState<'All' | 'Admin' | 'Staff' | 'Portals'>('All')
   const [quickSearch, setQuickSearch] = React.useState('')
+  const [loginType, setLoginType] = React.useState<LoginType>('Auto')
 
   // Card 3D tilt & dynamic spotlight tracking
   const cardRef = React.useRef<HTMLDivElement | null>(null)
@@ -75,7 +77,7 @@ export function LoginScreen({ onLogin }: { onLogin: (s: Session, defaultModule: 
     setTransformStyle('perspective(1000px) rotateX(0deg) rotateY(0deg) scale3d(1, 1, 1)')
   }
 
-  const submit = async (e?: React.FormEvent, overrideEmail?: string, overridePw?: string) => {
+  const submit = async (e?: React.FormEvent, overrideEmail?: string, overridePw?: string, overrideLoginType?: LoginType) => {
     e?.preventDefault()
     if (loading) return
     const targetEmail = (overrideEmail || email).trim()
@@ -95,7 +97,7 @@ export function LoginScreen({ onLogin }: { onLogin: (s: Session, defaultModule: 
 
     try {
       const res = await api<{ data: Session; token?: string; defaultModule: string }>('/api/auth/login', {
-        method: 'POST', body: JSON.stringify({ email: targetEmail, password: targetPw, remember }),
+        method: 'POST', body: JSON.stringify({ email: targetEmail, password: targetPw, selectedLoginType: overrideLoginType || loginType, remember }),
       })
       if (res.token) setToken(res.token)
       setPhase('success')
@@ -111,9 +113,15 @@ export function LoginScreen({ onLogin }: { onLogin: (s: Session, defaultModule: 
   }
 
   const handleQuickLogin = (accEmail: string) => {
+    const account = QUICK_ACCOUNTS.find(item => item.email === accEmail)
+    if (account?.role === 'Super Admin' || account?.role === 'School Admin') {
+      setLoginType(account.role)
+    } else {
+      setLoginType('Auto')
+    }
     setEmail(accEmail)
     setPassword('demo1234')
-    submit(undefined, accEmail, 'demo1234')
+    submit(undefined, accEmail, 'demo1234', account?.role === 'Super Admin' || account?.role === 'School Admin' ? account.role : 'Auto')
   }
 
   // Password strength calculation
@@ -181,6 +189,28 @@ export function LoginScreen({ onLogin }: { onLogin: (s: Session, defaultModule: 
 
           {/* Form */}
           <form onSubmit={submit} className="relative z-10 space-y-4" noValidate>
+            <div className="space-y-1.5 text-left">
+              <Label className="text-xs font-semibold text-slate-300">Login type</Label>
+              <div className="grid grid-cols-3 gap-2">
+                {(['Auto', 'Super Admin', 'School Admin'] as const).map(type => (
+                  <button
+                    key={type}
+                    type="button"
+                    onClick={() => setLoginType(type)}
+                    disabled={loading}
+                    className={cn(
+                      'rounded-lg border px-2 py-2 text-[11px] font-semibold transition-colors',
+                      loginType === type
+                        ? 'border-sky-400 bg-sky-500/20 text-sky-200'
+                        : 'border-white/10 bg-slate-950/50 text-slate-400 hover:border-white/25 hover:text-white'
+                    )}
+                  >
+                    {type}
+                  </button>
+                ))}
+              </div>
+            </div>
+
             {/* Email / Username Input */}
             <div className="space-y-1.5 text-left">
               <Label htmlFor="email" className={cn('text-xs font-semibold text-slate-300 transition-colors', errorField === 'email' && 'text-rose-400')}>

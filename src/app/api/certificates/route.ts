@@ -31,12 +31,14 @@ export async function GET(req: NextRequest) {
     const q = sp.get('q')
     if (q) where.OR = [{ purpose: { contains: q } }, { type: { contains: q } }, { requestedBy: { contains: q } }]
 
+    const findManyArgs: any = {
+      where,
+      orderBy: { [sortBy]: sortDir },
+      ...(all ? { take: 5000 } : { skip: (page - 1) * pageSize, take: pageSize }),
+    }
     const [rows, total] = await Promise.all([
-      db.certificateRequest.findMany({
-        where,
-        orderBy: { [sortBy]: sortDir },
-        ...(all ? { take: 5000 } : { skip: (page - 1) * pageSize, take: pageSize }),
-      }),
+      db.certificateRequest.findMany(findManyArgs),
+      
       db.certificateRequest.count({ where }),
     ])
     const data = await withStudentNames(rows)

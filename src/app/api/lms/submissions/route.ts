@@ -45,4 +45,3 @@ export async function GET(req: NextRequest) {
   }
 }
 export const POST = crud.create
-export const PATCH = crud.update
