@@ -2,11 +2,18 @@ import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { requireAuth } from '@/lib/auth'
 import { can } from '@/lib/rbac'
+import { resolveTenantContext } from '@/lib/tenant'
 
 export async function GET(req: NextRequest) {
   const session = await requireAuth(req)
   if (!session) return NextResponse.json({ error: 'Not signed in' }, { status: 401 })
   if (!can(session.role, 'dashboard')) return NextResponse.json({ error: 'No permission' }, { status: 403 })
+
+  const tenantRes = await resolveTenantContext(req, session, { allowAllSchoolsForSuperAdmin: true })
+  if (tenantRes.error) return tenantRes.error
+  const tenant = tenantRes.context
+
+  const schoolWhere = tenant.schoolId ? { schoolId: tenant.schoolId } : {}
 
   try {
     const today = new Date(); today.setHours(0, 0, 0, 0)
@@ -19,19 +26,19 @@ export async function GET(req: NextRequest) {
       studentsByClass, attendanceTrend, feeTrend, admissionByStage,
       avgMarks, hostelBeds, vehicles, transportActive, leadsTotal, recentAudit, pendingApprovals, eventsUpcoming,
     ] = await Promise.all([
-      db.student.count(),
-      db.student.count({ where: { status: 'ACTIVE' } }),
-      db.employee.count({ where: { status: 'ACTIVE' } }),
-      db.application.count({ where: { status: { in: ['SUBMITTED', 'SCREENING', 'DOC_VERIFICATION', 'TEST', 'INTERVIEW'] } } }),
-      db.attendance.count({ where: { date: { gte: today }, status: { in: ['PRESENT', 'LATE', 'HALF_DAY'] } } }),
-      db.attendance.count({ where: { date: { gte: today }, status: 'ABSENT' } }),
-      db.attendance.groupBy({ by: ['status'], where: { date: { gte: today } }, _count: true }),
-      db.feeInvoice.aggregate({ _sum: { totalAmount: true, paidAmount: true }, _count: true }),
-      db.payment.aggregate({ _sum: { amount: true }, where: { status: 'SUCCESS' } }),
-      db.expense.aggregate({ _sum: { amount: true }, where: { status: { in: ['APPROVED', 'PAID'] } } }),
-      db.feeInvoice.findMany({ where: { status: { in: ['PENDING', 'PARTIAL', 'OVERDUE'] } }, select: { totalAmount: true, paidAmount: true, dueDate: true, status: true } }),
-      db.student.groupBy({ by: ['classId'], _count: true, where: { status: 'ACTIVE' } }),
-      db.attendance.groupBy({ by: ['date', 'status'], where: { date: { gte: thirtyAgo } }, _count: true }).then((byDate) => {
+      db.student.count({ where: schoolWhere }),
+      db.student.count({ where: { ...schoolWhere, status: 'ACTIVE' } }),
+      db.employee.count({ where: { ...schoolWhere, status: 'ACTIVE' } }),
+      db.application.count({ where: { ...schoolWhere, status: { in: ['SUBMITTED', 'SCREENING', 'DOC_VERIFICATION', 'TEST', 'INTERVIEW'] } } }),
+      db.attendance.count({ where: { ...schoolWhere, date: { gte: today }, status: { in: ['PRESENT', 'LATE', 'HALF_DAY'] } } }),
+      db.attendance.count({ where: { ...schoolWhere, date: { gte: today }, status: 'ABSENT' } }),
+      db.attendance.groupBy({ by: ['status'], where: { ...schoolWhere, date: { gte: today } }, _count: true }),
+      db.feeInvoice.aggregate({ where: schoolWhere, _sum: { totalAmount: true, paidAmount: true }, _count: true }),
+      db.payment.aggregate({ where: { ...schoolWhere, status: 'SUCCESS' }, _sum: { amount: true } }),
+      db.expense.aggregate({ where: { ...schoolWhere, status: { in: ['APPROVED', 'PAID'] } }, _sum: { amount: true } }),
+      db.feeInvoice.findMany({ where: { ...schoolWhere, status: { in: ['PENDING', 'PARTIAL', 'OVERDUE'] } }, select: { totalAmount: true, paidAmount: true, dueDate: true, status: true } }),
+      db.student.groupBy({ by: ['classId'], _count: true, where: { ...schoolWhere, status: 'ACTIVE' } }),
+      db.attendance.groupBy({ by: ['date', 'status'], where: { ...schoolWhere, date: { gte: thirtyAgo } }, _count: true }).then((byDate) => {
         const map = new Map<string, { present: number; total: number }>()
         byDate.forEach(r => {
           const key = r.date.toISOString().slice(0, 10)
@@ -45,7 +52,7 @@ export async function GET(req: NextRequest) {
         }))
       }),
       Promise.all([
-        db.payment.findMany({ where: { status: 'SUCCESS' }, select: { amount: true, paidAt: true } }),
+        db.payment.findMany({ where: { ...schoolWhere, status: 'SUCCESS' }, select: { amount: true, paidAt: true } }),
       ]).then(([pays]) => {
         const months = new Map<string, number>()
         const now = new Date()
@@ -59,8 +66,8 @@ export async function GET(req: NextRequest) {
         })
         return Array.from(months.entries()).map(([month, total]) => ({ month, total: Math.round(total) }))
       }),
-      db.lead.groupBy({ by: ['stage'], _count: true }),
-      db.mark.groupBy({ by: ['studentId'], _sum: { marksObtained: true, maxMarks: true } }).then((rows) => {
+      db.lead.groupBy({ by: ['stage'], where: schoolWhere, _count: true }),
+      db.mark.groupBy({ by: ['studentId'], where: schoolWhere, _sum: { marksObtained: true, maxMarks: true } }).then((rows) => {
         let sumPct = 0, count = 0
         rows.forEach(r => {
           if (r._sum.maxMarks && r._sum.maxMarks > 0) {
@@ -70,17 +77,17 @@ export async function GET(req: NextRequest) {
         })
         return count ? Math.round((sumPct / count) * 10) / 10 : 0
       }),
-      db.bed.groupBy({ by: ['status'], _count: true }),
-      db.vehicle.findMany({ select: { status: true, regNo: true, driverName: true, gpsLat: true, gpsLng: true, lastGpsAt: true, speedKmph: true } }),
-      db.transportAllocation.count({ where: { status: 'ACTIVE' } }),
-      db.lead.count(),
-      db.auditLog.findMany({ orderBy: { createdAt: 'desc' }, take: 8, select: { id: true, userName: true, action: true, entity: true, details: true, createdAt: true } }),
-      db.approvalTask.findMany({ where: { status: 'PENDING' }, orderBy: { createdAt: 'desc' }, take: 6, select: { id: true, type: true, title: true, requestedBy: true, createdAt: true, approverRole: true } }),
-      db.event.findMany({ where: { startDate: { gte: today } }, orderBy: { startDate: 'asc' }, take: 5, select: { id: true, title: true, startDate: true, type: true, location: true } }),
+      db.bed.groupBy({ by: ['status'], where: schoolWhere, _count: true }),
+      db.vehicle.findMany({ where: schoolWhere, select: { status: true, regNo: true, driverName: true, gpsLat: true, gpsLng: true, lastGpsAt: true, speedKmph: true } }),
+      db.transportAllocation.count({ where: { ...schoolWhere, status: 'ACTIVE' } }),
+      db.lead.count({ where: schoolWhere }),
+      db.auditLog.findMany({ where: schoolWhere, orderBy: { createdAt: 'desc' }, take: 8, select: { id: true, userName: true, action: true, entity: true, details: true, createdAt: true } }),
+      db.approvalTask.findMany({ where: { ...schoolWhere, status: 'PENDING' }, orderBy: { createdAt: 'desc' }, take: 6, select: { id: true, type: true, title: true, requestedBy: true, createdAt: true, approverRole: true } }),
+      db.event.findMany({ where: { ...schoolWhere, startDate: { gte: today } }, orderBy: { startDate: 'asc' }, take: 5, select: { id: true, title: true, startDate: true, type: true, location: true } }),
     ])
 
     // Class-wise student counts with class names
-    const classes = await db.class.findMany({ select: { id: true, name: true, level: true }, orderBy: { level: 'asc' } })
+    const classes = await db.class.findMany({ where: schoolWhere, select: { id: true, name: true, level: true }, orderBy: { level: 'asc' } })
     const classMap = new Map(classes.map(c => [c.id, c.name]))
     const population = studentsByClass.map(r => ({ name: (r.classId ? classMap.get(r.classId) : undefined) || 'Unassigned', count: r._count }))
 

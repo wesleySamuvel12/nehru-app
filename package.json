@@ -7,10 +7,16 @@
     "build": "next build && cp -r .next/static .next/standalone/.next/ && cp -r public .next/standalone/",
     "start": "NODE_ENV=production bun .next/standalone/server.js 2>&1 | tee server.log",
     "lint": "eslint .",
+    "test": "node ./node_modules/jiti/lib/jiti-cli.mjs tests/auth-rbac.test.ts && node ./node_modules/jiti/lib/jiti-cli.mjs tests/tenant-isolation.test.ts",
+    "test:auth": "node ./node_modules/jiti/lib/jiti-cli.mjs tests/auth-rbac.test.ts",
+    "test:tenant": "node ./node_modules/jiti/lib/jiti-cli.mjs tests/tenant-isolation.test.ts",
     "db:push": "prisma db push --accept-data-loss",
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate dev",
-    "db:reset": "prisma migrate reset"
+    "db:reset": "prisma migrate reset",
+    "db:client:postgres": "cp prisma/schema.postgres.prisma prisma/schema.prisma && prisma generate",
+    "db:client:sqlite": "cp prisma/schema.sqlite.prisma prisma/schema.prisma && prisma generate",
+    "db:migrate:postgres": "DATABASE_URL=\"postgresql://nehru_erp:nehru_erp_dev_secret_change_in_prod@127.0.0.1:5433/nehru_erp?schema=public\" npx prisma migrate deploy --schema=prisma/schema.postgres.prisma"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",

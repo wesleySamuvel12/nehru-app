@@ -32,6 +32,7 @@ yarn-error.log*
 
 # env files (can opt-in for committing if needed)
 .env*
+!.env.example
 
 # vercel
 .vercel
@@ -54,3 +55,7 @@ server.log
 /skills/
 # Local Netlify folder
 .netlify
+
+# Database backups and checksums
+db/*.backup*
+db/*.sha256

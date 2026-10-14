@@ -1,6 +1,7 @@
 import { db } from './db'
 
 export interface AuditEntry {
+  schoolId?: string | null
   userId?: string | null
   userName?: string | null
   userRole?: string | null
@@ -15,6 +16,7 @@ export async function audit(entry: AuditEntry) {
   try {
     await db.auditLog.create({
       data: {
+        schoolId: entry.schoolId || undefined,
         userId: entry.userId || undefined,
         userName: entry.userName || undefined,
         userRole: entry.userRole || undefined,

@@ -3,6 +3,11 @@ import fs from 'fs'
 import path from 'path'
 
 function setupDatabaseUrl(): string | undefined {
+  const currentUrl = process.env.DATABASE_URL
+  if (currentUrl && !currentUrl.startsWith('file:')) {
+    return currentUrl
+  }
+
   const isServerless = Boolean(
     process.env.NETLIFY ||
     process.env.AWS_LAMBDA_FUNCTION_NAME ||

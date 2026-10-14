@@ -4,6 +4,7 @@ import { requireAuth } from '@/lib/auth'
 import { audit } from '@/lib/audit'
 import { notify } from '@/lib/notify'
 import { json, err } from '@/lib/crud'
+import { resolveTenantContext } from '@/lib/tenant'
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
@@ -11,6 +12,7 @@ import { json, err } from '@/lib/crud'
  * POST /api/portal/parent/pay — demo online fee payment.
  * Body: { invoiceId, method: 'ONLINE' }
  * Creates a Payment, recalculates the invoice, notifies the parent and audits the event.
+ * Scoped strictly to the caller's authorized school/campus.
  */
 export async function POST(req: NextRequest) {
   const session = await requireAuth(req)
@@ -20,20 +22,27 @@ export async function POST(req: NextRequest) {
     return err(403, 'Only parent accounts can pay through this portal.')
   }
 
+  const tenantRes = await resolveTenantContext(req, session, { isWrite: true })
+  if (tenantRes.error) return tenantRes.error
+  const tenant = tenantRes.context
+  const schoolId = tenant.schoolId!
+
   try {
     const body = await req.json()
     const invoiceId = String(body.invoiceId || '')
     const method = ['ONLINE', 'CARD', 'UPI'].includes(body.method) ? body.method : 'ONLINE'
     if (!invoiceId) return err(400, 'Invoice is required.')
 
-    const invoice = await db.feeInvoice.findUnique({ where: { id: invoiceId } })
+    const invoice = await db.feeInvoice.findFirst({
+      where: { id: invoiceId, schoolId },
+    })
     if (!invoice) return err(404, 'Invoice not found.')
 
-    // Ownership check — invoice must belong to parent's children (or any student if staff preview)
+    // Ownership check — invoice must belong to parent's children in the same school
     const child = session.parentId
-      ? await db.student.findFirst({ where: { id: invoice.studentId, parentId: session.parentId } })
-      : await db.student.findUnique({ where: { id: invoice.studentId } })
-    if (!child) return err(403, 'This invoice does not belong to your children.')
+      ? await db.student.findFirst({ where: { id: invoice.studentId, parentId: session.parentId, schoolId } })
+      : await db.student.findFirst({ where: { id: invoice.studentId, schoolId } })
+    if (!child) return err(403, 'This invoice does not belong to your children or school.')
 
     if (invoice.status === 'PAID' || invoice.status === 'CANCELLED') {
       return err(400, 'This invoice is already settled.')
@@ -45,6 +54,7 @@ export async function POST(req: NextRequest) {
     const receiptNo = `RCPT-${new Date().getFullYear()}-${String(Date.now()).slice(-6)}`
     const payment = await db.payment.create({
       data: {
+        schoolId,
         receiptNo,
         invoiceId: invoice.id,
         studentId: invoice.studentId,
@@ -71,6 +81,7 @@ export async function POST(req: NextRequest) {
       type: 'SUCCESS',
     })
     await audit({
+      schoolId,
       userId: session.sub, userName: session.name, userRole: session.role,
       action: 'CREATE', entity: 'Payment', entityId: payment.id,
       details: { receiptNo, invoiceNo: invoice.invoiceNo, amount: due, method, demo: true },

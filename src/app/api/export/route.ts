@@ -3,10 +3,11 @@ import { db } from '@/lib/db'
 import { requireAuth } from '@/lib/auth'
 import { can } from '@/lib/rbac'
 import { audit } from '@/lib/audit'
+import { resolveTenantContext } from '@/lib/tenant'
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
-/** CSV export for any entity: /api/export?entity=students — respects RBAC + scoping */
+/** CSV export for any entity: /api/export?entity=students — respects RBAC + tenant scoping */
 const ENTITIES: Record<string, { model: string; searchFields?: string[] }> = {
   students: { model: 'student', searchFields: ['firstName', 'lastName', 'admissionNo'] },
   parents: { model: 'parent', searchFields: ['name', 'phone'] },
@@ -52,12 +53,27 @@ export async function GET(req: NextRequest) {
   if (!can(session.role, MODULE_OF[entity] || 'dashboard')) {
     return NextResponse.json({ error: 'You do not have permission to export this data.' }, { status: 403 })
   }
+
+  const tenantRes = await resolveTenantContext(req, session, { allowAllSchoolsForSuperAdmin: true })
+  if (tenantRes.error) return tenantRes.error
+  const tenant = tenantRes.context
+  const where = tenant.schoolId ? { schoolId: tenant.schoolId } : {}
+
   try {
-    const rows: any[] = await (db as any)[def.model].findMany({ take: 10000, orderBy: { createdAt: 'desc' as any } })
+    const rows: any[] = await (db as any)[def.model].findMany({ where, take: 10000, orderBy: { createdAt: 'desc' as any } })
     if (!rows.length) return NextResponse.json({ error: 'No data to export.' }, { status: 404 })
     const headers = Object.keys(rows[0])
     const csv = [headers.join(','), ...rows.map(r => headers.map(h => csvEscape(r[h])).join(','))].join('\n')
-    await audit({ userId: session.sub, userName: session.name, userRole: session.role, action: 'EXPORT', entity, details: { rows: rows.length } })
+    await audit({
+      schoolId: tenant.schoolId || session.schoolId || null,
+      userId: session.sub,
+      userName: session.name,
+      userRole: session.role,
+      action: 'EXPORT',
+      entity,
+      details: { rows: rows.length },
+      ip: req.headers.get('x-forwarded-for'),
+    })
     return new NextResponse(csv, {
       headers: {
         'Content-Type': 'text/csv; charset=utf-8',

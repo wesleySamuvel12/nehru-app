@@ -1,0 +1,25 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: nehru_erp_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-nehru_erp}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-nehru_erp_dev_secret_change_in_prod}
+      POSTGRES_DB: ${POSTGRES_DB:-nehru_erp}
+      PGDATA: /var/lib/postgresql/data/pgdata
+    ports:
+      # Bind to localhost (127.0.0.1) to avoid public exposure; host 5433 -> container 5432
+      - "127.0.0.1:${POSTGRES_PORT:-5433}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER:-nehru_erp} -d $${POSTGRES_DB:-nehru_erp}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+volumes:
+  postgres_data:
+    name: nehru_erp_postgres_data
