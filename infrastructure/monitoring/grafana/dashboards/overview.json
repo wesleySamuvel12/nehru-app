@@ -1,0 +1,17 @@
+{
+  "title": "School ERP Core Telemetry",
+  "panels": [
+    {
+      "title": "Request Throughput",
+      "type": "graph"
+    },
+    {
+      "title": "Response Latency P95",
+      "type": "graph"
+    },
+    {
+      "title": "Active Database Connections",
+      "type": "gauge"
+    }
+  ]
+}

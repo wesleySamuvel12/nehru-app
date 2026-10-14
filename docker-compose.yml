@@ -1,0 +1,145 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: school_erp_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgrespassword
+      POSTGRES_DB: school_erp
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - school_erp_network
+
+  redis:
+    image: redis:7-alpine
+    container_name: school_erp_redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - school_erp_network
+
+  backend:
+    build:
+      context: .
+      dockerfile: infrastructure/docker/backend.Dockerfile
+    container_name: school_erp_backend
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql://postgres:postgrespassword@postgres:5432/school_erp?schema=public
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      PORT: 4000
+      JWT_SECRET: super-secret-jwt-key-2026
+    ports:
+      - "4000:4000"
+    depends_on:
+      - postgres
+      - redis
+    networks:
+      - school_erp_network
+
+  admin-web:
+    build:
+      context: .
+      dockerfile: infrastructure/docker/frontend.Dockerfile
+      args:
+        APP_NAME: admin-web
+    container_name: school_erp_admin_web
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      PORT: 3000
+      NEXT_PUBLIC_API_URL: http://backend:4000/api/v1
+    depends_on:
+      - backend
+    networks:
+      - school_erp_network
+
+  teacher-web:
+    build:
+      context: .
+      dockerfile: infrastructure/docker/frontend.Dockerfile
+      args:
+        APP_NAME: teacher-web
+    container_name: school_erp_teacher_web
+    restart: unless-stopped
+    ports:
+      - "3001:3000"
+    environment:
+      PORT: 3000
+      NEXT_PUBLIC_API_URL: http://backend:4000/api/v1
+    depends_on:
+      - backend
+    networks:
+      - school_erp_network
+
+  student-web:
+    build:
+      context: .
+      dockerfile: infrastructure/docker/frontend.Dockerfile
+      args:
+        APP_NAME: student-web
+    container_name: school_erp_student_web
+    restart: unless-stopped
+    ports:
+      - "3002:3000"
+    environment:
+      PORT: 3000
+      NEXT_PUBLIC_API_URL: http://backend:4000/api/v1
+    depends_on:
+      - backend
+    networks:
+      - school_erp_network
+
+  parent-web:
+    build:
+      context: .
+      dockerfile: infrastructure/docker/frontend.Dockerfile
+      args:
+        APP_NAME: parent-web
+    container_name: school_erp_parent_web
+    restart: unless-stopped
+    ports:
+      - "3003:3000"
+    environment:
+      PORT: 3000
+      NEXT_PUBLIC_API_URL: http://backend:4000/api/v1
+    depends_on:
+      - backend
+    networks:
+      - school_erp_network
+
+  nginx:
+    image: nginx:alpine
+    container_name: school_erp_nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    volumes:
+      - ./infrastructure/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - backend
+      - admin-web
+      - teacher-web
+      - student-web
+      - parent-web
+    networks:
+      - school_erp_network
+
+networks:
+  school_erp_network:
+    driver: bridge
+
+volumes:
+  postgres_data:
+  redis_data:
