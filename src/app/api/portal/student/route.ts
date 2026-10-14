@@ -2,6 +2,7 @@ import { NextRequest } from 'next/server'
 import { db } from '@/lib/db'
 import { requireAuth } from '@/lib/auth'
 import { json, err } from '@/lib/crud'
+import { resolveTenantContext } from '@/lib/tenant'
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
@@ -12,10 +13,16 @@ const dayKey = (d: Date) => d.toISOString().slice(0, 10)
 export async function GET(req: NextRequest) {
   const session = await requireAuth(req)
   if (!session) return err(401, 'Please sign in to continue.')
+
+  const tenantRes = await resolveTenantContext(req, session, { allowAllSchoolsForSuperAdmin: true })
+  if (tenantRes.error) return tenantRes.error
+  const tenant = tenantRes.context
+  const schoolWhere = tenant.schoolId ? { schoolId: tenant.schoolId } : {}
+
   let studentId = session.studentId
 
   if (!studentId && ['SUPER_ADMIN', 'SCHOOL_ADMIN', 'PRINCIPAL', 'TEACHER'].includes(session.role)) {
-    const sampleStudent = await db.student.findFirst({ where: { status: 'ACTIVE' } }) || await db.student.findFirst()
+    const sampleStudent = await db.student.findFirst({ where: { ...schoolWhere, status: 'ACTIVE' } }) || await db.student.findFirst({ where: schoolWhere })
     if (sampleStudent) studentId = sampleStudent.id
   }
 
@@ -27,13 +34,13 @@ export async function GET(req: NextRequest) {
   }
 
   try {
-    let student = await db.student.findUnique({
-      where: { id: studentId },
+    let student = await db.student.findFirst({
+      where: { id: studentId, ...schoolWhere },
       include: { klass: true, section: true },
     })
     if (!student && ['SUPER_ADMIN', 'SCHOOL_ADMIN', 'PRINCIPAL', 'TEACHER'].includes(session.role)) {
       student = await db.student.findFirst({
-        where: { status: 'ACTIVE' },
+        where: { ...schoolWhere, status: 'ACTIVE' },
         include: { klass: true, section: true },
       })
     }
@@ -44,12 +51,13 @@ export async function GET(req: NextRequest) {
 
     const [timetableSlots, subjects, employees, assignments, mySubmissions, attRows, reportCards, announcements, events] = await Promise.all([
       student.sectionId
-        ? db.timetableSlot.findMany({ where: { sectionId: student.sectionId }, orderBy: { period: 'asc' } })
+        ? db.timetableSlot.findMany({ where: { sectionId: student.sectionId, ...schoolWhere }, orderBy: { period: 'asc' } })
         : Promise.resolve([]),
-      db.subject.findMany({ select: { id: true, name: true, maxMarks: true } }),
-      db.employee.findMany({ select: { id: true, firstName: true, lastName: true } }),
+      db.subject.findMany({ where: schoolWhere, select: { id: true, name: true, maxMarks: true } }),
+      db.employee.findMany({ where: schoolWhere, select: { id: true, firstName: true, lastName: true } }),
       db.assignment.findMany({
         where: {
+          ...schoolWhere,
           classId: student.classId || '___',
           ...(student.sectionId ? { sectionId: student.sectionId } : {}),
           status: 'PUBLISHED',
@@ -64,12 +72,12 @@ export async function GET(req: NextRequest) {
       }),
       db.reportCard.findMany({ where: { studentId: student.id, published: true }, orderBy: { generatedAt: 'desc' }, take: 3 }),
       db.announcement.findMany({
-        where: { status: 'PUBLISHED', audience: { in: ['STUDENTS', 'ALL'] } },
+        where: { ...schoolWhere, status: 'PUBLISHED', audience: { in: ['STUDENTS', 'ALL'] } },
         orderBy: { publishAt: 'desc' },
         take: 5,
       }),
       db.event.findMany({
-        where: { startDate: { gte: now }, audience: { in: ['STUDENTS', 'ALL'] }, status: { in: ['SCHEDULED', 'ONGOING'] } },
+        where: { ...schoolWhere, startDate: { gte: now }, audience: { in: ['STUDENTS', 'ALL'] }, status: { in: ['SCHEDULED', 'ONGOING'] } },
         orderBy: { startDate: 'asc' },
         take: 5,
       }),
@@ -78,7 +86,7 @@ export async function GET(req: NextRequest) {
     const subjectNameOf = new Map(subjects.map((s: any) => [s.id, s.name]))
     const employeeNameOf = new Map(employees.map((e: any) => [e.id, `${e.firstName} ${e.lastName}`]))
     const examIds = [...new Set(reportCards.map((r: any) => r.examId))]
-    const exams = examIds.length ? await db.exam.findMany({ where: { id: { in: examIds } }, select: { id: true, name: true } }) : []
+    const exams = examIds.length ? await db.exam.findMany({ where: { id: { in: examIds }, ...schoolWhere }, select: { id: true, name: true } }) : []
     const examNameOf = new Map(exams.map((e: any) => [e.id, e.name]))
 
     /* Timetable grid */

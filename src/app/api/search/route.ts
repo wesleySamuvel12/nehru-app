@@ -1,32 +1,90 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { requireAuth } from '@/lib/auth'
+import { resolveTenantContext } from '@/lib/tenant'
 
-/** Global search across students, parents, employees, admissions, fees, books, assets, visitors, certificates */
+/** Global search across students, parents, employees, admissions, fees, books, assets, visitors, certificates — strictly scoped to tenant */
 export async function GET(req: NextRequest) {
   const session = await requireAuth(req)
   if (!session) return NextResponse.json({ error: 'Not signed in' }, { status: 401 })
+
+  const tenantRes = await resolveTenantContext(req, session, { allowAllSchoolsForSuperAdmin: true })
+  if (tenantRes.error) return tenantRes.error
+  const tenant = tenantRes.context
+  const schoolWhere = tenant.schoolId ? { schoolId: tenant.schoolId } : {}
+
   const q = req.nextUrl.searchParams.get('q')?.trim()
   if (!q || q.length < 2) return NextResponse.json({ data: [] })
 
   try {
     const [students, parents, employees, applications, invoices, books, assets, visitors, certs] = await Promise.all([
       db.student.findMany({
-        where: { OR: [
-          { firstName: { contains: q } }, { lastName: { contains: q } },
-          { admissionNo: { contains: q } }, { phone: { contains: q } }, { email: { contains: q } }, { barcode: { contains: q } },
-        ] },
+        where: {
+          ...schoolWhere,
+          OR: [
+            { firstName: { contains: q, mode: 'insensitive' } }, { lastName: { contains: q, mode: 'insensitive' } },
+            { admissionNo: { contains: q, mode: 'insensitive' } }, { phone: { contains: q, mode: 'insensitive' } }, { email: { contains: q, mode: 'insensitive' } }, { barcode: { contains: q, mode: 'insensitive' } },
+          ],
+        },
         include: { klass: true, section: true },
         take: 6,
       }),
-      db.parent.findMany({ where: { OR: [{ name: { contains: q } }, { phone: { contains: q } }, { email: { contains: q } }] }, take: 5 }),
-      db.employee.findMany({ where: { OR: [{ firstName: { contains: q } }, { lastName: { contains: q } }, { employeeNo: { contains: q } }, { phone: { contains: q } }] }, take: 5 }),
-      db.application.findMany({ where: { OR: [{ studentName: { contains: q } }, { applicationNo: { contains: q } }, { parentPhone: { contains: q } }] }, take: 5 }),
-      db.feeInvoice.findMany({ where: { OR: [{ invoiceNo: { contains: q } }, { title: { contains: q } }] }, take: 5 }),
-      db.book.findMany({ where: { OR: [{ title: { contains: q } }, { author: { contains: q } }, { isbn: { contains: q } }] }, take: 5 }),
-      db.asset.findMany({ where: { OR: [{ name: { contains: q } }, { assetTag: { contains: q } }] }, take: 5 }),
-      db.visitor.findMany({ where: { OR: [{ name: { contains: q } }, { phone: { contains: q } }, { passNo: { contains: q } }] }, take: 5 }),
-      db.certificate.findMany({ where: { OR: [{ certificateNo: { contains: q } }, { title: { contains: q } }, { verifyCode: { contains: q } }] }, take: 5 }),
+      db.parent.findMany({
+        where: {
+          ...schoolWhere,
+          OR: [{ name: { contains: q, mode: 'insensitive' } }, { phone: { contains: q, mode: 'insensitive' } }, { email: { contains: q, mode: 'insensitive' } }],
+        },
+        take: 5,
+      }),
+      db.employee.findMany({
+        where: {
+          ...schoolWhere,
+          OR: [{ firstName: { contains: q, mode: 'insensitive' } }, { lastName: { contains: q, mode: 'insensitive' } }, { employeeNo: { contains: q, mode: 'insensitive' } }, { phone: { contains: q, mode: 'insensitive' } }],
+        },
+        take: 5,
+      }),
+      db.application.findMany({
+        where: {
+          ...schoolWhere,
+          OR: [{ studentName: { contains: q, mode: 'insensitive' } }, { applicationNo: { contains: q, mode: 'insensitive' } }, { parentPhone: { contains: q, mode: 'insensitive' } }],
+        },
+        take: 5,
+      }),
+      db.feeInvoice.findMany({
+        where: {
+          ...schoolWhere,
+          OR: [{ invoiceNo: { contains: q, mode: 'insensitive' } }, { title: { contains: q, mode: 'insensitive' } }],
+        },
+        take: 5,
+      }),
+      db.book.findMany({
+        where: {
+          ...schoolWhere,
+          OR: [{ title: { contains: q, mode: 'insensitive' } }, { author: { contains: q, mode: 'insensitive' } }, { isbn: { contains: q, mode: 'insensitive' } }],
+        },
+        take: 5,
+      }),
+      db.asset.findMany({
+        where: {
+          ...schoolWhere,
+          OR: [{ name: { contains: q, mode: 'insensitive' } }, { assetTag: { contains: q, mode: 'insensitive' } }],
+        },
+        take: 5,
+      }),
+      db.visitor.findMany({
+        where: {
+          ...schoolWhere,
+          OR: [{ name: { contains: q, mode: 'insensitive' } }, { phone: { contains: q, mode: 'insensitive' } }, { passNo: { contains: q, mode: 'insensitive' } }],
+        },
+        take: 5,
+      }),
+      db.certificate.findMany({
+        where: {
+          ...schoolWhere,
+          OR: [{ certificateNo: { contains: q, mode: 'insensitive' } }, { title: { contains: q, mode: 'insensitive' } }, { verifyCode: { contains: q, mode: 'insensitive' } }],
+        },
+        take: 5,
+      }),
     ])
 
     const results = [

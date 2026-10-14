@@ -8,6 +8,20 @@ export const ROLES = [
 
 export type Role = (typeof ROLES)[number]
 
+export const ROLE_ALIASES: Record<string, Role> = {
+  HOSTEL: 'WARDEN',
+  HEALTH: 'NURSE',
+}
+
+/** Normalizes role string to canonical uppercase Role (e.g. HOSTEL -> WARDEN, HEALTH -> NURSE) */
+export function normalizeRole(role: string): Role {
+  const upper = String(role || '').toUpperCase().trim()
+  if (upper in ROLE_ALIASES) {
+    return ROLE_ALIASES[upper]
+  }
+  return upper as Role
+}
+
 export const ROLE_LABELS: Record<string, string> = {
   SUPER_ADMIN: 'Super Admin',
   SCHOOL_ADMIN: 'School Admin',
@@ -19,7 +33,9 @@ export const ROLE_LABELS: Record<string, string> = {
   LIBRARIAN: 'Librarian',
   TRANSPORT: 'Transport Manager',
   WARDEN: 'Hostel Warden',
+  HOSTEL: 'Hostel Warden',
   NURSE: 'Nurse / Doctor',
+  HEALTH: 'Nurse / Doctor',
   SECURITY: 'Security Staff',
   PARENT: 'Parent',
   STUDENT: 'Student',
@@ -60,10 +76,11 @@ export const MODULE_ACCESS: Record<string, string[]> = {
 }
 
 export function can(role: string, moduleKey: string): boolean {
-  if (moduleKey === 'student-portal' && role !== 'STUDENT') return false
-  if (role === 'SUPER_ADMIN') return true
+  const canonicalRole = normalizeRole(role)
+  if (moduleKey === 'student-portal' && canonicalRole !== 'STUDENT') return false
+  if (canonicalRole === 'SUPER_ADMIN') return true
   const allowed = MODULE_ACCESS[moduleKey]
-  return !!allowed && allowed.includes(role)
+  return !!allowed && allowed.includes(canonicalRole)
 }
 
 export type SubItem = {

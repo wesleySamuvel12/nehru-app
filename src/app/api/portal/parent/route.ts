@@ -2,6 +2,7 @@ import { NextRequest } from 'next/server'
 import { db } from '@/lib/db'
 import { requireAuth } from '@/lib/auth'
 import { json, err } from '@/lib/crud'
+import { resolveTenantContext } from '@/lib/tenant'
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
@@ -13,10 +14,16 @@ function dayKey(d: Date) { return d.toISOString().slice(0, 10) }
 export async function GET(req: NextRequest) {
   const session = await requireAuth(req)
   if (!session) return err(401, 'Please sign in to continue.')
+
+  const tenantRes = await resolveTenantContext(req, session, { allowAllSchoolsForSuperAdmin: true })
+  if (tenantRes.error) return tenantRes.error
+  const tenant = tenantRes.context
+  const schoolWhere = tenant.schoolId ? { schoolId: tenant.schoolId } : {}
+
   let parentId = session.parentId
 
   if (!parentId && ['SUPER_ADMIN', 'SCHOOL_ADMIN', 'PRINCIPAL'].includes(session.role)) {
-    const sampleParent = await db.parent.findFirst()
+    const sampleParent = await db.parent.findFirst({ where: schoolWhere })
     if (sampleParent) parentId = sampleParent.id
   }
 
@@ -28,22 +35,22 @@ export async function GET(req: NextRequest) {
   }
 
   try {
-    let parent = await db.parent.findUnique({ where: { id: parentId } })
+    let parent = await db.parent.findFirst({ where: { id: parentId, ...schoolWhere } })
     if (!parent && ['SUPER_ADMIN', 'SCHOOL_ADMIN', 'PRINCIPAL'].includes(session.role)) {
-      parent = await db.parent.findFirst()
+      parent = await db.parent.findFirst({ where: schoolWhere })
       if (parent) parentId = parent.id
     }
     if (!parent) return err(404, 'Parent profile not found.')
 
     let children = await db.student.findMany({
-      where: { parentId: parentId },
+      where: { parentId: parentId, ...schoolWhere },
       include: { klass: true, section: true },
       orderBy: { firstName: 'asc' },
     })
 
     if (children.length === 0 && ['SUPER_ADMIN', 'SCHOOL_ADMIN', 'PRINCIPAL'].includes(session.role)) {
       children = await db.student.findMany({
-        where: { status: 'ACTIVE' },
+        where: { ...schoolWhere, status: 'ACTIVE' },
         take: 2,
         include: { klass: true, section: true },
       })
@@ -54,13 +61,13 @@ export async function GET(req: NextRequest) {
 
     /* Shared lookups */
     const [subjects, exams, routes, stops, vehicles, announcements] = await Promise.all([
-      db.subject.findMany({ select: { id: true, name: true, maxMarks: true } }),
-      db.exam.findMany({ select: { id: true, name: true, resultPublished: true, status: true } }),
-      db.route.findMany({ include: { vehicle: true } }),
-      db.stop.findMany(),
-      db.vehicle.findMany(),
+      db.subject.findMany({ where: schoolWhere, select: { id: true, name: true, maxMarks: true } }),
+      db.exam.findMany({ where: schoolWhere, select: { id: true, name: true, resultPublished: true, status: true } }),
+      db.route.findMany({ where: schoolWhere, include: { vehicle: true } }),
+      db.stop.findMany({ where: schoolWhere }),
+      db.vehicle.findMany({ where: schoolWhere }),
       db.announcement.findMany({
-        where: { status: 'PUBLISHED', audience: { in: ['PARENTS', 'ALL'] } },
+        where: { ...schoolWhere, status: 'PUBLISHED', audience: { in: ['PARENTS', 'ALL'] } },
         orderBy: { publishAt: 'desc' },
         take: 5,
       }),

@@ -1,4 +1,4 @@
-import type { Role } from '@/lib/rbac'
+import { type Role, normalizeRole } from '@/lib/rbac'
 import type { RoleDefinition } from './types'
 import { superAdminRole } from './super-admin'
 import { schoolAdminRole } from './school-admin'
@@ -33,7 +33,8 @@ export const ROLE_DEFINITIONS: Record<Role, RoleDefinition> = {
 }
 
 export function getRoleDefinition(role: string): RoleDefinition | undefined {
-  return ROLE_DEFINITIONS[role as Role]
+  const canonical = normalizeRole(role)
+  return ROLE_DEFINITIONS[canonical]
 }
 
 export function getRoleLandingModule(role: string): string {

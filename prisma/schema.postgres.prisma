@@ -1,0 +1,1238 @@
+// School ERP — Prisma Schema (SQLite)
+// NOTE: SQLite does not support enums or Json — string fields used instead.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─────────────────────────── CORE / AUTH / ADMIN ───────────────────────────
+
+model User {
+  id               String    @id @default(cuid())
+  schoolId         String?
+  email            String    @unique
+  passwordHash     String
+  name             String
+  role             String    // SUPER_ADMIN|SCHOOL_ADMIN|PRINCIPAL|TEACHER|ACCOUNTANT|HR|COUNSELLOR|LIBRARIAN|TRANSPORT|WARDEN|NURSE|SECURITY|PARENT|STUDENT
+  phone            String?
+  avatarUrl        String?
+  status           String    @default("ACTIVE") // ACTIVE|SUSPENDED|PENDING
+  linkedStudentId  String?
+  linkedParentId   String?
+  linkedEmployeeId String?
+  mustVerify       Boolean   @default(false)
+  mfaEnabled       Boolean   @default(false)
+  failedAttempts   Int       @default(0)
+  lockedUntil      DateTime?
+  lastLoginAt      DateTime?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+  @@index([schoolId])
+}
+
+model Permission {
+  id      String  @id @default(cuid())
+  role    String
+  module  String
+  allowed Boolean @default(true)
+
+  @@unique([role, module])
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  schoolId         String?
+  userId    String?
+  userName  String?
+  userRole  String?
+  action    String   // CREATE|UPDATE|DELETE|LOGIN|LOGOUT|APPROVE|REJECT|EXPORT|VIEW|PUBLISH|GENERATE
+  entity    String
+  entityId  String?
+  details   String?
+  ip        String?
+  createdAt DateTime @default(now())
+
+  @@index([entity, entityId])
+  @@index([createdAt])
+}
+
+model LoginLog {
+  id        String   @id @default(cuid())
+  schoolId         String?
+  userId    String?
+  email     String
+  success   Boolean
+  reason    String?
+  ip        String?
+  userAgent String?
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
+}
+
+model Notification {
+  id        String    @id @default(cuid())
+  schoolId         String?
+  userId    String
+  title     String
+  message   String
+  type      String    @default("INFO") // INFO|SUCCESS|WARNING|DANGER|ALERT
+  channel   String    @default("IN_APP") // IN_APP|EMAIL|SMS|WHATSAPP|PUSH
+  link      String?
+  read      Boolean   @default(false)
+  readAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId, read])
+}
+
+model NotificationTemplate {
+  id       String  @id @default(cuid())
+  schoolId         String?
+  key      String  @unique
+  name     String
+  channel  String  @default("IN_APP")
+  subject  String
+  body     String // supports {{placeholders}}
+  active   Boolean @default(true)
+}
+
+model School {
+  id       String  @id @default(cuid())
+  name     String
+  code     String  @unique
+  address  String?
+  phone    String?
+  email    String?
+  logoUrl  String?
+  isMaster Boolean @default(false)
+}
+
+model SchoolSetting {
+  id               String  @id @default(cuid())
+  schoolId         String?
+  schoolName       String  @default("Greenwood International School")
+  logoUrl          String?
+  address          String?
+  phone            String?
+  email            String?
+  timezone         String  @default("Asia/Kolkata")
+  currency         String  @default("INR")
+  currentYearId    String?
+  attendanceLockHours Int  @default(24)
+  mfaRequired      Boolean @default(false)
+  smsEnabled       Boolean @default(true)
+  emailEnabled     Boolean @default(true)
+  whatsappEnabled  Boolean @default(false)
+  pushEnabled      Boolean @default(true)
+  dataEncryption   Boolean @default(true)
+  backupFrequency  String  @default("DAILY")
+  sessionTimeoutMin Int    @default(120)
+}
+
+model AcademicYear {
+  id        String   @id @default(cuid())
+  schoolId         String?
+  name      String   @unique // 2025-26
+  startDate DateTime
+  endDate   DateTime
+  isCurrent Boolean  @default(false)
+  terms     Term[]
+}
+
+model Term {
+  id             String   @id @default(cuid())
+  schoolId         String?
+  academicYearId String
+  academicYear   AcademicYear @relation(fields: [academicYearId], references: [id])
+  name           String // Term 1
+  startDate      DateTime
+  endDate        DateTime
+  isCurrent      Boolean  @default(false)
+
+  @@unique([academicYearId, name])
+}
+
+model IntegrationSetting {
+  id         String    @id @default(cuid())
+  schoolId         String?
+  key        String    @unique
+  name       String
+  category   String // PAYMENT|SMS|EMAIL|WHATSAPP|GPS|BIOMETRIC|RFID|CCTV|ACCOUNTING|LMS|GOVERNMENT|API
+  provider   String
+  status     String    @default("DISCONNECTED") // CONNECTED|DISCONNECTED|ERROR
+  configJson String // {"apiKey":"..."}
+  lastSyncAt DateTime?
+  updatedAt  DateTime  @updatedAt
+}
+
+model ApprovalWorkflow {
+  id         String  @id @default(cuid())
+  schoolId         String?
+  name       String
+  entityType String
+  steps      String // JSON array of {step, approverRole}
+  active     Boolean @default(true)
+}
+
+model ApprovalTask {
+  id            String    @id @default(cuid())
+  schoolId         String?
+  type          String // ADMISSION|LEAVE|CERTIFICATE|EXPENSE|FEE_DISCOUNT|RESULT|RE_ENROLLMENT|TRANSFER
+  entityId      String
+  title         String
+  requestedById String
+  requestedBy   String
+  approverRole  String
+  status        String    @default("PENDING") // PENDING|APPROVED|REJECTED
+  comments      String?
+  decidedById   String?
+  decidedByName String?
+  decidedAt     DateTime?
+  createdAt     DateTime  @default(now())
+
+  @@index([status, approverRole])
+}
+
+// ─────────────────────────── PEOPLE ───────────────────────────
+
+model Student {
+  id             String    @id @default(cuid())
+  schoolId         String?
+  admissionNo    String
+  rollNo         String?
+  firstName      String
+  lastName       String
+  gender         String    @default("MALE")
+  dob            DateTime?
+  bloodGroup     String?
+  category       String?
+  religion       String?
+  photoUrl       String?
+  house          String?
+  club           String?
+  status         String    @default("ACTIVE") // ACTIVE|ALUMNI|WITHDRAWN|TRANSFERRED|GRADUATED|SUSPENDED
+  admissionDate  DateTime?
+  address        String?
+  phone          String?
+  email          String?
+  parentId       String?
+  parent         Parent?   @relation(fields: [parentId], references: [id])
+  classId        String?
+  klass          Class?    @relation("StudentClass", fields: [classId], references: [id])
+  sectionId      String?
+  section        Section?  @relation("StudentSection", fields: [sectionId], references: [id])
+  barcode        String?   @unique
+  documents      String? // JSON array {name,url,type}
+  notes          String?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  @@index([classId, sectionId])
+  @@index([lastName])
+  @@unique([schoolId, admissionNo])
+}
+
+model Parent {
+  id          String   @id @default(cuid())
+  schoolId         String?
+  name        String
+  relation    String   @default("FATHER") // FATHER|MOTHER|GUARDIAN
+  occupation  String?
+  phone       String   @unique
+  altPhone    String?
+  email       String?
+  address     String?
+  photoUrl    String?
+  emergencyContact String?
+  students    Student[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Employee {
+  id            String    @id @default(cuid())
+  schoolId         String?
+  employeeNo    String
+  firstName     String
+  lastName      String
+  gender        String    @default("MALE")
+  dob           DateTime?
+  email         String?
+  phone         String?
+  photoUrl      String?
+  designation   String
+  departmentId  String?
+  department    Department? @relation(fields: [departmentId], references: [id])
+  isTeacher     Boolean   @default(false)
+  qualification String?
+  specialization String? // subjects for teachers
+  joiningDate   DateTime?
+  employmentType String   @default("FULL_TIME")
+  contractEnd   DateTime?
+  salary        Float     @default(0)
+  bankAccount   String?
+  status        String    @default("ACTIVE") // ACTIVE|ON_LEAVE|RESIGNED|TERMINATED
+  address       String?
+  documents     String? // JSON
+  visaExpiry    DateTime?
+  licenseExpiry DateTime?
+  certExpiry    DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  @@unique([schoolId, employeeNo])
+}
+
+model Department {
+  id        String  @id @default(cuid())
+  schoolId         String?
+  name      String
+  headId    String?
+  headName  String?
+  employees Employee[]
+  @@unique([schoolId, name])
+}
+
+// ─────────────────────────── ACADEMICS ───────────────────────────
+
+model Class {
+  id        String  @id @default(cuid())
+  schoolId         String?
+  name      String  @unique // Grade 1..12
+  level     Int
+  stream    String? // Science/Commerce for 11-12
+  sections  Section[]
+  students  Student[] @relation("StudentClass")
+  subjects  Subject[]
+}
+
+model Section {
+  id          String  @id @default(cuid())
+  schoolId         String?
+  name        String // A
+  classId     String
+  class       Class   @relation(fields: [classId], references: [id])
+  capacity    Int     @default(40)
+  teacherId   String?
+  teacherName String?
+  students    Student[] @relation("StudentSection")
+
+  @@unique([classId, name])
+}
+
+model Subject {
+  id          String  @id @default(cuid())
+  schoolId         String?
+  name        String
+  code        String
+  classId     String?
+  class       Class?  @relation(fields: [classId], references: [id])
+  teacherId   String?
+  teacherName String?
+  maxMarks    Int     @default(100)
+  isElective  Boolean @default(false)
+  syllabusUrl String?
+  @@unique([schoolId, code])
+}
+
+model House {
+  id   String @id @default(cuid())
+  schoolId         String?
+  name String
+  color String @default("emerald")
+}
+
+model TimetableSlot {
+  id        String @id @default(cuid())
+  schoolId         String?
+  classId   String
+  sectionId String
+  subjectId String?
+  teacherId String?
+  dayOfWeek Int // 1=Mon..6=Sat
+  period    Int
+  startTime String // 08:00
+  endTime   String
+  room      String?
+
+  @@unique([sectionId, dayOfWeek, period])
+}
+
+model Enrollment {
+  id             String   @id @default(cuid())
+  schoolId         String?
+  studentId      String
+  classId        String
+  sectionId      String
+  academicYearId String
+  type           String   @default("NEW") // NEW|PROMOTION|TRANSFER|RE_ENROLLMENT|WITHDRAWAL
+  status         String   @default("ACTIVE") // ACTIVE|COMPLETED|CANCELLED
+  date           DateTime @default(now())
+  remarks        String?
+}
+
+model Attendance {
+  id          String   @id @default(cuid())
+  schoolId         String?
+  studentId   String
+  date        DateTime
+  status      String   @default("PRESENT") // PRESENT|ABSENT|LATE|HALF_DAY|EXCUSED|HOLIDAY
+  checkInTime String?
+  checkOutTime String?
+  classId     String?
+  sectionId   String?
+  markedById  String?
+  markedBy    String?
+  remarks     String?
+  notified    Boolean  @default(false)
+
+  @@unique([studentId, date])
+  @@index([date])
+  @@index([schoolId, date])
+}
+
+model EmployeeAttendance {
+  id         String   @id @default(cuid())
+  schoolId         String?
+  employeeId String
+  date       DateTime
+  status     String   @default("PRESENT") // PRESENT|ABSENT|LATE|HALF_DAY|LEAVE
+  checkInTime String?
+  checkOutTime String?
+  remarks    String?
+
+  @@unique([employeeId, date])
+}
+
+model LeaveRequest {
+  id            String    @id @default(cuid())
+  schoolId         String?
+  requesterType String    @default("STUDENT") // STUDENT|EMPLOYEE
+  requesterId   String
+  requesterName String
+  type          String    @default("SICK") // SICK|CASUAL|PRIVILEGE|MATERNITY|EMERGENCY|OTHER
+  fromDate      DateTime
+  toDate        DateTime
+  reason        String
+  status        String    @default("PENDING") // PENDING|APPROVED|REJECTED
+  approverId    String?
+  approverName  String?
+  decidedAt     DateTime?
+  remarks       String?
+  createdAt     DateTime  @default(now())
+}
+
+model Assignment {
+  id          String   @id @default(cuid())
+  schoolId         String?
+  title       String
+  description String?
+  type        String   @default("HOMEWORK") // HOMEWORK|ASSIGNMENT|PROJECT
+  classId     String
+  sectionId   String
+  subjectId   String
+  teacherId   String
+  teacherName String?
+  dueDate     DateTime
+  maxMarks    Int      @default(20)
+  attachmentUrl String?
+  status      String   @default("PUBLISHED") // DRAFT|PUBLISHED|CLOSED
+  createdAt   DateTime @default(now())
+}
+
+model Submission {
+  id           String    @id @default(cuid())
+  schoolId         String?
+  assignmentId String
+  studentId    String
+  submittedAt  DateTime  @default(now())
+  contentUrl   String?
+  contentText  String?
+  marks        Float?
+  grade        String?
+  feedback     String?
+  status       String    @default("SUBMITTED") // SUBMITTED|GRADED|LATE|PENDING
+
+  @@unique([assignmentId, studentId])
+}
+
+model LearningMaterial {
+  id          String   @id @default(cuid())
+  schoolId         String?
+  title       String
+  description String?
+  type        String   @default("DOCUMENT") // DOCUMENT|VIDEO|LINK|PRESENTATION
+  url         String
+  classId     String?
+  subjectId   String?
+  teacherId   String?
+  teacherName String?
+  isOnline    Boolean  @default(false) // online class material
+  scheduledAt DateTime?
+  createdAt   DateTime @default(now())
+}
+
+model LessonPlan {
+  id          String   @id @default(cuid())
+  schoolId         String?
+  teacherId   String
+  teacherName String?
+  classId     String
+  subjectId   String
+  title       String
+  objectives  String?
+  content     String?
+  resources   String?
+  date        DateTime
+  status      String   @default("PLANNED") // PLANNED|COMPLETED
+}
+
+// ─────────────────────────── EXAMINATIONS ───────────────────────────
+
+model Exam {
+  id             String   @id @default(cuid())
+  schoolId         String?
+  name           String
+  type           String   @default("TERM") // TERM|UNIT|MONTHLY|FINAL|PRACTICAL|QUIZ
+  academicYearId String
+  termId         String?
+  startDate      DateTime
+  endDate        DateTime
+  classIds       String? // JSON array of classIds
+  isOnline       Boolean  @default(false)
+  status         String   @default("DRAFT") // DRAFT|SCHEDULED|ONGOING|COMPLETED|PUBLISHED
+  resultPublished Boolean @default(false)
+  createdById    String?
+  createdAt      DateTime @default(now())
+}
+
+model ExamSchedule {
+  id        String   @id @default(cuid())
+  schoolId         String?
+  examId    String
+  subjectId String
+  classId   String
+  date      DateTime
+  startTime String
+  endTime   String
+  maxMarks  Int      @default(100)
+  passMarks Int      @default(35)
+  room      String?
+  invigilatorId String?
+}
+
+model Question {
+  id          String @id @default(cuid())
+  schoolId         String?
+  examId      String?
+  subjectId   String
+  classId     String
+  type        String @default("MCQ") // MCQ|SHORT|LONG|TRUE_FALSE|NUMERIC
+  text        String
+  optionsJson String? // ["a","b","c","d"]
+  correctAnswer String?
+  marks       Float  @default(1)
+  difficulty  String @default("MEDIUM") // EASY|MEDIUM|HARD
+  explanation String?
+}
+
+model Mark {
+  id          String @id @default(cuid())
+  schoolId         String?
+  examId      String
+  scheduleId  String?
+  studentId   String
+  subjectId   String
+  marksObtained Float
+  maxMarks    Float
+  grade       String?
+  isAbsent    Boolean @default(false)
+  enteredById String?
+  enteredBy   String?
+  remarks     String?
+
+  @@unique([examId, studentId, subjectId])
+}
+
+model GradeConfig {
+  id        String @id @default(cuid())
+  schoolId         String?
+  name      String
+  minPercent Float
+  maxPercent Float
+  grade     String
+  gpa       Float
+  remark    String?
+}
+
+model ReportCard {
+  id          String   @id @default(cuid())
+  schoolId         String?
+  studentId   String
+  examId      String
+  totalMarks  Float
+  obtained    Float
+  percentage  Float
+  grade       String
+  rank        Int?
+  remarks     String?
+  published   Boolean  @default(false)
+  generatedAt DateTime @default(now())
+}
+
+// ─────────────────────────── FEES & FINANCE ───────────────────────────
+
+model FeeStructure {
+  id             String  @id @default(cuid())
+  schoolId         String?
+  name           String
+  classId        String?
+  academicYearId String?
+  totalAmount    Float   @default(0)
+  installments   Int     @default(1)
+  isActive       Boolean @default(true)
+  itemsJson      String? // [{name, amount, frequency}]
+}
+
+model FeeInvoice {
+  id             String   @id @default(cuid())
+  schoolId         String?
+  invoiceNo      String
+  studentId      String
+  academicYearId String?
+  title          String
+  term           String?
+  totalAmount    Float
+  paidAmount     Float    @default(0)
+  discount       Float    @default(0)
+  status         String   @default("PENDING") // PENDING|PARTIAL|PAID|OVERDUE|CANCELLED
+  dueDate        DateTime
+  itemsJson      String? // [{name, amount}]
+  createdAt      DateTime @default(now())
+
+  @@index([studentId])
+  @@index([status])
+  @@unique([schoolId, invoiceNo])
+}
+
+model Payment {
+  id           String   @id @default(cuid())
+  schoolId         String?
+  receiptNo    String
+  invoiceId    String
+  studentId    String
+  amount       Float
+  method       String   @default("ONLINE") // ONLINE|CASH|CARD|BANK_TRANSFER|CHEQUE|UPI
+  reference    String?
+  status       String   @default("SUCCESS") // SUCCESS|PENDING|FAILED|REFUNDED
+  paidAt       DateTime @default(now())
+  collectedById String?
+  collectedBy  String?
+  remarks      String?
+  @@unique([schoolId, receiptNo])
+}
+
+model Expense {
+  id            String   @id @default(cuid())
+  schoolId         String?
+  title         String
+  category      String // SALARIES|UTILITIES|MAINTENANCE|SUPPLIES|TRANSPORT|EVENTS|OTHER
+  amount        Float
+  date          DateTime
+  vendor        String?
+  paymentMethod String   @default("BANK_TRANSFER")
+  status        String   @default("PENDING") // PENDING|APPROVED|REJECTED|PAID
+  approvedById  String?
+  approvedBy    String?
+  approvedAt    DateTime?
+  receiptUrl    String?
+  description   String?
+}
+
+model Budget {
+  id             String @id @default(cuid())
+  schoolId         String?
+  name           String
+  category       String
+  academicYearId String?
+  allocated      Float
+  spent          Float  @default(0)
+  notes          String?
+}
+
+model Discount {
+  id        String  @id @default(cuid())
+  schoolId         String?
+  name      String
+  type      String  @default("PERCENT") // PERCENT|FIXED
+  value     Float
+  appliesTo String  @default("ALL") // ALL|STUDENT_ID|CLASS
+  targetId  String?
+  reason    String? // Scholarship / Sibling / Staff ward
+  active    Boolean @default(true)
+}
+
+// ─────────────────────────── HR & PAYROLL ───────────────────────────
+
+model PayrollRun {
+  id          String   @id @default(cuid())
+  schoolId         String?
+  month       Int
+  year        Int
+  status      String   @default("DRAFT") // DRAFT|PROCESSED|PAID
+  totalAmount Float    @default(0)
+  processedById String?
+  processedBy String?
+  processedAt DateTime?
+  createdAt   DateTime @default(now())
+
+  @@unique([schoolId, month, year])
+}
+
+model Payslip {
+  id           String @id @default(cuid())
+  schoolId         String?
+  payrollRunId String
+  employeeId   String
+  basic        Float
+  allowances   Float  @default(0)
+  deductions   Float  @default(0)
+  tax          Float  @default(0)
+  netPay       Float
+  daysPresent  Int    @default(0)
+  daysPaid     Int    @default(30)
+  status       String @default("GENERATED") // GENERATED|PAID
+
+  @@unique([payrollRunId, employeeId])
+}
+
+model PerformanceReview {
+  id           String   @id @default(cuid())
+  schoolId         String?
+  employeeId   String
+  employeeName String?
+  period       String // 2025 H1
+  reviewerId   String?
+  reviewerName String?
+  score        Float? // 0-5
+  goals        String?
+  strengths    String?
+  improvements String?
+  training     String?
+  status       String   @default("DRAFT") // DRAFT|SUBMITTED|ACKNOWLEDGED
+  createdAt    DateTime @default(now())
+}
+
+// ─────────────────────────── ADMISSIONS & CRM ───────────────────────────
+
+model Lead {
+  id              String   @id @default(cuid())
+  schoolId         String?
+  name            String
+  email           String?
+  phone           String
+  source          String   @default("WALK_IN") // WALK_IN|WEBSITE|REFERRAL|CAMPAIGN|PHONE|EVENT
+  classAppliedFor String?
+  stage           String   @default("NEW") // NEW|CONTACTED|COUNSELLING|APPLICATION|TEST|INTERVIEW|APPROVED|ENROLLED|LOST
+  assignedToId    String?
+  assignedToName  String?
+  notes           String?
+  nextFollowUp    DateTime?
+  campaignId      String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model LeadFollowUp {
+  id        String   @id @default(cuid())
+  schoolId         String?
+  leadId    String
+  note      String
+  outcome   String   @default("FOLLOW_UP") // INTERESTED|NOT_INTERESTED|FOLLOW_UP|NO_RESPONSE|ENROLLED
+  nextAt    DateTime?
+  byId      String?
+  byName    String?
+  createdAt DateTime @default(now())
+}
+
+model Application {
+  id             String   @id @default(cuid())
+  schoolId         String?
+  applicationNo  String
+  leadId         String?
+  studentName    String
+  dob            DateTime?
+  gender         String   @default("MALE")
+  classApplied   String
+  academicYearId String?
+  parentName     String
+  parentPhone    String
+  parentEmail    String?
+  address        String?
+  previousSchool String?
+  documentsJson  String? // [{name, verified}]
+  docsVerified   Boolean  @default(false)
+  testScore      Float?
+  interviewScore Float?
+  status         String   @default("SUBMITTED") // SUBMITTED|SCREENING|DOC_VERIFICATION|TEST|INTERVIEW|APPROVED|REJECTED|ENROLLED|WITHDRAWN
+  decidedById    String?
+  decidedByName  String?
+  decidedAt      DateTime?
+  remarks        String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  @@unique([schoolId, applicationNo])
+}
+
+model Campaign {
+  id         String   @id @default(cuid())
+  schoolId         String?
+  name       String
+  source     String
+  budget     Float    @default(0)
+  spend      Float    @default(0)
+  startDate  DateTime
+  endDate    DateTime?
+  leadsCount Int      @default(0)
+  conversions Int     @default(0)
+  status     String   @default("ACTIVE")
+}
+
+// ─────────────────────────── TRANSPORT ───────────────────────────
+
+model Vehicle {
+  id              String  @id @default(cuid())
+  schoolId         String?
+  regNo           String  @unique
+  model           String
+  capacity        Int
+  driverName      String?
+  driverPhone     String?
+  driverLicense   String?
+  licenseExpiry   DateTime?
+  attendantName   String?
+  status          String  @default("ACTIVE") // ACTIVE|MAINTENANCE|INACTIVE
+  insuranceExpiry DateTime?
+  fitnessExpiry   DateTime?
+  lastServiceAt   DateTime?
+  fuelType        String  @default("DIESEL")
+  gpsLat          Float?
+  gpsLng          Float?
+  speedKmph       Float?
+  lastGpsAt       DateTime?
+  routes          Route[]
+}
+
+model Route {
+  id         String  @id @default(cuid())
+  schoolId         String?
+  name       String
+  vehicleId  String?
+  vehicle    Vehicle? @relation(fields: [vehicleId], references: [id])
+  distanceKm Float   @default(0)
+  monthlyFee Float   @default(0)
+  status     String  @default("ACTIVE")
+  stops      Stop[]
+  allocations TransportAllocation[] @relation("TransportAllocationRoute")
+}
+
+model Stop {
+  id         String  @id @default(cuid())
+  schoolId         String?
+  routeId    String
+  route      Route   @relation(fields: [routeId], references: [id])
+  name       String
+  sequence   Int
+  pickupTime String?
+  dropTime   String?
+  lat        Float?
+  lng        Float?
+  allocations TransportAllocation[] @relation("TransportAllocationStop")
+}
+
+model TransportAllocation {
+  id        String  @id @default(cuid())
+  schoolId         String?
+  studentId String
+  routeId   String
+  route     Route?  @relation("TransportAllocationRoute", fields: [routeId], references: [id])
+  stopId    String
+  stop      Stop?   @relation("TransportAllocationStop", fields: [stopId], references: [id])
+  type      String  @default("BOTH") // PICKUP|DROP|BOTH
+  status    String  @default("ACTIVE") // ACTIVE|ENDED
+  pickupStatus String? // Picked up | Dropped | Waiting
+  monthlyFee Float  @default(0)
+}
+
+// ─────────────────────────── HOSTEL ───────────────────────────
+
+model Hostel {
+  id        String  @id @default(cuid())
+  schoolId         String?
+  name      String
+  type      String  @default("BOYS") // BOYS|GIRLS|JUNIOR
+  wardenId  String?
+  wardenName String?
+  capacity  Int     @default(0)
+  status    String  @default("ACTIVE")
+  rooms     Room[]
+}
+
+model Room {
+  id        String  @id @default(cuid())
+  schoolId         String?
+  hostelId  String
+  hostel    Hostel  @relation(fields: [hostelId], references: [id])
+  roomNo    String
+  floor     Int     @default(0)
+  capacity  Int     @default(4)
+  type      String  @default("SHARED") // SHARED|SINGLE|DORMITORY
+  status    String  @default("ACTIVE") // ACTIVE|MAINTENANCE
+  beds      Bed[]
+
+  @@unique([hostelId, roomNo])
+}
+
+model Bed {
+  id        String  @id @default(cuid())
+  schoolId         String?
+  roomId    String
+  room      Room    @relation(fields: [roomId], references: [id])
+  bedNo     String
+  status    String  @default("FREE") // FREE|OCCUPIED|MAINTENANCE
+  allocations HostelAllocation[]
+
+  @@unique([roomId, bedNo])
+}
+
+model HostelAllocation {
+  id           String    @id @default(cuid())
+  schoolId         String?
+  bedId        String
+  bed          Bed?      @relation(fields: [bedId], references: [id])
+  studentId    String
+  checkInDate  DateTime  @default(now())
+  checkOutDate DateTime?
+  status       String    @default("ACTIVE") // ACTIVE|CHECKED_OUT
+  monthlyFee   Float     @default(0)
+  notes        String?
+}
+
+// ─────────────────────────── SECURITY ───────────────────────────
+
+model Visitor {
+  id           String    @id @default(cuid())
+  schoolId         String?
+  name         String
+  phone        String
+  idProof      String?
+  photoUrl     String?
+  purpose      String    @default("MEETING") // MEETING|DELIVERY|PARENT_PICKUP|VENDOR|MAINTENANCE|OTHER
+  personToMeet String
+  passNo       String?
+  vehicleNo    String?
+  checkInAt    DateTime  @default(now())
+  checkOutAt   DateTime?
+  status       String    @default("INSIDE") // INSIDE|EXITED|DENIED
+  approvedBy   String?
+  notes        String?
+}
+
+model PickupLog {
+  id        String   @id @default(cuid())
+  schoolId         String?
+  studentId String
+  personName String
+  relation  String?
+  method    String   @default("QR") // QR|MANUAL|OTP
+  type      String   @default("PICKUP") // PICKUP|DROP
+  verifiedById String?
+  status    String   @default("VERIFIED") // VERIFIED|REJECTED|PENDING
+  time      DateTime @default(now())
+}
+
+model SecurityAlert {
+  id          String    @id @default(cuid())
+  schoolId         String?
+  type        String // INTRUSION|FIGHT|MEDICAL|FIRE|THEFT|LOST_ITEM|OTHER
+  description String
+  severity    String    @default("MEDIUM") // LOW|MEDIUM|HIGH|CRITICAL
+  location    String?
+  status      String    @default("OPEN") // OPEN|INVESTIGATING|RESOLVED
+  raisedById  String?
+  raisedBy    String?
+  resolvedAt  DateTime?
+  resolution  String?
+  createdAt   DateTime  @default(now())
+}
+
+// ─────────────────────────── HEALTH ───────────────────────────
+
+model HealthRecord {
+  id               String  @id @default(cuid())
+  schoolId         String?
+  studentId        String  @unique
+  bloodGroup       String?
+  heightCm         Float?
+  weightKg         Float?
+  allergies        String? // comma separated
+  chronicConditions String?
+  medications      String?
+  vaccinationsJson String?
+  emergencyContact String?
+  familyDoctor     String?
+  insuranceNo      String?
+  notes            String?
+  lastScreeningAt  DateTime?
+}
+
+model ClinicVisit {
+  id             String   @id @default(cuid())
+  schoolId         String?
+  studentId      String
+  date           DateTime @default(now())
+  reason         String
+  symptoms       String?
+  temperatureC   Float?
+  bp             String?
+  diagnosis      String?
+  treatment      String?
+  medication     String?
+  attendedById   String?
+  attendedBy     String?
+  followUpRequired Boolean @default(false)
+  parentNotified Boolean  @default(false)
+  severity       String   @default("MINOR") // MINOR|MODERATE|SERIOUS
+}
+
+model Vaccination {
+  id          String   @id @default(cuid())
+  schoolId         String?
+  studentId   String
+  vaccine     String
+  dose        String   @default("1st")
+  date        DateTime
+  nextDueDate DateTime?
+  status      String   @default("COMPLETED") // COMPLETED|SCHEDULED|MISSED
+  administeredBy String?
+}
+
+// ─────────────────────────── LIBRARY ───────────────────────────
+
+model Book {
+  id             String  @id @default(cuid())
+  schoolId         String?
+  title          String
+  author         String
+  isbn           String? @unique
+  category       String  @default("General")
+  publisher      String?
+  editionYear    Int?
+  totalCopies    Int     @default(1)
+  availableCopies Int    @default(1)
+  shelf          String?
+  price          Float   @default(0)
+  language       String  @default("English")
+  isDigital      Boolean @default(false)
+  digitalUrl     String?
+  coverUrl       String?
+  barcode        String? @unique
+  status         String  @default("ACTIVE") // ACTIVE|ARCHIVED
+
+  @@index([title])
+}
+
+model LibraryTransaction {
+  id         String    @id @default(cuid())
+  schoolId         String?
+  bookId     String
+  bookTitle  String?
+  userType   String    @default("STUDENT") // STUDENT|EMPLOYEE
+  userId     String
+  userName   String?
+  issueDate  DateTime  @default(now())
+  dueDate    DateTime
+  returnDate DateTime?
+  renewals   Int       @default(0)
+  fine       Float     @default(0)
+  status     String    @default("ISSUED") // ISSUED|RETURNED|OVERDUE|LOST|DAMAGED
+  issuedById String?
+  issuedBy   String?
+  notes      String?
+}
+
+model BookReservation {
+  id        String    @id @default(cuid())
+  schoolId         String?
+  bookId    String
+  userType  String    @default("STUDENT")
+  userId    String
+  userName  String?
+  status    String    @default("PENDING") // PENDING|READY|FULFILLED|CANCELLED
+  reservedAt DateTime @default(now())
+  expiresAt DateTime?
+}
+
+// ─────────────────────────── ASSETS ───────────────────────────
+
+model Asset {
+  id             String    @id @default(cuid())
+  schoolId         String?
+  assetTag       String
+  name           String
+  category       String // CLASSROOM|LAB|SPORTS|IT|FURNITURE|SMART_BOARD|DEVICE|VEHICLE|OTHER
+  purchaseDate   DateTime?
+  purchaseCost   Float     @default(0)
+  currentValue   Float?
+  status         String    @default("AVAILABLE") // AVAILABLE|IN_USE|MAINTENANCE|DISPOSED
+  location       String?
+  assignedToType String? // EMPLOYEE|CLASS|ROOM|STUDENT
+  assignedToId   String?
+  assignedToName String?
+  warrantyExpiry DateTime?
+  lastMaintenance DateTime?
+  condition      String    @default("GOOD") // NEW|GOOD|WORN|NEEDS_REPAIR
+  barcode        String?   @unique
+  notes          String?
+  @@unique([schoolId, assetTag])
+}
+
+model AssetTransfer {
+  id        String   @id @default(cuid())
+  schoolId         String?
+  assetId   String
+  fromType  String?
+  fromName  String?
+  toType    String
+  toName    String
+  reason    String?
+  date      DateTime @default(now())
+  byId      String?
+  byName    String?
+}
+
+// ─────────────────────────── EVENTS / COMM / CERTS ───────────────────────────
+
+model Event {
+  id                  String   @id @default(cuid())
+  schoolId         String?
+  title               String
+  type                String   @default("EVENT") // EVENT|HOLIDAY|EXAM|MEETING|SPORTS|TRIP|ANNUAL_DAY
+  description         String?
+  startDate           DateTime
+  endDate             DateTime?
+  location            String?
+  audience            String   @default("ALL") // ALL|STUDENTS|PARENTS|TEACHERS|STAFF
+  organizerId         String?
+  organizerName       String?
+  registrationRequired Boolean @default(false)
+  capacity            Int?
+  status              String   @default("SCHEDULED") // SCHEDULED|ONGOING|COMPLETED|CANCELLED
+  color               String   @default("emerald")
+}
+
+model EventRegistration {
+  id        String   @id @default(cuid())
+  schoolId         String?
+  eventId   String
+  userType  String   @default("STUDENT")
+  userId    String
+  userName  String?
+  status    String   @default("REGISTERED") // REGISTERED|CANCELLED|ATTENDED
+  createdAt DateTime @default(now())
+
+  @@unique([eventId, userId])
+}
+
+model Message {
+  id         String    @id @default(cuid())
+  schoolId         String?
+  threadId   String
+  fromUserId String
+  fromName   String
+  fromRole   String
+  toUserId   String
+  toName     String
+  toRole     String
+  subject    String
+  body       String
+  readAt     DateTime?
+  createdAt  DateTime  @default(now())
+
+  @@index([threadId])
+  @@index([toUserId, readAt])
+}
+
+model Announcement {
+  id           String   @id @default(cuid())
+  schoolId         String?
+  title        String
+  body         String
+  type         String   @default("ANNOUNCEMENT") // ANNOUNCEMENT|CIRCULAR|EMERGENCY|EVENT|REMINDER
+  audience     String   @default("ALL") // ALL|STUDENTS|PARENTS|TEACHERS|STAFF|CLASS
+  targetClassId String?
+  priority     String   @default("NORMAL") // LOW|NORMAL|HIGH|URGENT
+  channels     String   @default("IN_APP") // IN_APP,EMAIL,SMS,WHATSAPP (comma sep)
+  publishAt    DateTime @default(now())
+  expiresAt    DateTime?
+  publishedById String?
+  publishedBy  String?
+  status       String   @default("PUBLISHED") // DRAFT|PUBLISHED|ARCHIVED
+}
+
+model CertificateRequest {
+  id            String    @id @default(cuid())
+  schoolId         String?
+  studentId     String
+  type          String // TRANSFER|BONAFIDE|STUDY|CONDUCT|CHARACTER|TRANSCRIPT|BIRTH|REPORT_CARD
+  purpose       String
+  status        String    @default("PENDING") // PENDING|VERIFIED|APPROVED|REJECTED|ISSUED
+  requestedById String?
+  requestedBy   String?
+  verifiedById  String?
+  approvedById  String?
+  approvedBy    String?
+  approvedAt    DateTime?
+  issuedAt      DateTime?
+  remarks       String?
+  createdAt     DateTime  @default(now())
+}
+
+model Certificate {
+  id            String   @id @default(cuid())
+  schoolId         String?
+  requestId     String?
+  studentId     String
+  type          String
+  certificateNo String
+  title         String
+  contentJson   String? // data for template
+  verifyCode    String   @unique
+  issuedById    String?
+  issuedBy      String?
+  issuedAt      DateTime @default(now())
+  @@unique([schoolId, certificateNo])
+}
+
+model Complaint {
+  id          String    @id @default(cuid())
+  schoolId         String?
+  category    String    @default("GENERAL") // HOSTEL|TRANSPORT|ACADEMICS|FOOD|GENERAL
+  studentId   String?
+  raisedById  String
+  raisedBy    String
+  title       String
+  description String
+  priority    String    @default("MEDIUM") // LOW|MEDIUM|HIGH
+  status      String    @default("OPEN") // OPEN|IN_PROGRESS|RESOLVED|CLOSED
+  assignedToId String?
+  assignedToName String?
+  resolvedAt  DateTime?
+  resolution  String?
+  createdAt   DateTime  @default(now())
+}

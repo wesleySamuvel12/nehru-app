@@ -3,6 +3,7 @@ import { db } from '@/lib/db'
 import { requireAuth } from '@/lib/auth'
 import { can } from '@/lib/rbac'
 import { json, err } from '@/lib/crud'
+import { resolveTenantContext } from '@/lib/tenant'
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
@@ -11,18 +12,36 @@ export async function GET(req: NextRequest) {
   const session = await requireAuth(req)
   if (!session) return err(401, 'Please sign in to continue.')
   if (!can(session.role, 'settings')) return err(403, 'You do not have permission to access settings.')
+
+  const tenantRes = await resolveTenantContext(req, session, { allowAllSchoolsForSuperAdmin: true })
+  if (tenantRes.error) return tenantRes.error
+  const tenant = tenantRes.context
+  const schoolWhere = tenant.schoolId ? { schoolId: tenant.schoolId } : {}
+
   try {
     const [
       students, parents, employees, classes, attendance, invoices,
       payments, expenses, leads, applications, books, vehicles,
       users, auditLogs, announcements, events, gradeConfigs, currentYear,
     ] = await Promise.all([
-      db.student.count(), db.parent.count(), db.employee.count(), db.class.count(),
-      db.attendance.count(), db.feeInvoice.count(), db.payment.count(), db.expense.count(),
-      db.lead.count(), db.application.count(), db.book.count(), db.vehicle.count(),
-      db.user.count(), db.auditLog.count(), db.announcement.count(), db.event.count(),
-      db.gradeConfig.findMany({ orderBy: { minPercent: 'desc' } }),
-      db.academicYear.findFirst({ where: { isCurrent: true }, include: { terms: { orderBy: { startDate: 'asc' } } } }),
+      db.student.count({ where: schoolWhere }),
+      db.parent.count({ where: schoolWhere }),
+      db.employee.count({ where: schoolWhere }),
+      db.class.count({ where: schoolWhere }),
+      db.attendance.count({ where: schoolWhere }),
+      db.feeInvoice.count({ where: schoolWhere }),
+      db.payment.count({ where: schoolWhere }),
+      db.expense.count({ where: schoolWhere }),
+      db.lead.count({ where: schoolWhere }),
+      db.application.count({ where: schoolWhere }),
+      db.book.count({ where: schoolWhere }),
+      db.vehicle.count({ where: schoolWhere }),
+      db.user.count({ where: schoolWhere }),
+      db.auditLog.count({ where: schoolWhere }),
+      db.announcement.count({ where: schoolWhere }),
+      db.event.count({ where: schoolWhere }),
+      db.gradeConfig.findMany({ where: schoolWhere, orderBy: { minPercent: 'desc' } }),
+      db.academicYear.findFirst({ where: { ...schoolWhere, isCurrent: true }, include: { terms: { where: schoolWhere, orderBy: { startDate: 'asc' } } } }),
     ])
 
     const counts = [

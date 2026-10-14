@@ -5,7 +5,7 @@ import { can } from '@/lib/rbac'
 import { audit } from '@/lib/audit'
 import { notify } from '@/lib/notify'
 import { json, err } from '@/lib/crud'
-
+import { resolveTenantContext } from '@/lib/tenant'
 
 const VALID_STATUSES = ['PRESENT', 'ABSENT', 'LATE', 'HALF_DAY', 'EXCUSED']
 
@@ -21,11 +21,18 @@ interface BulkEntry {
  * Body: { date: 'YYYY-MM-DD', entries: [{ studentId, status, remarks?, checkInTime? }] }
  * Upserts on the [studentId, date] unique key. When a student is marked ABSENT and the
  * parent has not yet been notified, an in-app notification is sent to the parent user.
+ * Validates that all students belong to the caller's authorized school.
  */
 export async function POST(req: NextRequest) {
   const session = await requireAuth(req)
   if (!session) return err(401, 'Please sign in to continue.')
   if (!can(session.role, 'attendance')) return err(403, 'You do not have permission to mark attendance.')
+
+  const tenantRes = await resolveTenantContext(req, session, { isWrite: true })
+  if (tenantRes.error) return tenantRes.error
+  const tenant = tenantRes.context
+  const schoolId = tenant.schoolId!
+
   try {
     const body = await req.json()
     const dateStr: string = String(body?.date || '')
@@ -39,14 +46,20 @@ export async function POST(req: NextRequest) {
     const studentIds = [...new Set(entries.map(e => e.studentId).filter(Boolean))]
     if (!studentIds.length) return err(400, 'No valid students in the request.')
 
+    // Validate that all students belong to the authorized campus
     const students = await db.student.findMany({
-      where: { id: { in: studentIds } },
+      where: { id: { in: studentIds }, schoolId },
       select: { id: true, firstName: true, lastName: true, parentId: true, classId: true, sectionId: true },
     })
+
+    if (students.length !== studentIds.length) {
+      return err(400, 'One or more students do not belong to your campus or were not found.')
+    }
+
     const studentMap = new Map(students.map(s => [s.id, s]))
 
     const existing = await db.attendance.findMany({
-      where: { studentId: { in: studentIds }, date: { gte: dayStart, lte: dayEnd } },
+      where: { studentId: { in: studentIds }, schoolId, date: { gte: dayStart, lte: dayEnd } },
     })
     const existingMap = new Map(existing.map(r => [r.studentId, r]))
 
@@ -66,6 +79,7 @@ export async function POST(req: NextRequest) {
       const before = existingMap.get(entry.studentId)
       const rowDate = before?.date ?? dayStart
       const data = {
+        schoolId,
         status,
         remarks: entry.remarks?.trim() || null,
         checkInTime: entry.checkInTime?.trim() || before?.checkInTime || null,
@@ -99,6 +113,7 @@ export async function POST(req: NextRequest) {
     }
 
     await audit({
+      schoolId,
       userId: session.sub, userName: session.name, userRole: session.role,
       action: 'UPDATE', entity: 'Attendance',
       details: { bulk: true, date: dateStr, saved, parentsNotified: notified },

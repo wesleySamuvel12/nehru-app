@@ -10,7 +10,7 @@ async function nextAdmissionNo(): Promise<string> {
   const count = await db.student.count()
   for (let n = count + 1; n < count + 500; n++) {
     const candidate = `NIS${String(n).padStart(5, '0')}`
-    const exists = await db.student.findUnique({ where: { admissionNo: candidate }, select: { id: true } })
+    const exists = await db.student.findFirst({ where: { admissionNo: candidate }, select: { id: true } })
     if (!exists) return candidate
   }
   return `NIS${Date.now().toString().slice(-8)}`

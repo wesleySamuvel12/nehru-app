@@ -6,8 +6,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from './db'
 import { Session, requireAuth } from './auth'
-import { can } from './rbac'
+import { can, normalizeRole } from './rbac'
 import { audit } from './audit'
+import { resolveTenantContext, validateParentOwnership, TenantContext } from './tenant'
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
@@ -68,7 +69,7 @@ function buildWhere(req: NextRequest, config: CrudConfig, session: Session | nul
   const sp = req.nextUrl.searchParams
   const q = sp.get('q')
   if (q && config.searchFields?.length) {
-    where.OR = config.searchFields.map(f => ({ [f]: { contains: q } }))
+    where.OR = config.searchFields.map(f => ({ [f]: { contains: q, mode: 'insensitive' } }))
   }
   for (const f of config.filterFields || []) {
     const v = sp.get(f)
@@ -84,14 +85,27 @@ function buildWhere(req: NextRequest, config: CrudConfig, session: Session | nul
 
 export function defineCrud(config: CrudConfig) {
   const entity = config.auditEntity || config.model
+  const isGlobalModel = config.model === 'school' || config.model === 'permission'
 
-  async function guard(req: NextRequest) {
+  async function guard(req: NextRequest, isWrite = false) {
     const session = await requireAuth(req)
     if (!session) return { error: err(401, 'Please sign in to continue.') }
-    if (!config.publicRead && !can(session.role, config.module)) {
+    const role = normalizeRole(session.role)
+    if ((isWrite || !config.publicRead) && !can(role, config.module)) {
       return { error: err(403, 'You do not have permission to access this module.') }
     }
-    return { session }
+
+    let tenant: TenantContext | null = null
+    if (!isGlobalModel) {
+      const tenantRes = await resolveTenantContext(req, session, {
+        isWrite,
+        allowAllSchoolsForSuperAdmin: !isWrite,
+      })
+      if (tenantRes.error) return { error: tenantRes.error }
+      tenant = tenantRes.context
+    }
+
+    return { session: { ...session, role }, tenant }
   }
 
   async function applyScope(where: any, session: Session | null) {
@@ -105,6 +119,7 @@ export function defineCrud(config: CrudConfig) {
     const g = await guard(req)
     if (g.error) return g.error
     const session = g.session!
+    const tenant = g.tenant
     try {
       const sp = req.nextUrl.searchParams
       const page = Math.max(1, parseInt(sp.get('page') || '1'))
@@ -113,6 +128,11 @@ export function defineCrud(config: CrudConfig) {
       const sortBy = sp.get('sortBy') || config.defaultSort?.field
       const sortDir = (sp.get('sortDir') || config.defaultSort?.dir || 'desc') as 'asc' | 'desc'
       let where = await applyScope(buildWhere(req, config, session), session)
+
+      if (!isGlobalModel && tenant?.schoolId) {
+        where = where && Object.keys(where).length ? { AND: [where, { schoolId: tenant.schoolId }] } : { schoolId: tenant.schoolId }
+      }
+
       const d = delegate(config)
       const findManyArgs: any = { where, orderBy: sortBy ? { [sortBy]: sortDir } : undefined }
       if (config.include) findManyArgs.include = config.include
@@ -137,9 +157,10 @@ export function defineCrud(config: CrudConfig) {
   }
 
   const create = async (req: NextRequest) => {
-    const g = await guard(req)
+    const g = await guard(req, true)
     if (g.error) return g.error
     const session = g.session!
+    const tenant = g.tenant
     try {
       let body = await req.json()
       if (config.required) {
@@ -148,9 +169,28 @@ export function defineCrud(config: CrudConfig) {
       }
       if (config.beforeSave) body = await config.beforeSave(body, session, 'create')
       body = coercePrismaValues(body)
+
+      if (!isGlobalModel && tenant?.schoolId) {
+        body.schoolId = tenant.schoolId
+        const parentCheck = await validateParentOwnership(body, tenant.schoolId)
+        if (!parentCheck.valid) {
+          return err(400, parentCheck.reason || 'Referenced entity does not belong to your school.')
+        }
+      }
+
       const d = delegate(config)
       const row = await d.create({ data: body, ...(config.include ? { include: config.include } : {}) })
-      await audit({ userId: session.sub, userName: session.name, userRole: session.role, action: 'CREATE', entity, entityId: row.id, details: { title: body.name || body.title || body.studentName || row.id }, ip: req.headers.get('x-forwarded-for') })
+      await audit({
+        schoolId: tenant?.schoolId || session.schoolId || null,
+        userId: session.sub,
+        userName: session.name,
+        userRole: session.role,
+        action: 'CREATE',
+        entity,
+        entityId: row.id,
+        details: { title: body.name || body.title || body.studentName || row.id },
+        ip: req.headers.get('x-forwarded-for'),
+      })
       if (config.afterCreate) await config.afterCreate(row, session)
       return json({ data: strip(row, config) }, 201)
     } catch (e: any) {
@@ -164,11 +204,17 @@ export function defineCrud(config: CrudConfig) {
   const detail = async (req: NextRequest, context: IdContext | string) => {
     const g = await guard(req)
     if (g.error) return g.error
+    const tenant = g.tenant
     const id = typeof context === 'string' ? context : await getId(context)
     try {
       const d = delegate(config)
       const row = await d.findUnique({ where: { id }, ...(config.include ? { include: config.include } : {}) })
       if (!row) return err(404, 'Record not found.')
+
+      if (!isGlobalModel && tenant?.schoolId && row.schoolId && row.schoolId !== tenant.schoolId) {
+        return err(404, 'Record not found.')
+      }
+
       return json({ data: strip(row, config) })
     } catch (e) {
       console.error(`[crud:detail:${entity}]`, e)
@@ -177,22 +223,47 @@ export function defineCrud(config: CrudConfig) {
   }
 
   const update = async (req: NextRequest, context: IdContext | string) => {
-    const g = await guard(req)
+    const g = await guard(req, true)
     if (g.error) return g.error
     const session = g.session!
+    const tenant = g.tenant
     const id = typeof context === 'string' ? context : await getId(context)
     try {
       const d = delegate(config)
       const before = await d.findUnique({ where: { id } })
       if (!before) return err(404, 'Record not found.')
+
+      if (!isGlobalModel && tenant?.schoolId && before.schoolId && before.schoolId !== tenant.schoolId) {
+        return err(404, 'Record not found.')
+      }
+
       let body = await req.json()
       delete body.id
+      delete body.schoolId
       delete body.createdAt
       delete body.updatedAt
+
+      if (!isGlobalModel && tenant?.schoolId) {
+        const parentCheck = await validateParentOwnership(body, tenant.schoolId)
+        if (!parentCheck.valid) {
+          return err(400, parentCheck.reason || 'Referenced entity does not belong to your school.')
+        }
+      }
+
       if (config.beforeSave) body = await config.beforeSave(body, session, 'update')
       body = coercePrismaValues(body)
       const row = await d.update({ where: { id }, data: body, ...(config.include ? { include: config.include } : {}) })
-      await audit({ userId: session.sub, userName: session.name, userRole: session.role, action: 'UPDATE', entity, entityId: id, details: { changes: Object.keys(body) }, ip: req.headers.get('x-forwarded-for') })
+      await audit({
+        schoolId: tenant?.schoolId || session.schoolId || null,
+        userId: session.sub,
+        userName: session.name,
+        userRole: session.role,
+        action: 'UPDATE',
+        entity,
+        entityId: id,
+        details: { changes: Object.keys(body) },
+        ip: req.headers.get('x-forwarded-for'),
+      })
       if (config.afterUpdate) await config.afterUpdate(row, session, before)
       return json({ data: strip(row, config) })
     } catch (e: any) {
@@ -203,14 +274,32 @@ export function defineCrud(config: CrudConfig) {
   }
 
   const remove = async (req: NextRequest, context: IdContext | string) => {
-    const g = await guard(req)
+    const g = await guard(req, true)
     if (g.error) return g.error
     const session = g.session!
+    const tenant = g.tenant
     const id = typeof context === 'string' ? context : await getId(context)
     try {
       const d = delegate(config)
+      const before = await d.findUnique({ where: { id } })
+      if (!before) return err(404, 'Record not found.')
+
+      if (!isGlobalModel && tenant?.schoolId && before.schoolId && before.schoolId !== tenant.schoolId) {
+        return err(404, 'Record not found.')
+      }
+
       const row = await d.delete({ where: { id } })
-      await audit({ userId: session.sub, userName: session.name, userRole: session.role, action: 'DELETE', entity, entityId: id, details: { title: row.name || row.title || id }, ip: req.headers.get('x-forwarded-for') })
+      await audit({
+        schoolId: tenant?.schoolId || session.schoolId || null,
+        userId: session.sub,
+        userName: session.name,
+        userRole: session.role,
+        action: 'DELETE',
+        entity,
+        entityId: id,
+        details: { title: row.name || row.title || id },
+        ip: req.headers.get('x-forwarded-for'),
+      })
       if (config.afterDelete) await config.afterDelete(row, session)
       return json({ data: { ok: true } })
     } catch (e: any) {

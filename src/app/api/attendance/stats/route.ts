@@ -3,7 +3,7 @@ import { db } from '@/lib/db'
 import { requireAuth } from '@/lib/auth'
 import { can } from '@/lib/rbac'
 import { json, err } from '@/lib/crud'
-
+import { resolveTenantContext } from '@/lib/tenant'
 
 const dayKey = (d: Date) => d.toISOString().slice(0, 10)
 
@@ -15,6 +15,12 @@ export async function GET(req: NextRequest) {
   const session = await requireAuth(req)
   if (!session) return err(401, 'Please sign in to continue.')
   if (!can(session.role, 'attendance')) return err(403, 'You do not have permission to view attendance analytics.')
+
+  const tenantRes = await resolveTenantContext(req, session, { allowAllSchoolsForSuperAdmin: true })
+  if (tenantRes.error) return tenantRes.error
+  const tenant = tenantRes.context
+  const schoolWhere = tenant.schoolId ? { schoolId: tenant.schoolId } : {}
+
   try {
     const sp = req.nextUrl.searchParams
     const days = Math.min(90, Math.max(7, parseInt(sp.get('days') || '30')))
@@ -25,7 +31,7 @@ export async function GET(req: NextRequest) {
     from.setHours(0, 0, 0, 0)
     from.setDate(from.getDate() - (days - 1))
 
-    const where: any = { date: { gte: from } }
+    const where: any = { date: { gte: from }, ...schoolWhere }
     if (classId) where.classId = classId
     if (sectionId) where.sectionId = sectionId
 
@@ -36,8 +42,8 @@ export async function GET(req: NextRequest) {
         orderBy: { date: 'asc' },
         take: 25000,
       }),
-      db.class.findMany({ select: { id: true, name: true } }),
-      db.section.findMany({ select: { id: true, name: true } }),
+      db.class.findMany({ where: schoolWhere, select: { id: true, name: true } }),
+      db.section.findMany({ where: schoolWhere, select: { id: true, name: true } }),
     ])
     const classNameById = new Map(classes.map(c => [c.id, c.name]))
     const sectionNameById = new Map(sections.map(s => [s.id, s.name]))
@@ -80,7 +86,7 @@ export async function GET(req: NextRequest) {
 
     const topIds = [...absentsByStudent.entries()].sort((a, b) => b[1] - a[1]).slice(0, 8)
     const topStudents = topIds.length
-      ? await db.student.findMany({ where: { id: { in: topIds.map(t => t[0]) } }, select: { id: true, firstName: true, lastName: true, classId: true, sectionId: true } })
+      ? await db.student.findMany({ where: { id: { in: topIds.map(t => t[0]) }, ...schoolWhere }, select: { id: true, firstName: true, lastName: true, classId: true, sectionId: true } })
       : []
     const stName = new Map(topStudents.map(s => [s.id, s]))
     const topAbsentees = topIds.map(([studentId, absents]) => {

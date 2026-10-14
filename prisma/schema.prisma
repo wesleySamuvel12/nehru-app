@@ -6,7 +6,7 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
@@ -14,6 +14,7 @@ datasource db {
 
 model User {
   id               String    @id @default(cuid())
+  schoolId         String?
   email            String    @unique
   passwordHash     String
   name             String
@@ -31,6 +32,7 @@ model User {
   lastLoginAt      DateTime?
   createdAt        DateTime  @default(now())
   updatedAt        DateTime  @updatedAt
+  @@index([schoolId])
 }
 
 model Permission {
@@ -44,6 +46,7 @@ model Permission {
 
 model AuditLog {
   id        String   @id @default(cuid())
+  schoolId         String?
   userId    String?
   userName  String?
   userRole  String?
@@ -60,6 +63,7 @@ model AuditLog {
 
 model LoginLog {
   id        String   @id @default(cuid())
+  schoolId         String?
   userId    String?
   email     String
   success   Boolean
@@ -73,6 +77,7 @@ model LoginLog {
 
 model Notification {
   id        String    @id @default(cuid())
+  schoolId         String?
   userId    String
   title     String
   message   String
@@ -88,6 +93,7 @@ model Notification {
 
 model NotificationTemplate {
   id       String  @id @default(cuid())
+  schoolId         String?
   key      String  @unique
   name     String
   channel  String  @default("IN_APP")
@@ -109,6 +115,7 @@ model School {
 
 model SchoolSetting {
   id               String  @id @default(cuid())
+  schoolId         String?
   schoolName       String  @default("Greenwood International School")
   logoUrl          String?
   address          String?
@@ -130,6 +137,7 @@ model SchoolSetting {
 
 model AcademicYear {
   id        String   @id @default(cuid())
+  schoolId         String?
   name      String   @unique // 2025-26
   startDate DateTime
   endDate   DateTime
@@ -139,6 +147,7 @@ model AcademicYear {
 
 model Term {
   id             String   @id @default(cuid())
+  schoolId         String?
   academicYearId String
   academicYear   AcademicYear @relation(fields: [academicYearId], references: [id])
   name           String // Term 1
@@ -151,6 +160,7 @@ model Term {
 
 model IntegrationSetting {
   id         String    @id @default(cuid())
+  schoolId         String?
   key        String    @unique
   name       String
   category   String // PAYMENT|SMS|EMAIL|WHATSAPP|GPS|BIOMETRIC|RFID|CCTV|ACCOUNTING|LMS|GOVERNMENT|API
@@ -163,6 +173,7 @@ model IntegrationSetting {
 
 model ApprovalWorkflow {
   id         String  @id @default(cuid())
+  schoolId         String?
   name       String
   entityType String
   steps      String // JSON array of {step, approverRole}
@@ -171,6 +182,7 @@ model ApprovalWorkflow {
 
 model ApprovalTask {
   id            String    @id @default(cuid())
+  schoolId         String?
   type          String // ADMISSION|LEAVE|CERTIFICATE|EXPENSE|FEE_DISCOUNT|RESULT|RE_ENROLLMENT|TRANSFER
   entityId      String
   title         String
@@ -191,7 +203,8 @@ model ApprovalTask {
 
 model Student {
   id             String    @id @default(cuid())
-  admissionNo    String    @unique
+  schoolId         String?
+  admissionNo    String
   rollNo         String?
   firstName      String
   lastName       String
@@ -222,10 +235,12 @@ model Student {
 
   @@index([classId, sectionId])
   @@index([lastName])
+  @@unique([schoolId, admissionNo])
 }
 
 model Parent {
   id          String   @id @default(cuid())
+  schoolId         String?
   name        String
   relation    String   @default("FATHER") // FATHER|MOTHER|GUARDIAN
   occupation  String?
@@ -242,7 +257,8 @@ model Parent {
 
 model Employee {
   id            String    @id @default(cuid())
-  employeeNo    String    @unique
+  schoolId         String?
+  employeeNo    String
   firstName     String
   lastName      String
   gender        String    @default("MALE")
@@ -269,20 +285,24 @@ model Employee {
   certExpiry    DateTime?
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
+  @@unique([schoolId, employeeNo])
 }
 
 model Department {
   id        String  @id @default(cuid())
-  name      String  @unique
+  schoolId         String?
+  name      String
   headId    String?
   headName  String?
   employees Employee[]
+  @@unique([schoolId, name])
 }
 
 // ─────────────────────────── ACADEMICS ───────────────────────────
 
 model Class {
   id        String  @id @default(cuid())
+  schoolId         String?
   name      String  @unique // Grade 1..12
   level     Int
   stream    String? // Science/Commerce for 11-12
@@ -293,6 +313,7 @@ model Class {
 
 model Section {
   id          String  @id @default(cuid())
+  schoolId         String?
   name        String // A
   classId     String
   class       Class   @relation(fields: [classId], references: [id])
@@ -306,8 +327,9 @@ model Section {
 
 model Subject {
   id          String  @id @default(cuid())
+  schoolId         String?
   name        String
-  code        String  @unique
+  code        String
   classId     String?
   class       Class?  @relation(fields: [classId], references: [id])
   teacherId   String?
@@ -315,16 +337,19 @@ model Subject {
   maxMarks    Int     @default(100)
   isElective  Boolean @default(false)
   syllabusUrl String?
+  @@unique([schoolId, code])
 }
 
 model House {
   id   String @id @default(cuid())
-  name String @unique
+  schoolId         String?
+  name String
   color String @default("emerald")
 }
 
 model TimetableSlot {
   id        String @id @default(cuid())
+  schoolId         String?
   classId   String
   sectionId String
   subjectId String?
@@ -340,6 +365,7 @@ model TimetableSlot {
 
 model Enrollment {
   id             String   @id @default(cuid())
+  schoolId         String?
   studentId      String
   classId        String
   sectionId      String
@@ -352,6 +378,7 @@ model Enrollment {
 
 model Attendance {
   id          String   @id @default(cuid())
+  schoolId         String?
   studentId   String
   date        DateTime
   status      String   @default("PRESENT") // PRESENT|ABSENT|LATE|HALF_DAY|EXCUSED|HOLIDAY
@@ -366,10 +393,12 @@ model Attendance {
 
   @@unique([studentId, date])
   @@index([date])
+  @@index([schoolId, date])
 }
 
 model EmployeeAttendance {
   id         String   @id @default(cuid())
+  schoolId         String?
   employeeId String
   date       DateTime
   status     String   @default("PRESENT") // PRESENT|ABSENT|LATE|HALF_DAY|LEAVE
@@ -382,6 +411,7 @@ model EmployeeAttendance {
 
 model LeaveRequest {
   id            String    @id @default(cuid())
+  schoolId         String?
   requesterType String    @default("STUDENT") // STUDENT|EMPLOYEE
   requesterId   String
   requesterName String
@@ -399,6 +429,7 @@ model LeaveRequest {
 
 model Assignment {
   id          String   @id @default(cuid())
+  schoolId         String?
   title       String
   description String?
   type        String   @default("HOMEWORK") // HOMEWORK|ASSIGNMENT|PROJECT
@@ -416,6 +447,7 @@ model Assignment {
 
 model Submission {
   id           String    @id @default(cuid())
+  schoolId         String?
   assignmentId String
   studentId    String
   submittedAt  DateTime  @default(now())
@@ -431,6 +463,7 @@ model Submission {
 
 model LearningMaterial {
   id          String   @id @default(cuid())
+  schoolId         String?
   title       String
   description String?
   type        String   @default("DOCUMENT") // DOCUMENT|VIDEO|LINK|PRESENTATION
@@ -446,6 +479,7 @@ model LearningMaterial {
 
 model LessonPlan {
   id          String   @id @default(cuid())
+  schoolId         String?
   teacherId   String
   teacherName String?
   classId     String
@@ -462,6 +496,7 @@ model LessonPlan {
 
 model Exam {
   id             String   @id @default(cuid())
+  schoolId         String?
   name           String
   type           String   @default("TERM") // TERM|UNIT|MONTHLY|FINAL|PRACTICAL|QUIZ
   academicYearId String
@@ -478,6 +513,7 @@ model Exam {
 
 model ExamSchedule {
   id        String   @id @default(cuid())
+  schoolId         String?
   examId    String
   subjectId String
   classId   String
@@ -492,6 +528,7 @@ model ExamSchedule {
 
 model Question {
   id          String @id @default(cuid())
+  schoolId         String?
   examId      String?
   subjectId   String
   classId     String
@@ -506,6 +543,7 @@ model Question {
 
 model Mark {
   id          String @id @default(cuid())
+  schoolId         String?
   examId      String
   scheduleId  String?
   studentId   String
@@ -523,6 +561,7 @@ model Mark {
 
 model GradeConfig {
   id        String @id @default(cuid())
+  schoolId         String?
   name      String
   minPercent Float
   maxPercent Float
@@ -533,6 +572,7 @@ model GradeConfig {
 
 model ReportCard {
   id          String   @id @default(cuid())
+  schoolId         String?
   studentId   String
   examId      String
   totalMarks  Float
@@ -549,6 +589,7 @@ model ReportCard {
 
 model FeeStructure {
   id             String  @id @default(cuid())
+  schoolId         String?
   name           String
   classId        String?
   academicYearId String?
@@ -560,7 +601,8 @@ model FeeStructure {
 
 model FeeInvoice {
   id             String   @id @default(cuid())
-  invoiceNo      String   @unique
+  schoolId         String?
+  invoiceNo      String
   studentId      String
   academicYearId String?
   title          String
@@ -575,11 +617,13 @@ model FeeInvoice {
 
   @@index([studentId])
   @@index([status])
+  @@unique([schoolId, invoiceNo])
 }
 
 model Payment {
   id           String   @id @default(cuid())
-  receiptNo    String   @unique
+  schoolId         String?
+  receiptNo    String
   invoiceId    String
   studentId    String
   amount       Float
@@ -590,10 +634,12 @@ model Payment {
   collectedById String?
   collectedBy  String?
   remarks      String?
+  @@unique([schoolId, receiptNo])
 }
 
 model Expense {
   id            String   @id @default(cuid())
+  schoolId         String?
   title         String
   category      String // SALARIES|UTILITIES|MAINTENANCE|SUPPLIES|TRANSPORT|EVENTS|OTHER
   amount        Float
@@ -610,6 +656,7 @@ model Expense {
 
 model Budget {
   id             String @id @default(cuid())
+  schoolId         String?
   name           String
   category       String
   academicYearId String?
@@ -620,6 +667,7 @@ model Budget {
 
 model Discount {
   id        String  @id @default(cuid())
+  schoolId         String?
   name      String
   type      String  @default("PERCENT") // PERCENT|FIXED
   value     Float
@@ -633,6 +681,7 @@ model Discount {
 
 model PayrollRun {
   id          String   @id @default(cuid())
+  schoolId         String?
   month       Int
   year        Int
   status      String   @default("DRAFT") // DRAFT|PROCESSED|PAID
@@ -642,11 +691,12 @@ model PayrollRun {
   processedAt DateTime?
   createdAt   DateTime @default(now())
 
-  @@unique([month, year])
+  @@unique([schoolId, month, year])
 }
 
 model Payslip {
   id           String @id @default(cuid())
+  schoolId         String?
   payrollRunId String
   employeeId   String
   basic        Float
@@ -663,6 +713,7 @@ model Payslip {
 
 model PerformanceReview {
   id           String   @id @default(cuid())
+  schoolId         String?
   employeeId   String
   employeeName String?
   period       String // 2025 H1
@@ -681,6 +732,7 @@ model PerformanceReview {
 
 model Lead {
   id              String   @id @default(cuid())
+  schoolId         String?
   name            String
   email           String?
   phone           String
@@ -698,6 +750,7 @@ model Lead {
 
 model LeadFollowUp {
   id        String   @id @default(cuid())
+  schoolId         String?
   leadId    String
   note      String
   outcome   String   @default("FOLLOW_UP") // INTERESTED|NOT_INTERESTED|FOLLOW_UP|NO_RESPONSE|ENROLLED
@@ -709,7 +762,8 @@ model LeadFollowUp {
 
 model Application {
   id             String   @id @default(cuid())
-  applicationNo  String   @unique
+  schoolId         String?
+  applicationNo  String
   leadId         String?
   studentName    String
   dob            DateTime?
@@ -732,10 +786,12 @@ model Application {
   remarks        String?
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
+  @@unique([schoolId, applicationNo])
 }
 
 model Campaign {
   id         String   @id @default(cuid())
+  schoolId         String?
   name       String
   source     String
   budget     Float    @default(0)
@@ -751,6 +807,7 @@ model Campaign {
 
 model Vehicle {
   id              String  @id @default(cuid())
+  schoolId         String?
   regNo           String  @unique
   model           String
   capacity        Int
@@ -773,6 +830,7 @@ model Vehicle {
 
 model Route {
   id         String  @id @default(cuid())
+  schoolId         String?
   name       String
   vehicleId  String?
   vehicle    Vehicle? @relation(fields: [vehicleId], references: [id])
@@ -785,6 +843,7 @@ model Route {
 
 model Stop {
   id         String  @id @default(cuid())
+  schoolId         String?
   routeId    String
   route      Route   @relation(fields: [routeId], references: [id])
   name       String
@@ -798,6 +857,7 @@ model Stop {
 
 model TransportAllocation {
   id        String  @id @default(cuid())
+  schoolId         String?
   studentId String
   routeId   String
   route     Route?  @relation("TransportAllocationRoute", fields: [routeId], references: [id])
@@ -813,6 +873,7 @@ model TransportAllocation {
 
 model Hostel {
   id        String  @id @default(cuid())
+  schoolId         String?
   name      String
   type      String  @default("BOYS") // BOYS|GIRLS|JUNIOR
   wardenId  String?
@@ -824,6 +885,7 @@ model Hostel {
 
 model Room {
   id        String  @id @default(cuid())
+  schoolId         String?
   hostelId  String
   hostel    Hostel  @relation(fields: [hostelId], references: [id])
   roomNo    String
@@ -838,6 +900,7 @@ model Room {
 
 model Bed {
   id        String  @id @default(cuid())
+  schoolId         String?
   roomId    String
   room      Room    @relation(fields: [roomId], references: [id])
   bedNo     String
@@ -849,6 +912,7 @@ model Bed {
 
 model HostelAllocation {
   id           String    @id @default(cuid())
+  schoolId         String?
   bedId        String
   bed          Bed?      @relation(fields: [bedId], references: [id])
   studentId    String
@@ -863,6 +927,7 @@ model HostelAllocation {
 
 model Visitor {
   id           String    @id @default(cuid())
+  schoolId         String?
   name         String
   phone        String
   idProof      String?
@@ -880,6 +945,7 @@ model Visitor {
 
 model PickupLog {
   id        String   @id @default(cuid())
+  schoolId         String?
   studentId String
   personName String
   relation  String?
@@ -892,6 +958,7 @@ model PickupLog {
 
 model SecurityAlert {
   id          String    @id @default(cuid())
+  schoolId         String?
   type        String // INTRUSION|FIGHT|MEDICAL|FIRE|THEFT|LOST_ITEM|OTHER
   description String
   severity    String    @default("MEDIUM") // LOW|MEDIUM|HIGH|CRITICAL
@@ -908,6 +975,7 @@ model SecurityAlert {
 
 model HealthRecord {
   id               String  @id @default(cuid())
+  schoolId         String?
   studentId        String  @unique
   bloodGroup       String?
   heightCm         Float?
@@ -925,6 +993,7 @@ model HealthRecord {
 
 model ClinicVisit {
   id             String   @id @default(cuid())
+  schoolId         String?
   studentId      String
   date           DateTime @default(now())
   reason         String
@@ -943,6 +1012,7 @@ model ClinicVisit {
 
 model Vaccination {
   id          String   @id @default(cuid())
+  schoolId         String?
   studentId   String
   vaccine     String
   dose        String   @default("1st")
@@ -956,6 +1026,7 @@ model Vaccination {
 
 model Book {
   id             String  @id @default(cuid())
+  schoolId         String?
   title          String
   author         String
   isbn           String? @unique
@@ -978,6 +1049,7 @@ model Book {
 
 model LibraryTransaction {
   id         String    @id @default(cuid())
+  schoolId         String?
   bookId     String
   bookTitle  String?
   userType   String    @default("STUDENT") // STUDENT|EMPLOYEE
@@ -996,6 +1068,7 @@ model LibraryTransaction {
 
 model BookReservation {
   id        String    @id @default(cuid())
+  schoolId         String?
   bookId    String
   userType  String    @default("STUDENT")
   userId    String
@@ -1009,7 +1082,8 @@ model BookReservation {
 
 model Asset {
   id             String    @id @default(cuid())
-  assetTag       String    @unique
+  schoolId         String?
+  assetTag       String
   name           String
   category       String // CLASSROOM|LAB|SPORTS|IT|FURNITURE|SMART_BOARD|DEVICE|VEHICLE|OTHER
   purchaseDate   DateTime?
@@ -1025,10 +1099,12 @@ model Asset {
   condition      String    @default("GOOD") // NEW|GOOD|WORN|NEEDS_REPAIR
   barcode        String?   @unique
   notes          String?
+  @@unique([schoolId, assetTag])
 }
 
 model AssetTransfer {
   id        String   @id @default(cuid())
+  schoolId         String?
   assetId   String
   fromType  String?
   fromName  String?
@@ -1044,6 +1120,7 @@ model AssetTransfer {
 
 model Event {
   id                  String   @id @default(cuid())
+  schoolId         String?
   title               String
   type                String   @default("EVENT") // EVENT|HOLIDAY|EXAM|MEETING|SPORTS|TRIP|ANNUAL_DAY
   description         String?
@@ -1061,6 +1138,7 @@ model Event {
 
 model EventRegistration {
   id        String   @id @default(cuid())
+  schoolId         String?
   eventId   String
   userType  String   @default("STUDENT")
   userId    String
@@ -1073,6 +1151,7 @@ model EventRegistration {
 
 model Message {
   id         String    @id @default(cuid())
+  schoolId         String?
   threadId   String
   fromUserId String
   fromName   String
@@ -1091,6 +1170,7 @@ model Message {
 
 model Announcement {
   id           String   @id @default(cuid())
+  schoolId         String?
   title        String
   body         String
   type         String   @default("ANNOUNCEMENT") // ANNOUNCEMENT|CIRCULAR|EMERGENCY|EVENT|REMINDER
@@ -1107,6 +1187,7 @@ model Announcement {
 
 model CertificateRequest {
   id            String    @id @default(cuid())
+  schoolId         String?
   studentId     String
   type          String // TRANSFER|BONAFIDE|STUDY|CONDUCT|CHARACTER|TRANSCRIPT|BIRTH|REPORT_CARD
   purpose       String
@@ -1124,20 +1205,23 @@ model CertificateRequest {
 
 model Certificate {
   id            String   @id @default(cuid())
+  schoolId         String?
   requestId     String?
   studentId     String
   type          String
-  certificateNo String   @unique
+  certificateNo String
   title         String
   contentJson   String? // data for template
   verifyCode    String   @unique
   issuedById    String?
   issuedBy      String?
   issuedAt      DateTime @default(now())
+  @@unique([schoolId, certificateNo])
 }
 
 model Complaint {
   id          String    @id @default(cuid())
+  schoolId         String?
   category    String    @default("GENERAL") // HOSTEL|TRANSPORT|ACADEMICS|FOOD|GENERAL
   studentId   String?
   raisedById  String

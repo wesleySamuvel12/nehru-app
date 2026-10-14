@@ -22,7 +22,7 @@ export function makeEmployeeConfig(extra?: Partial<CrudConfig>): CrudConfig {
         const count = await db.employee.count()
         let n = count + 1
         let candidate = `EMP${String(n).padStart(4, '0')}`
-        while (await db.employee.findUnique({ where: { employeeNo: candidate }, select: { id: true } })) {
+        while (await db.employee.findFirst({ where: { employeeNo: candidate }, select: { id: true } })) {
           n++
           candidate = `EMP${String(n).padStart(4, '0')}`
         }

@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
-import { verifyPassword, signSession, SESSION_COOKIE, Session } from '@/lib/auth'
+import { verifyPassword, signSession, SESSION_COOKIE, Session, getSessionCookieOptions } from '@/lib/auth'
 import { audit } from '@/lib/audit'
-import { can } from '@/lib/rbac'
+import { can, normalizeRole } from '@/lib/rbac'
 import { getRoleLandingModule } from '@/role'
 
 const MAX_ATTEMPTS = 5
@@ -47,6 +47,8 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: `Account temporarily locked. Try again in ${mins} minute(s).` }, { status: 423 })
     }
 
+    const userRole = normalizeRole(user.role)
+
     // Optional Role Selector validation against user's actual registered role
     if (selectedLoginType && selectedLoginType !== 'Auto') {
       const roleMap: Record<string, string[]> = {
@@ -59,8 +61,8 @@ export async function POST(req: NextRequest) {
         'School Admin': ['SCHOOL_ADMIN'],
       }
       const allowedRoles = roleMap[selectedLoginType]
-      if (allowedRoles && !allowedRoles.includes(user.role)) {
-        await failLog(`Role mismatch (${selectedLoginType} vs ${user.role})`)
+      if (allowedRoles && !allowedRoles.includes(userRole)) {
+        await failLog(`Role mismatch (${selectedLoginType} vs ${userRole})`)
         return NextResponse.json({
           error: `These credentials are not registered as a ${selectedLoginType} account.`,
         }, { status: 403 })
@@ -89,23 +91,44 @@ export async function POST(req: NextRequest) {
       }, { status: 401 })
     }
 
-    const session: Session = {
-      sub: user.id, name: user.name, email: user.email, role: user.role,
-      studentId: user.linkedStudentId, parentId: user.linkedParentId, employeeId: user.linkedEmployeeId,
+    // Resolve school membership reliably from server database (never trust client input)
+    let defaultSchoolId: string | null = null
+    let defaultSchoolCode: string | null = null
+    try {
+      const schoolRecord = await db.school.findFirst({
+        where: { isMaster: true },
+        select: { id: true, code: true },
+      }) ?? await db.school.findFirst({ select: { id: true, code: true } })
+      if (schoolRecord) {
+        defaultSchoolId = schoolRecord.id
+        defaultSchoolCode = schoolRecord.code
+      }
+    } catch (err) {
+      console.error('[login school resolution error]', err)
     }
-    const token = await signSession(session)
+
+    const session: Session = {
+      sub: user.id,
+      name: user.name,
+      email: user.email,
+      role: userRole,
+      studentId: user.linkedStudentId,
+      parentId: user.linkedParentId,
+      employeeId: user.linkedEmployeeId,
+      schoolId: defaultSchoolId,
+      schoolCode: defaultSchoolCode,
+    }
+    const token = await signSession(session, remember ? '7d' : '24h')
     try {
       await db.user.update({ where: { id: user.id }, data: { failedAttempts: 0, lockedUntil: null, lastLoginAt: new Date() } })
       await db.loginLog.create({ data: { email: normalizedEmail, userId: user.id, success: true, ip, userAgent } })
-      await audit({ userId: user.id, userName: user.name, userRole: user.role, action: 'LOGIN', entity: 'Auth', entityId: user.id, ip })
+      await audit({ userId: user.id, userName: user.name, userRole: userRole, action: 'LOGIN', entity: 'Auth', entityId: user.id, ip })
     } catch (err) {
       console.error('[login success logging error]', err)
     }
 
     const res = NextResponse.json({ data: session, token, defaultModule: defaultModuleFor(session) })
-    res.cookies.set(SESSION_COOKIE, token, {
-      httpOnly: true, sameSite: 'lax', path: '/', maxAge: remember ? 7 * 24 * 3600 : 24 * 3600, secure: process.env.NODE_ENV === 'production',
-    })
+    res.cookies.set(SESSION_COOKIE, token, getSessionCookieOptions(Boolean(remember)))
     return res
   } catch (e) {
     console.error('[login server error]', e)

@@ -3,6 +3,7 @@ import { db } from '@/lib/db'
 import { requireAuth } from '@/lib/auth'
 import { can } from '@/lib/rbac'
 import { json, err } from '@/lib/crud'
+import { resolveTenantContext } from '@/lib/tenant'
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
@@ -11,6 +12,11 @@ export async function GET(req: NextRequest) {
   const session = await requireAuth(req)
   if (!session) return err(401, 'Please sign in to continue.')
   if (!can(session.role, 'analytics')) return err(403, 'You do not have permission to view analytics.')
+
+  const tenantRes = await resolveTenantContext(req, session, { allowAllSchoolsForSuperAdmin: true })
+  if (tenantRes.error) return tenantRes.error
+  const tenant = tenantRes.context
+  const schoolWhere = tenant.schoolId ? { schoolId: tenant.schoolId } : {}
 
   try {
     const sp = req.nextUrl.searchParams
@@ -38,31 +44,32 @@ export async function GET(req: NextRequest) {
       payments, expenses, invoices, leads, applications,
       employees, payrollRuns,
     ] = await Promise.all([
-      db.class.findMany({ orderBy: { level: 'asc' } }),
-      db.student.findMany({ where: { status: 'ACTIVE' }, select: { id: true, firstName: true, lastName: true, classId: true } }),
-      db.subject.findMany({ select: { id: true, name: true, classId: true } }),
-      db.gradeConfig.findMany({ orderBy: { minPercent: 'desc' } }),
-      db.exam.findMany({ select: { id: true, name: true, status: true, resultPublished: true } }),
-      db.mark.findMany({ select: { examId: true, studentId: true, subjectId: true, marksObtained: true, maxMarks: true, isAbsent: true } }),
+      db.class.findMany({ where: schoolWhere, orderBy: { level: 'asc' } }),
+      db.student.findMany({ where: { ...schoolWhere, status: 'ACTIVE' }, select: { id: true, firstName: true, lastName: true, classId: true } }),
+      db.subject.findMany({ where: schoolWhere, select: { id: true, name: true, classId: true } }),
+      db.gradeConfig.findMany({ where: schoolWhere, orderBy: { minPercent: 'desc' } }),
+      db.exam.findMany({ where: schoolWhere, select: { id: true, name: true, status: true, resultPublished: true } }),
+      db.mark.findMany({ where: schoolWhere, select: { examId: true, studentId: true, subjectId: true, marksObtained: true, maxMarks: true, isAbsent: true } }),
       db.attendance.findMany({
         where: {
+          ...schoolWhere,
           ...(from || to ? { date: { ...(from ? { gte: from } : {}), ...(to ? { lte: to } : {}) } } : {}),
         },
         select: { studentId: true, classId: true, date: true, status: true },
       }),
       db.employeeAttendance.findMany({
-        where: { date: { gte: new Date(Date.now() - 30 * 86400000) } },
+        where: { ...schoolWhere, date: { gte: new Date(Date.now() - 30 * 86400000) } },
         select: { status: true },
       }),
-      db.payslip.findMany({ select: { payrollRunId: true, netPay: true } }).catch(() => null),
-      db.performanceReview.findMany({ where: { score: { not: null } }, select: { score: true } }),
-      db.payment.findMany({ where: { status: 'SUCCESS' }, select: { amount: true, paidAt: true } }),
-      db.expense.findMany({ where: { status: { in: ['APPROVED', 'PAID'] } }, select: { amount: true, date: true } }),
-      db.feeInvoice.groupBy({ by: ['status'], _sum: { totalAmount: true, paidAmount: true, discount: true }, _count: true }),
-      db.lead.groupBy({ by: ['stage'], _count: true }),
-      db.application.findMany({ select: { createdAt: true } }),
-      db.employee.findMany({ where: { status: 'ACTIVE' }, select: { id: true } }),
-      db.payrollRun.findMany({ select: { month: true, year: true, totalAmount: true, status: true } }),
+      db.payslip.findMany({ where: schoolWhere, select: { payrollRunId: true, netPay: true } }).catch(() => null),
+      db.performanceReview.findMany({ where: { ...schoolWhere, score: { not: null } }, select: { score: true } }),
+      db.payment.findMany({ where: { ...schoolWhere, status: 'SUCCESS' }, select: { amount: true, paidAt: true } }),
+      db.expense.findMany({ where: { ...schoolWhere, status: { in: ['APPROVED', 'PAID'] } }, select: { amount: true, date: true } }),
+      db.feeInvoice.groupBy({ by: ['status'], where: schoolWhere, _sum: { totalAmount: true, paidAmount: true, discount: true }, _count: true }),
+      db.lead.groupBy({ by: ['stage'], where: schoolWhere, _count: true }),
+      db.application.findMany({ where: schoolWhere, select: { createdAt: true } }),
+      db.employee.findMany({ where: { ...schoolWhere, status: 'ACTIVE' }, select: { id: true } }),
+      db.payrollRun.findMany({ where: schoolWhere, select: { month: true, year: true, totalAmount: true, status: true } }),
     ])
 
     const classNameOf = new Map(classes.map((c: any) => [c.id, c.name]))
@@ -212,7 +219,7 @@ export async function GET(req: NextRequest) {
       .map(s => ({ stage: s, count: leadStageCounts.get(s) || 0 }))
       .concat(leads.filter((l: any) => !STAGE_ORDER.includes(l.stage)).map((l: any) => ({ stage: l.stage, count: l._count })))
 
-    const leadSources = await db.lead.groupBy({ by: ['source'], _count: true })
+    const leadSources = await db.lead.groupBy({ by: ['source'], where: schoolWhere, _count: true })
     const sourceSplit = leadSources.map((l: any) => ({ source: l.source, count: l._count }))
 
     const appsByMonth = new Map<string, number>(months6.map(m => [m, 0]))
