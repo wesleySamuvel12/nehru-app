@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import path from 'node:path'
 import { createJiti } from 'jiti'
 
-const rootDir = '/Users/dhanalingaml/Desktop/nehru-app-1'
+const rootDir = process.cwd()
 const jiti = createJiti(import.meta.url, {
   jsx: true,
   alias: {
@@ -22,22 +22,22 @@ async function runTests() {
     getSessionCookieOptions,
     verifyPassword,
     hashPassword,
-  } = await jiti.import(path.join(rootDir, 'src/lib/auth.ts'))
+  } = (await jiti.import(path.join(rootDir, 'src/lib/auth.ts'))) as any
 
   const {
     normalizeRole,
     can,
     ROLE_LABELS,
     ROLES,
-  } = await jiti.import(path.join(rootDir, 'src/lib/rbac.ts'))
+  } = (await jiti.import(path.join(rootDir, 'src/lib/rbac.ts'))) as any
 
   const {
     getRoleDefinition,
     getRoleLandingModule,
-  } = await jiti.import(path.join(rootDir, 'src/role/index.ts'))
+  } = (await jiti.import(path.join(rootDir, 'src/role/index.ts'))) as any
 
-  const { POST: loginHandler } = await jiti.import(path.join(rootDir, 'src/app/api/auth/login/route.ts'))
-  const { POST: logoutHandler } = await jiti.import(path.join(rootDir, 'src/app/api/auth/logout/route.ts'))
+  const { POST: loginHandler } = (await jiti.import(path.join(rootDir, 'src/app/api/auth/login/route.ts'))) as any
+  const { POST: logoutHandler } = (await jiti.import(path.join(rootDir, 'src/app/api/auth/logout/route.ts'))) as any
 
   let passed = 0
 
@@ -48,7 +48,7 @@ async function runTests() {
   const originalEnv = { ...process.env }
 
   // 1a: Production without secret throws
-  process.env.NODE_ENV = 'production'
+  ;(process.env as any).NODE_ENV = 'production'
   delete process.env.AUTH_SECRET
   assert.throws(
     () => getAuthSecret(),
@@ -71,7 +71,7 @@ async function runTests() {
   assert.ok(validSecret.length >= 32, 'Secret bytes length should be >= 32')
 
   // 1d: Restore dev environment
-  process.env.NODE_ENV = 'development'
+  ;(process.env as any).NODE_ENV = 'development'
   process.env.AUTH_SECRET = 'nehru-erp-dev-secret-key-min-32-chars-long-2026'
   console.log('  ✓ Secret validation correctly fails in production and succeeds with valid key')
   passed++

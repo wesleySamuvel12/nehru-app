@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import path from 'node:path'
 import { createJiti } from 'jiti'
 
-const rootDir = '/Users/dhanalingaml/Desktop/nehru-app-1'
+const rootDir = process.cwd()
 const jiti = createJiti(import.meta.url, {
   jsx: true,
   alias: {
@@ -17,18 +17,18 @@ async function runTests() {
   console.log(' Phase 4: SQLite Multi-Tenant Isolation Test Suite')
   console.log('====================================================\n')
 
-  const { db } = await jiti.import(path.join(rootDir, 'src/lib/db.ts'))
-  const { signSession, Session } = await jiti.import(path.join(rootDir, 'src/lib/auth.ts'))
-  const { NextRequest } = await import('next/server')
+  const { db } = (await jiti.import(path.join(rootDir, 'src/lib/db.ts'))) as any
+  const { signSession } = (await jiti.import(path.join(rootDir, 'src/lib/auth.ts'))) as any
+  const { NextRequest } = (await import('next/server')) as any
 
   // Import API handlers
-  const studentsRoute = await jiti.import(path.join(rootDir, 'src/app/api/students/route.ts'))
-  const studentDetailRoute = await jiti.import(path.join(rootDir, 'src/app/api/students/[id]/route.ts'))
-  const invoicesRoute = await jiti.import(path.join(rootDir, 'src/app/api/fees/invoices/route.ts'))
-  const attendanceBulkRoute = await jiti.import(path.join(rootDir, 'src/app/api/attendance/bulk/route.ts'))
-  const dashboardRoute = await jiti.import(path.join(rootDir, 'src/app/api/dashboard/route.ts'))
-  const searchRoute = await jiti.import(path.join(rootDir, 'src/app/api/search/route.ts'))
-  const exportRoute = await jiti.import(path.join(rootDir, 'src/app/api/export/route.ts'))
+  const studentsRoute: any = await jiti.import(path.join(rootDir, 'src/app/api/students/route.ts'))
+  const studentDetailRoute: any = await jiti.import(path.join(rootDir, 'src/app/api/students/[id]/route.ts'))
+  const invoicesRoute: any = await jiti.import(path.join(rootDir, 'src/app/api/fees/invoices/route.ts'))
+  const attendanceBulkRoute: any = await jiti.import(path.join(rootDir, 'src/app/api/attendance/bulk/route.ts'))
+  const dashboardRoute: any = await jiti.import(path.join(rootDir, 'src/app/api/dashboard/route.ts'))
+  const searchRoute: any = await jiti.import(path.join(rootDir, 'src/app/api/search/route.ts'))
+  const exportRoute: any = await jiti.import(path.join(rootDir, 'src/app/api/export/route.ts'))
 
   // 1. Fetch schools
   const schoolA = await db.school.findFirst({ where: { isMaster: true } })
@@ -41,7 +41,7 @@ async function runTests() {
   console.log(`- School B: ${schoolB.name} (${schoolB.id}, ${schoolB.code})\n`)
 
   // Prepare test sessions
-  const sessionSchoolA: typeof Session = {
+  const sessionSchoolA: any = {
     sub: 'user-school-a',
     name: 'Admin School A',
     email: 'admin-a@test.com',
@@ -51,7 +51,7 @@ async function runTests() {
   }
   const tokenA = await signSession(sessionSchoolA)
 
-  const sessionSchoolB: typeof Session = {
+  const sessionSchoolB: any = {
     sub: 'user-school-b',
     name: 'Admin School B',
     email: 'admin-b@test.com',
@@ -61,7 +61,7 @@ async function runTests() {
   }
   const tokenB = await signSession(sessionSchoolB)
 
-  const sessionSuperAdmin: typeof Session = {
+  const sessionSuperAdmin: any = {
     sub: 'user-super-admin',
     name: 'Global Super Admin',
     email: 'superadmin@test.com',

@@ -43,6 +43,18 @@ function setupDatabaseUrl(): string | undefined {
     }
   }
 
+  // Local development: resolve absolute path to custom.db
+  const localCandidates = [
+    path.join(process.cwd(), 'db', 'custom.db'),
+    path.join(process.cwd(), '..', 'db', 'custom.db'),
+    path.join(__dirname, '..', '..', '..', 'db', 'custom.db'),
+  ]
+  for (const candidate of localCandidates) {
+    if (fs.existsSync(candidate)) {
+      return `file:${candidate.replace(/\\/g, '/')}`
+    }
+  }
+
   return process.env.DATABASE_URL
 }
 
@@ -53,13 +65,18 @@ if (resolvedUrl) {
 
 const globalForPrisma = globalThis as unknown as {
   prisma: PrismaClient | undefined
+  prismaUrl: string | undefined
 }
 
 export const db =
-  globalForPrisma.prisma ??
-  new PrismaClient({
-    log: ['query'],
-    ...(resolvedUrl ? { datasources: { db: { url: resolvedUrl } } } : {}),
-  })
+  (globalForPrisma.prisma && globalForPrisma.prismaUrl === resolvedUrl)
+    ? globalForPrisma.prisma
+    : new PrismaClient({
+        log: ['query'],
+        ...(resolvedUrl ? { datasources: { db: { url: resolvedUrl } } } : {}),
+      })
 
-if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = db
+if (process.env.NODE_ENV !== 'production') {
+  globalForPrisma.prisma = db
+  globalForPrisma.prismaUrl = resolvedUrl
+}
