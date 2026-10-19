@@ -198,33 +198,55 @@ async function runTests() {
   // --------------------------------------------------------------------------
   console.log('[Test 5] Login Regression & Database School Context...')
 
-  // 5a: Successful login with seed admin credentials
-  const fakeLoginReq = {
-    json: async () => ({
-      email: 'admin@nis.edu.in',
-      password: 'demo1234',
-    }),
-    headers: new Headers({
-      'user-agent': 'TestRunner/1.0',
-      'x-forwarded-for': '127.0.0.1',
-    }),
-  } as any
+  // 5a: Successful login with all 14 seed sample credentials
+  const SAMPLE_LOGINS = [
+    { role: 'SUPER_ADMIN', email: 'admin@nis.edu.in' },
+    { role: 'SCHOOL_ADMIN', email: 'schooladmin@nis.edu.in' },
+    { role: 'PRINCIPAL', email: 'principal@nis.edu.in' },
+    { role: 'TEACHER', email: 'teacher@nis.edu.in' },
+    { role: 'ACCOUNTANT', email: 'accounts@nis.edu.in' },
+    { role: 'HR', email: 'hr@nis.edu.in' },
+    { role: 'COUNSELLOR', email: 'counsellor@nis.edu.in' },
+    { role: 'LIBRARIAN', email: 'librarian@nis.edu.in' },
+    { role: 'TRANSPORT', email: 'transport@nis.edu.in' },
+    { role: 'WARDEN', email: 'warden@nis.edu.in' },
+    { role: 'NURSE', email: 'nurse@nis.edu.in' },
+    { role: 'SECURITY', email: 'security@nis.edu.in' },
+    { role: 'PARENT', email: 'parent@nis.edu.in' },
+    { role: 'STUDENT', email: 'student@nis.edu.in' },
+  ]
 
-  const loginRes = await loginHandler(fakeLoginReq)
-  assert.equal(loginRes.status, 200, 'Login should succeed with status 200')
-  const loginBody = await loginRes.json()
+  let lastIssuedToken = ''
+  for (const sample of SAMPLE_LOGINS) {
+    const fakeLoginReq = {
+      json: async () => ({
+        email: sample.email,
+        password: 'demo1234',
+      }),
+      headers: new Headers({
+        'user-agent': 'TestRunner/1.0',
+        'x-forwarded-for': '127.0.0.1',
+      }),
+    } as any
 
-  assert.ok(loginBody.data, 'Login response should contain session data')
-  assert.equal(loginBody.data.email, 'admin@nis.edu.in')
-  assert.equal(loginBody.data.role, 'SUPER_ADMIN')
-  assert.ok(loginBody.data.schoolId, 'Login session MUST contain database-resolved schoolId')
-  assert.ok(loginBody.data.schoolCode, 'Login session MUST contain database-resolved schoolCode')
-  assert.ok(loginBody.token, 'Login response should include JWT token')
+    const loginRes = await loginHandler(fakeLoginReq)
+    assert.equal(loginRes.status, 200, `Login for sample ${sample.email} should succeed with status 200`)
+    const loginBody = await loginRes.json()
 
-  // Verify the issued JWT contains the resolved school context
-  const decodedIssuedToken = await verifySessionToken(loginBody.token)
-  assert.equal(decodedIssuedToken?.schoolId, loginBody.data.schoolId)
-  assert.equal(decodedIssuedToken?.role, 'SUPER_ADMIN')
+    assert.ok(loginBody.data, `Login response for ${sample.email} should contain session data`)
+    assert.equal(loginBody.data.email, sample.email)
+    assert.equal(loginBody.data.role, sample.role)
+    assert.ok(loginBody.data.schoolId, `Login session for ${sample.email} MUST contain database-resolved schoolId`)
+    assert.ok(loginBody.data.schoolCode, `Login session for ${sample.email} MUST contain database-resolved schoolCode`)
+    assert.ok(loginBody.token, `Login response for ${sample.email} should include JWT token`)
+
+    // Verify the issued JWT contains the resolved school context and matching role
+    const decodedIssuedToken = await verifySessionToken(loginBody.token)
+    assert.equal(decodedIssuedToken?.schoolId, loginBody.data.schoolId)
+    assert.equal(decodedIssuedToken?.role, sample.role)
+    lastIssuedToken = loginBody.token
+  }
+  console.log(`  ✓ Verified all ${SAMPLE_LOGINS.length} sample logins authenticate successfully with valid session and school context`)
 
   // 5b: Failed login with invalid password
   const fakeBadReq = {
@@ -244,7 +266,7 @@ async function runTests() {
 
   // 5c: Logout clears cookie securely
   const fakeLogoutReq = {
-    cookies: new Map([['erp_session', { value: loginBody.token }]]),
+    cookies: new Map([['erp_session', { value: lastIssuedToken }]]),
     headers: new Headers(),
   } as any
   const logoutRes = await logoutHandler(fakeLogoutReq)

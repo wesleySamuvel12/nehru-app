@@ -80,3 +80,13 @@ if (process.env.NODE_ENV !== 'production') {
   globalForPrisma.prisma = db
   globalForPrisma.prismaUrl = resolvedUrl
 }
+
+/**
+ * Case-insensitive substring filter that works across providers.
+ * SQLite's LIKE is already case-insensitive (ASCII) and rejects Prisma's `mode`;
+ * PostgreSQL requires `mode: 'insensitive'`.
+ */
+export function containsText(q: string): any {
+  const url = process.env.DATABASE_URL || ''
+  return url.startsWith('file:') ? { contains: q } : { contains: q, mode: 'insensitive' }
+}

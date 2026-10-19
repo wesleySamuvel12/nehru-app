@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { db } from '@/lib/db'
+import { db, containsText } from '@/lib/db'
 import { requireAuth } from '@/lib/auth'
 import { resolveTenantContext } from '@/lib/tenant'
 
@@ -22,8 +22,8 @@ export async function GET(req: NextRequest) {
         where: {
           ...schoolWhere,
           OR: [
-            { firstName: { contains: q, mode: 'insensitive' } }, { lastName: { contains: q, mode: 'insensitive' } },
-            { admissionNo: { contains: q, mode: 'insensitive' } }, { phone: { contains: q, mode: 'insensitive' } }, { email: { contains: q, mode: 'insensitive' } }, { barcode: { contains: q, mode: 'insensitive' } },
+            { firstName: containsText(q) }, { lastName: containsText(q) },
+            { admissionNo: containsText(q) }, { phone: containsText(q) }, { email: containsText(q) }, { barcode: containsText(q) },
           ],
         },
         include: { klass: true, section: true },
@@ -32,56 +32,56 @@ export async function GET(req: NextRequest) {
       db.parent.findMany({
         where: {
           ...schoolWhere,
-          OR: [{ name: { contains: q, mode: 'insensitive' } }, { phone: { contains: q, mode: 'insensitive' } }, { email: { contains: q, mode: 'insensitive' } }],
+          OR: [{ name: containsText(q) }, { phone: containsText(q) }, { email: containsText(q) }],
         },
         take: 5,
       }),
       db.employee.findMany({
         where: {
           ...schoolWhere,
-          OR: [{ firstName: { contains: q, mode: 'insensitive' } }, { lastName: { contains: q, mode: 'insensitive' } }, { employeeNo: { contains: q, mode: 'insensitive' } }, { phone: { contains: q, mode: 'insensitive' } }],
+          OR: [{ firstName: containsText(q) }, { lastName: containsText(q) }, { employeeNo: containsText(q) }, { phone: containsText(q) }],
         },
         take: 5,
       }),
       db.application.findMany({
         where: {
           ...schoolWhere,
-          OR: [{ studentName: { contains: q, mode: 'insensitive' } }, { applicationNo: { contains: q, mode: 'insensitive' } }, { parentPhone: { contains: q, mode: 'insensitive' } }],
+          OR: [{ studentName: containsText(q) }, { applicationNo: containsText(q) }, { parentPhone: containsText(q) }],
         },
         take: 5,
       }),
       db.feeInvoice.findMany({
         where: {
           ...schoolWhere,
-          OR: [{ invoiceNo: { contains: q, mode: 'insensitive' } }, { title: { contains: q, mode: 'insensitive' } }],
+          OR: [{ invoiceNo: containsText(q) }, { title: containsText(q) }],
         },
         take: 5,
       }),
       db.book.findMany({
         where: {
           ...schoolWhere,
-          OR: [{ title: { contains: q, mode: 'insensitive' } }, { author: { contains: q, mode: 'insensitive' } }, { isbn: { contains: q, mode: 'insensitive' } }],
+          OR: [{ title: containsText(q) }, { author: containsText(q) }, { isbn: containsText(q) }],
         },
         take: 5,
       }),
       db.asset.findMany({
         where: {
           ...schoolWhere,
-          OR: [{ name: { contains: q, mode: 'insensitive' } }, { assetTag: { contains: q, mode: 'insensitive' } }],
+          OR: [{ name: containsText(q) }, { assetTag: containsText(q) }],
         },
         take: 5,
       }),
       db.visitor.findMany({
         where: {
           ...schoolWhere,
-          OR: [{ name: { contains: q, mode: 'insensitive' } }, { phone: { contains: q, mode: 'insensitive' } }, { passNo: { contains: q, mode: 'insensitive' } }],
+          OR: [{ name: containsText(q) }, { phone: containsText(q) }, { passNo: containsText(q) }],
         },
         take: 5,
       }),
       db.certificate.findMany({
         where: {
           ...schoolWhere,
-          OR: [{ certificateNo: { contains: q, mode: 'insensitive' } }, { title: { contains: q, mode: 'insensitive' } }, { verifyCode: { contains: q, mode: 'insensitive' } }],
+          OR: [{ certificateNo: containsText(q) }, { title: containsText(q) }, { verifyCode: containsText(q) }],
         },
         take: 5,
       }),

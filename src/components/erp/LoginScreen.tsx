@@ -14,7 +14,7 @@ import {
   Lock, Mail, Loader2, ShieldCheck, ArrowRight, Eye, EyeOff,
   CheckCircle2, Sparkles, KeyRound, Crown, ShieldAlert, BookOpen,
   Briefcase, HeartHandshake, GraduationCap, Users, Heart, Library,
-  Bus, Home, Stethoscope, Layers, Search
+  Bus, Home, Stethoscope, Layers, Search, Copy, Check, Zap
 } from 'lucide-react'
 
 const QUICK_ACCOUNTS = [
@@ -47,6 +47,7 @@ export function LoginScreen({ onLogin }: { onLogin: (s: Session, defaultModule: 
   const [error, setError] = React.useState<string | null>(null)
   const [errorField, setErrorField] = React.useState<'email' | 'password' | null>(null)
   const [shake, setShake] = React.useState(0)
+  const [copiedEmail, setCopiedEmail] = React.useState<string | null>(null)
 
   // Quick Access Category and Search Filter
   const [activeCategory, setActiveCategory] = React.useState<'All' | 'Admin' | 'Staff' | 'Portals'>('All')
@@ -110,6 +111,20 @@ export function LoginScreen({ onLogin }: { onLogin: (s: Session, defaultModule: 
       setErrorField(/password/i.test(msg) ? 'password' : /email/i.test(msg) ? 'email' : null)
       setShake(s => s + 1)
     }
+  }
+
+  const handleFillSample = (accEmail: string, accPw = 'demo1234') => {
+    setEmail(accEmail)
+    setPassword(accPw)
+    setError(null)
+    setErrorField(null)
+  }
+
+  const handleCopyEmail = (e: React.MouseEvent, accEmail: string) => {
+    e.stopPropagation()
+    navigator.clipboard?.writeText(accEmail)
+    setCopiedEmail(accEmail)
+    setTimeout(() => setCopiedEmail(null), 2000)
   }
 
   const handleQuickLogin = (accEmail: string) => {
@@ -183,18 +198,115 @@ export function LoginScreen({ onLogin }: { onLogin: (s: Session, defaultModule: 
 
           {/* Form */}
           <form onSubmit={submit} className="relative z-10 space-y-4" noValidate>
+            {/* Quick Sample Selector Bar */}
+            <div className="rounded-2xl border border-sky-500/25 bg-sky-950/40 p-3 backdrop-blur-md transition-all duration-200">
+              <div className="mb-2 flex items-center justify-between gap-2">
+                <div className="flex items-center gap-1.5 text-xs font-semibold text-sky-300">
+                  <Sparkles className="h-3.5 w-3.5 text-amber-400" />
+                  <span>Sample Login Quick Fill</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <span className="rounded-md border border-white/10 bg-slate-900/80 px-2 py-0.5 font-mono text-[10px] text-slate-300">
+                    Sample PW: <span className="font-semibold text-emerald-400">demo1234</span>
+                  </span>
+                </div>
+              </div>
+
+              {/* Dropdown with all 14 sample accounts */}
+              <div className="flex items-center gap-2">
+                <select
+                  value={QUICK_ACCOUNTS.some(a => a.email === email) ? email : ''}
+                  onChange={e => {
+                    const target = e.target.value
+                    if (target) handleFillSample(target)
+                  }}
+                  className="h-9 w-full rounded-xl border border-white/10 bg-slate-950/80 px-3 text-xs text-white focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500"
+                >
+                  <option value="" disabled>Choose any of the 14 sample logins to autofill…</option>
+                  <optgroup label="── Administration ──">
+                    {QUICK_ACCOUNTS.filter(a => a.category === 'Admin').map(a => (
+                      <option key={a.email} value={a.email}>
+                        Sample: {a.role} ({a.email})
+                      </option>
+                    ))}
+                  </optgroup>
+                  <optgroup label="── Staff & Operations ──">
+                    {QUICK_ACCOUNTS.filter(a => a.category === 'Staff').map(a => (
+                      <option key={a.email} value={a.email}>
+                        Sample: {a.role} ({a.email})
+                      </option>
+                    ))}
+                  </optgroup>
+                  <optgroup label="── Portals (Students & Parents) ──">
+                    {QUICK_ACCOUNTS.filter(a => a.category === 'Portals').map(a => (
+                      <option key={a.email} value={a.email}>
+                        Sample: {a.role} ({a.email})
+                      </option>
+                    ))}
+                  </optgroup>
+                </select>
+
+                {QUICK_ACCOUNTS.find(a => a.email === email) && (
+                  <Button
+                    type="button"
+                    size="sm"
+                    disabled={loading || phase === 'success'}
+                    onClick={() => handleQuickLogin(email)}
+                    className="h-9 shrink-0 gap-1.5 rounded-xl bg-sky-600 px-3 text-xs text-white shadow-md transition-transform hover:bg-sky-500 active:scale-95"
+                    title="Instant sign-in with this sample account"
+                  >
+                    <Zap className="h-3.5 w-3.5 text-amber-300" />
+                    Sign In
+                  </Button>
+                )}
+              </div>
+
+              {/* Quick sample chips */}
+              <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
+                <span className="text-[10px] font-medium text-slate-400">Quick sample:</span>
+                {[
+                  { name: 'Super Admin', email: 'admin@nis.edu.in' },
+                  { name: 'Teacher', email: 'teacher@nis.edu.in' },
+                  { name: 'Student', email: 'student@nis.edu.in' },
+                  { name: 'Parent', email: 'parent@nis.edu.in' },
+                ].map(chip => (
+                  <button
+                    key={chip.email}
+                    type="button"
+                    onClick={() => handleFillSample(chip.email)}
+                    className={cn(
+                      'flex items-center gap-1 rounded-lg border px-2 py-0.5 text-[10px] font-medium transition-colors',
+                      email === chip.email
+                        ? 'border-sky-400 bg-sky-500/25 text-sky-200'
+                        : 'border-white/10 bg-slate-900/60 text-slate-300 hover:border-sky-500/40 hover:bg-white/5'
+                    )}
+                  >
+                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
+                    {chip.name}
+                  </button>
+                ))}
+              </div>
+            </div>
+
             {/* Email / Username Input */}
             <div className="space-y-1.5 text-left">
-              <Label htmlFor="email" className={cn('text-xs font-semibold text-slate-300 transition-colors', errorField === 'email' && 'text-rose-400')}>
-                Email Address
-              </Label>
+              <div className="flex items-center justify-between">
+                <Label htmlFor="email" className={cn('text-xs font-semibold text-slate-300 transition-colors', errorField === 'email' && 'text-rose-400')}>
+                  Email Address
+                </Label>
+                {QUICK_ACCOUNTS.find(a => a.email === email) && (
+                  <span className="inline-flex items-center gap-1 rounded-full border border-emerald-500/20 bg-emerald-500/10 px-2 py-0.5 text-[10px] font-medium text-emerald-400">
+                    <CheckCircle2 className="h-2.5 w-2.5" /> Sample {QUICK_ACCOUNTS.find(a => a.email === email)?.role}
+                  </span>
+                )}
+              </div>
               <div className="group relative">
                 <Mail className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400 transition-colors group-focus-within:text-sky-400" />
                 <Input
                   id="email"
                   type="email"
                   autoComplete="email"
-                  placeholder="you@nis.edu.in"
+                  placeholder="you@nis.edu.in (or choose sample above)"
                   value={email}
                   onChange={e => setEmail(e.target.value)}
                   disabled={loading}
@@ -212,13 +324,24 @@ export function LoginScreen({ onLogin }: { onLogin: (s: Session, defaultModule: 
                 <Label htmlFor="password" className={cn('text-xs font-semibold text-slate-300 transition-colors', errorField === 'password' && 'text-rose-400')}>
                   Password
                 </Label>
-                <button
-                  type="button"
-                  onClick={() => setError('Password reset is handled by system administrators.')}
-                  className="text-[11px] text-slate-400 hover:text-sky-400 transition-colors"
-                >
-                  Forgot password?
-                </button>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setPassword('demo1234')}
+                    className="flex items-center gap-1 text-[11px] text-sky-400 transition-colors hover:text-sky-300 hover:underline"
+                    title="Fill sample demo password"
+                  >
+                    <KeyRound className="h-3 w-3" /> Fill Sample PW (demo1234)
+                  </button>
+                  <span className="text-xs text-slate-600">·</span>
+                  <button
+                    type="button"
+                    onClick={() => setError('Password reset is handled by system administrators.')}
+                    className="text-[11px] text-slate-400 transition-colors hover:text-sky-400"
+                  >
+                    Forgot password?
+                  </button>
+                </div>
               </div>
               <div className="group relative">
                 <Lock className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400 transition-colors group-focus-within:text-sky-400" />
@@ -239,7 +362,7 @@ export function LoginScreen({ onLogin }: { onLogin: (s: Session, defaultModule: 
                   type="button"
                   onClick={() => setShowPw(v => !v)}
                   aria-label={showPw ? 'Hide password' : 'Show password'}
-                  className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white transition-colors"
+                  className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 transition-colors hover:text-white"
                 >
                   {showPw ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </button>
@@ -262,11 +385,11 @@ export function LoginScreen({ onLogin }: { onLogin: (s: Session, defaultModule: 
 
             {/* Remember Me & Security Badge */}
             <div className="flex items-center justify-between pt-1 text-xs">
-              <label className="flex cursor-pointer items-center gap-2 text-slate-300 hover:text-white transition-colors">
+              <label className="flex cursor-pointer items-center gap-2 text-slate-300 transition-colors hover:text-white">
                 <Checkbox
                   checked={remember}
                   onCheckedChange={v => setRemember(v === true)}
-                  className="border-white/20 data-[state=checked]:bg-sky-500 data-[state=checked]:border-sky-500"
+                  className="border-white/20 data-[state=checked]:border-sky-500 data-[state=checked]:bg-sky-500"
                 />
                 Remember me
               </label>
@@ -277,7 +400,7 @@ export function LoginScreen({ onLogin }: { onLogin: (s: Session, defaultModule: 
 
             {/* Error Alert */}
             {error && (
-              <div role="alert" className="anim-pop rounded-xl border border-rose-500/30 bg-rose-500/15 px-3.5 py-2.5 text-xs text-rose-300 text-left">
+              <div role="alert" className="anim-pop rounded-xl border border-rose-500/30 bg-rose-500/15 px-3.5 py-2.5 text-left text-xs text-rose-300">
                 {error}
               </div>
             )}
@@ -289,7 +412,7 @@ export function LoginScreen({ onLogin }: { onLogin: (s: Session, defaultModule: 
               className={cn(
                 'group relative h-12 w-full overflow-hidden rounded-xl font-semibold text-white shadow-xl transition-all duration-300',
                 phase === 'success'
-                  ? 'bg-emerald-600 hover:bg-emerald-600 scale-[1.01]'
+                  ? 'scale-[1.01] bg-emerald-600 hover:bg-emerald-600'
                   : 'bg-gradient-to-r from-sky-600 via-sky-500 to-orange-500 hover:from-sky-500 hover:to-orange-400 hover:shadow-sky-500/25'
               )}
             >
@@ -317,17 +440,17 @@ export function LoginScreen({ onLogin }: { onLogin: (s: Session, defaultModule: 
           {/* Quick Access Demo Login Section (All 14 Roles) */}
           <div className="relative z-10 mt-6 border-t border-white/10 pt-4">
             <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-              <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-300 flex items-center gap-1.5">
-                <KeyRound className="h-3.5 w-3.5 text-orange-400" /> Quick Access (All 14 User Roles)
+              <span className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-slate-300">
+                <KeyRound className="h-3.5 w-3.5 text-orange-400" /> Sample Accounts (All 14 Roles)
               </span>
-              <span className="text-[10px] text-slate-400 font-mono bg-slate-950/60 px-2 py-0.5 rounded-full border border-white/10">
-                Password: demo1234
+              <span className="rounded-full border border-white/10 bg-slate-950/60 px-2 py-0.5 font-mono text-[10px] text-slate-300">
+                Password: <span className="font-bold text-emerald-400">demo1234</span>
               </span>
             </div>
 
             {/* Category Filter Tabs & Quick Search */}
             <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-              <div className="flex flex-wrap items-center gap-1 rounded-xl bg-slate-950/60 p-1 border border-white/10">
+              <div className="flex flex-wrap items-center gap-1 rounded-xl border border-white/10 bg-slate-950/60 p-1">
                 {(['All', 'Admin', 'Staff', 'Portals'] as const).map(cat => {
                   const count = cat === 'All' ? QUICK_ACCOUNTS.length : QUICK_ACCOUNTS.filter(a => a.category === cat).length
                   return (
@@ -336,13 +459,13 @@ export function LoginScreen({ onLogin }: { onLogin: (s: Session, defaultModule: 
                       type="button"
                       onClick={() => setActiveCategory(cat)}
                       className={cn(
-                        'px-2.5 py-1 text-[11px] font-medium rounded-lg transition-all duration-200',
+                        'rounded-lg px-2.5 py-1 text-[11px] font-medium transition-all duration-200',
                         activeCategory === cat
-                          ? 'bg-sky-500 text-white shadow-sm font-semibold'
-                          : 'text-slate-400 hover:text-white hover:bg-white/5'
+                          ? 'bg-sky-500 font-semibold text-white shadow-sm'
+                          : 'text-slate-400 hover:bg-white/5 hover:text-white'
                       )}
                     >
-                      {cat} <span className="opacity-70 text-[10px]">({count})</span>
+                      {cat} <span className="text-[10px] opacity-70">({count})</span>
                     </button>
                   )
                 })}
@@ -353,7 +476,7 @@ export function LoginScreen({ onLogin }: { onLogin: (s: Session, defaultModule: 
                 <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3 w-3 -translate-y-1/2 text-slate-500" />
                 <input
                   type="text"
-                  placeholder="Filter role..."
+                  placeholder="Filter sample..."
                   value={quickSearch}
                   onChange={e => setQuickSearch(e.target.value)}
                   className="h-7 w-full rounded-lg border border-white/10 bg-slate-950/80 pl-7 pr-2 text-[11px] text-slate-200 placeholder:text-slate-500 focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500"
@@ -362,27 +485,72 @@ export function LoginScreen({ onLogin }: { onLogin: (s: Session, defaultModule: 
             </div>
 
             {/* Quick Access Account Cards Grid */}
-            <div className="max-h-[220px] overflow-y-auto pr-1 custom-scrollbar grid grid-cols-2 gap-2 sm:grid-cols-3">
+            <div className="custom-scrollbar grid max-h-[260px] grid-cols-1 gap-2 overflow-y-auto pr-1 sm:grid-cols-2">
               {QUICK_ACCOUNTS.filter(acc => {
                 const matchCat = activeCategory === 'All' || acc.category === activeCategory
                 const q = quickSearch.toLowerCase().trim()
                 const matchQuery = !q || acc.role.toLowerCase().includes(q) || acc.label.toLowerCase().includes(q) || acc.email.toLowerCase().includes(q)
                 return matchCat && matchQuery
               }).map(acc => (
-                <button
+                <div
                   key={acc.email}
-                  type="button"
-                  disabled={loading || phase === 'success'}
-                  onClick={() => handleQuickLogin(acc.email)}
-                  className="group relative flex flex-col items-start rounded-xl border border-white/10 bg-slate-950/50 p-2.5 text-left transition-all duration-200 hover:border-sky-500/50 hover:bg-sky-500/10 hover:shadow-md disabled:opacity-50"
+                  className="group relative flex flex-col justify-between rounded-xl border border-white/10 bg-slate-950/60 p-2.5 transition-all duration-200 hover:border-sky-500/50 hover:bg-sky-500/5 hover:shadow-md"
                 >
-                  <span className="flex items-center gap-1.5 text-xs font-bold text-slate-200 group-hover:text-sky-300">
-                    {acc.icon} {acc.role}
-                  </span>
-                  <span className="mt-0.5 text-[10px] text-slate-400 truncate w-full">
-                    {acc.label}
-                  </span>
-                </button>
+                  <div>
+                    <div className="flex items-center justify-between gap-1.5">
+                      <span className="flex items-center gap-1.5 text-xs font-bold text-slate-200 group-hover:text-sky-300">
+                        {acc.icon} {acc.role}
+                      </span>
+                      <span className="rounded border border-sky-500/30 bg-sky-500/15 px-1.5 py-0.2 font-mono text-[9px] font-semibold tracking-wider uppercase text-sky-300">
+                        Sample
+                      </span>
+                    </div>
+
+                    <div className="mt-1 flex items-center justify-between gap-1">
+                      <span className="truncate font-mono text-[11px] text-slate-400 group-hover:text-slate-300">
+                        {acc.email}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={(e) => handleCopyEmail(e, acc.email)}
+                        aria-label={`Copy ${acc.email}`}
+                        className="shrink-0 rounded p-1 text-slate-500 transition-colors hover:bg-white/10 hover:text-white"
+                        title="Copy sample email"
+                      >
+                        {copiedEmail === acc.email ? (
+                          <Check className="h-3 w-3 text-emerald-400" />
+                        ) : (
+                          <Copy className="h-3 w-3" />
+                        )}
+                      </button>
+                    </div>
+
+                    <span className="mt-0.5 block line-clamp-1 text-[10px] text-slate-400">
+                      {acc.label}
+                    </span>
+                  </div>
+
+                  {/* Dual Action Buttons: Autofill or Instant Login */}
+                  <div className="mt-2.5 flex items-center gap-1.5 border-t border-white/5 pt-1.5">
+                    <button
+                      type="button"
+                      disabled={loading || phase === 'success'}
+                      onClick={() => handleFillSample(acc.email)}
+                      className="flex-1 rounded-lg border border-white/10 bg-slate-900/80 px-2 py-1 text-center text-[10px] font-medium text-slate-300 transition-colors hover:bg-white/10 hover:text-white disabled:opacity-50"
+                    >
+                      Autofill
+                    </button>
+                    <button
+                      type="button"
+                      disabled={loading || phase === 'success'}
+                      onClick={() => handleQuickLogin(acc.email)}
+                      className="flex flex-1 items-center justify-center gap-1 rounded-lg bg-sky-600/80 px-2 py-1 text-[10px] font-semibold text-white shadow-sm transition-colors hover:bg-sky-500 disabled:opacity-50"
+                    >
+                      <Zap className="h-2.5 w-2.5 text-amber-300" />
+                      Sign In
+                    </button>
+                  </div>
+                </div>
               ))}
             </div>
           </div>

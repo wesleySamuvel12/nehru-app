@@ -133,6 +133,7 @@ export const PATCH = async (req: NextRequest, ctx: { params: Promise<{ id: strin
     method: 'PATCH',
     headers: {
       'content-type': 'application/json',
+      authorization: req.headers.get('authorization') || '',
       cookie: req.headers.get('cookie') || '',
       'x-forwarded-for': req.headers.get('x-forwarded-for') || '',
     },

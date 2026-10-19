@@ -5,6 +5,26 @@
  */
 import { PrismaClient } from '@prisma/client'
 import bcrypt from 'bcryptjs'
+import fs from 'fs'
+import path from 'path'
+
+/** Resolve the SQLite file the same way src/lib/db.ts does, so the seed always
+ *  writes to the database the app reads (avoids relative-path surprises). */
+function resolveDbUrl(): string | undefined {
+  const current = process.env.DATABASE_URL
+  if (current && !current.startsWith('file:')) return current
+  const candidates = [
+    path.join(process.cwd(), 'db', 'custom.db'),
+    path.join(process.cwd(), 'prisma', 'custom.db'),
+    path.join(process.cwd(), '..', 'db', 'custom.db'),
+  ]
+  for (const c of candidates) {
+    if (fs.existsSync(c)) return `file:${c.replace(/\\/g, '/')}`
+  }
+  return current
+}
+const resolvedDbUrl = resolveDbUrl()
+if (resolvedDbUrl) process.env.DATABASE_URL = resolvedDbUrl
 
 const db = new PrismaClient()
 
@@ -62,11 +82,11 @@ const EVENT_TITLES: [string, string, string][] = [
 
 async function main() {
   console.log('Resetting database…')
+  // Deletion order respects SQLite foreign keys (children before parents).
   await db.$transaction([
     db.auditLog.deleteMany(), db.loginLog.deleteMany(), db.notification.deleteMany(),
     db.notificationTemplate.deleteMany(), db.approvalTask.deleteMany(), db.approvalWorkflow.deleteMany(),
-    db.integrationSetting.deleteMany(), db.schoolSetting.deleteMany(), db.school.deleteMany(),
-    db.term.deleteMany(), db.academicYear.deleteMany(),
+    db.integrationSetting.deleteMany(), db.schoolSetting.deleteMany(),
     db.eventRegistration.deleteMany(), db.event.deleteMany(),
     db.certificate.deleteMany(), db.certificateRequest.deleteMany(),
     db.announcement.deleteMany(), db.message.deleteMany(), db.complaint.deleteMany(),
@@ -84,11 +104,15 @@ async function main() {
     db.submission.deleteMany(), db.assignment.deleteMany(), db.learningMaterial.deleteMany(),
     db.lessonPlan.deleteMany(), db.leaveRequest.deleteMany(), db.employeeAttendance.deleteMany(),
     db.attendance.deleteMany(), db.enrollment.deleteMany(), db.timetableSlot.deleteMany(),
+    db.student.deleteMany(),
     db.subject.deleteMany(), db.section.deleteMany(), db.house.deleteMany(), db.class.deleteMany(),
-    db.department.deleteMany(), db.leadFollowUp.deleteMany(), db.campaign.deleteMany(),
+    db.parent.deleteMany(),
+    db.employee.deleteMany(), db.department.deleteMany(),
+    db.term.deleteMany(), db.academicYear.deleteMany(),
+    db.leadFollowUp.deleteMany(), db.campaign.deleteMany(),
     db.lead.deleteMany(), db.application.deleteMany(),
-    db.permission.deleteMany(), db.user.deleteMany(), db.student.deleteMany(), db.parent.deleteMany(),
-    db.employee.deleteMany(),
+    db.permission.deleteMany(), db.user.deleteMany(),
+    db.school.deleteMany(),
   ])
 
   const passwordHash = await bcrypt.hash('demo1234', 10)
@@ -136,7 +160,7 @@ async function main() {
     ['Geeta', 'Singh', 'WARDEN', 'Girls Hostel Warden', false], ['Ramesh', 'Yadav', 'WARDEN', 'Boys Hostel Warden', false],
     ['Deepa', 'Kamath', 'COUNSELLOR', 'Admissions Head Counsellor', false], ['Nitin', 'Jain', 'COUNSELLOR', 'Admission Counsellor', false],
   ]
-  const employees: { id: string; name: string; isTeacher: boolean; designation: string }[] = []
+  const employees: { id: string; name: string; isTeacher: boolean; designation: string; phone: string }[] = []
   for (let i = 0; i < empData.length; i++) {
     const [first, last, , designation, isTeacher] = empData[i]
     const emp = await db.employee.create({
@@ -156,7 +180,7 @@ async function main() {
         licenseExpiry: designation.includes('Transport') ? daysAhead(int(60, 500)) : undefined,
       },
     })
-    employees.push({ id: emp.id, name: `${emp.firstName} ${emp.lastName}`, isTeacher: !!isTeacher, designation })
+    employees.push({ id: emp.id, name: `${emp.firstName} ${emp.lastName}`, isTeacher: !!isTeacher, designation, phone: emp.phone })
   }
   const teachers = employees.filter(e => e.isTeacher)
 
@@ -179,7 +203,7 @@ async function main() {
   ]
   for (const [email, name, role] of roleUsers) {
     const emp = employees.find(e => e.name === name)
-    await db.user.create({ data: { email, passwordHash, name, role, linkedEmployeeId: emp?.id } })
+    await db.user.create({ data: { email, passwordHash, name, role, linkedEmployeeId: emp?.id, phone: emp?.phone ?? '+919800011122' } })
   }
 
   /* ── Classes, sections, subjects ── */
@@ -189,13 +213,13 @@ async function main() {
     const c = await db.class.create({ data: { name: `Grade ${lv}`, level: lv, stream: lv >= 11 ? (lv === 12 ? 'Commerce' : 'Science') : undefined } })
     classList.push({ id: c.id, name: c.name, level: lv })
   }
-  const sectionList: { id: string; name: string; classId: string; className: string }[] = []
+  const sectionList: { id: string; name: string; classId: string; className: string; level: number }[] = []
   for (const c of classList) {
     const names = c.level <= 10 ? ['A', 'B'] : ['A']
     for (const n of names) {
       const t = teachers[int(0, teachers.length - 1)]
       const s = await db.section.create({ data: { name: n, classId: c.id, teacherId: t.id, teacherName: t.name, capacity: 36 } })
-      sectionList.push({ id: s.id, name: n, classId: c.id, className: c.name })
+      sectionList.push({ id: s.id, name: n, classId: c.id, className: c.name, level: c.level })
     }
   }
   const SUBJECT_BASE: Record<number, string[]> = {
@@ -206,31 +230,31 @@ async function main() {
     9: ['English', 'Hindi', 'Mathematics', 'Physics', 'Chemistry', 'Biology', 'History & Civics', 'Geography'], 10: ['English', 'Hindi', 'Mathematics', 'Physics', 'Chemistry', 'Biology', 'History & Civics', 'Geography'],
     11: ['English', 'Physics', 'Chemistry', 'Mathematics', 'Biology', 'Computer Science'], 12: ['English', 'Accountancy', 'Business Studies', 'Economics', 'Mathematics', 'Entrepreneurship'],
   }
-  const subjectMap: Record<string, { id: string; name: string }[]> = {}
+  const subjectMap: Record<string, { id: string; name: string; teacherId: string; teacherName: string }[]> = {}
   for (const c of classList) {
     subjectMap[c.id] = []
     const subs = SUBJECT_BASE[c.level] || SUBJECT_BASE[8]
     for (const name of subs) {
       const t = teachers.find(x => x.designation.includes(name.split(' ')[0])) || teachers[int(0, teachers.length - 1)]
       const s = await db.subject.create({ data: { name, code: `${name.slice(0, 3).toUpperCase()}-${c.level}${int(10, 99)}`, classId: c.id, teacherId: t.id, teacherName: t.name } })
-      subjectMap[c.id].push({ id: s.id, name })
+      subjectMap[c.id].push({ id: s.id, name, teacherId: t.id, teacherName: t.name })
     }
   }
 
-  /* Timetable for grades 3–10 sections (Mon–Sat, 7 periods) */
+  /* Timetable for all sections Grade 1–12 (Mon–Sat, 7 periods) */
   const timeSlots = ['08:00-08:45', '08:45-09:30', '09:45-10:30', '10:30-11:15', '11:45-12:30', '12:30-13:15', '13:45-14:30']
   const slots: any[] = []
-  for (const sec of sectionList.filter(s => s.className >= 'Grade 3' && s.className <= 'Grade 10')) {
+  for (const sec of sectionList) {
     const subs = subjectMap[sec.classId]
     for (let day = 1; day <= 6; day++) {
       const shuffled = [...subs].sort(() => rnd() - 0.5)
       for (let p = 0; p < 7; p++) {
         const sub = shuffled[p % shuffled.length]
-        slots.push({ classId: sec.classId, sectionId: sec.id, subjectId: sub.id, dayOfWeek: day, period: p + 1, startTime: timeSlots[p].split('-')[0], endTime: timeSlots[p].split('-')[1], room: `R-${int(101, 320)}` })
+        slots.push({ classId: sec.classId, sectionId: sec.id, subjectId: sub.id, teacherId: sub.teacherId, dayOfWeek: day, period: p + 1, startTime: timeSlots[p].split('-')[0], endTime: timeSlots[p].split('-')[1], room: `R-${int(101, 320)}` })
       }
     }
   }
-  await db.timetableSlot.createMany({ data: slots })
+  for (let i = 0; i < slots.length; i += 800) await db.timetableSlot.createMany({ data: slots.slice(i, i + 800) })
 
   /* ── Parents & Students ── */
   console.log('Parents & students…')
@@ -291,9 +315,18 @@ async function main() {
   await db.user.create({ data: { email: 'parent@nis.edu.in', passwordHash, name: pu1!.name, role: 'PARENT', linkedParentId: pu1!.id, phone: pu1!.phone } })
   await db.user.create({ data: { email: 'parent2@nis.edu.in', passwordHash, name: pu2!.name, role: 'PARENT', linkedParentId: pu2!.id, phone: pu2!.phone } })
   await db.user.create({ data: { email: 'parent3@nis.edu.in', passwordHash, name: pu3!.name, role: 'PARENT', linkedParentId: pu3!.id, phone: pu3!.phone } })
-  await db.user.create({ data: { email: 'student@nis.edu.in', passwordHash, name: fam1.name, role: 'STUDENT', linkedStudentId: fam1.id } })
+  await db.user.create({ data: { email: 'student@nis.edu.in', passwordHash, name: fam1.name, role: 'STUDENT', linkedStudentId: fam1.id, phone: parentsCreated.find(p => p.id === fam1.parentId)?.phone } })
   const s2 = students.find(s => s.className === 'Grade 9')!
-  await db.user.create({ data: { email: 'student2@nis.edu.in', passwordHash, name: s2.name, role: 'STUDENT', linkedStudentId: s2.id } })
+  await db.user.create({ data: { email: 'student2@nis.edu.in', passwordHash, name: s2.name, role: 'STUDENT', linkedStudentId: s2.id, phone: parentsCreated.find(p => p.id === s2.parentId)?.phone } })
+
+  /* ── Enrollments (academic year roster for every student) ── */
+  const enrollmentRows = students.map((s, i) => ({
+    studentId: s.id, classId: s.classId, sectionId: s.sectionId, academicYearId: ay.id,
+    type: i % 9 === 0 ? 'TRANSFER' : i % 3 === 0 ? 'RE_ENROLLMENT' : i % 2 === 0 ? 'PROMOTION' : 'NEW',
+    status: 'ACTIVE', date: daysAgo(int(60, 400)),
+    remarks: i % 9 === 0 ? 'Joined mid-session from another school.' : null,
+  }))
+  for (let i = 0; i < enrollmentRows.length; i += 800) await db.enrollment.createMany({ data: enrollmentRows.slice(i, i + 800) })
 
   /* ── Attendance (last 30 days, weekdays) ── */
   console.log('Attendance…')
@@ -853,6 +886,17 @@ async function main() {
     for (const m of mods) await db.permission.create({ data: { role, module: m, allowed: true } })
   }
 
+  /* ── Multi-tenant backfill: assign every seeded record to the master campus ──
+     Mirrors scripts/migrate-sqlite-tenant.ts so a fresh seed is tenant-scoped. */
+  console.log('Assigning tenant (schoolId) to seeded records...')
+  const masterSchool = await db.school.findFirst({ where: { isMaster: true }, select: { id: true } })
+  if (masterSchool) {
+    for (const table of TENANT_TABLES) {
+      const scope = table === 'User' ? `"role" != 'SUPER_ADMIN' AND "schoolId" IS NULL` : `"schoolId" IS NULL`
+      await db.$executeRawUnsafe(`UPDATE "${table}" SET "schoolId" = ? WHERE ${scope}`, masterSchool.id)
+    }
+  }
+
   const counts = {
     users: await db.user.count(), students: await db.student.count(), employees: await db.employee.count(),
     attendance: await db.attendance.count(), invoices: await db.feeInvoice.count(), marks: await db.mark.count(),
@@ -860,6 +904,27 @@ async function main() {
   }
   console.log('Seed complete ✅', JSON.stringify(counts))
 }
+
+/* Tables carrying a nullable schoolId that must be scoped to the master campus. */
+const TENANT_TABLES = [
+  'User', 'SchoolSetting', 'AcademicYear', 'Term', 'Department', 'Class', 'Section', 'Subject', 'House',
+  'Student', 'Parent', 'Employee', 'Enrollment', 'Attendance', 'EmployeeAttendance', 'LeaveRequest',
+  'TimetableSlot', 'Assignment', 'Submission', 'LearningMaterial', 'LessonPlan',
+  'Exam', 'ExamSchedule', 'Question', 'Mark', 'GradeConfig', 'ReportCard',
+  'FeeStructure', 'FeeInvoice', 'Payment', 'Expense', 'Budget', 'Discount', 'PayrollRun', 'Payslip',
+  'PerformanceReview', 'Lead', 'LeadFollowUp', 'Application', 'Campaign',
+  'Vehicle', 'Route', 'Stop', 'TransportAllocation',
+  'Hostel', 'Room', 'Bed', 'HostelAllocation',
+  'Visitor', 'PickupLog', 'SecurityAlert',
+  'HealthRecord', 'ClinicVisit', 'Vaccination',
+  'Book', 'LibraryTransaction', 'BookReservation',
+  'Asset', 'AssetTransfer',
+  'Event', 'EventRegistration',
+  'Message', 'Announcement', 'Notification', 'NotificationTemplate',
+  'Certificate', 'CertificateRequest', 'Complaint',
+  'ApprovalWorkflow', 'ApprovalTask', 'IntegrationSetting',
+  'AuditLog', 'LoginLog',
+]
 
 const MODULE_ACCESS_SEED: Record<string, string[]> = {
   SUPER_ADMIN: ['dashboard', 'admissions', 'students', 'parents', 'teachers', 'academics', 'lms', 'attendance', 'examinations', 'fees', 'hr', 'transport', 'hostel', 'security', 'health', 'library', 'assets', 'communication', 'events', 'certificates', 'analytics', 'integrations', 'settings', 'audit-logs'],

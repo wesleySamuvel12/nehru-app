@@ -4,7 +4,7 @@
  * with auth, RBAC, audit logging, role scoping and lifecycle hooks.
  */
 import { NextRequest, NextResponse } from 'next/server'
-import { db } from './db'
+import { db, containsText } from './db'
 import { Session, requireAuth } from './auth'
 import { can, normalizeRole } from './rbac'
 import { audit } from './audit'
@@ -69,7 +69,7 @@ function buildWhere(req: NextRequest, config: CrudConfig, session: Session | nul
   const sp = req.nextUrl.searchParams
   const q = sp.get('q')
   if (q && config.searchFields?.length) {
-    where.OR = config.searchFields.map(f => ({ [f]: { contains: q, mode: 'insensitive' } }))
+    where.OR = config.searchFields.map(f => ({ [f]: containsText(q) }))
   }
   for (const f of config.filterFields || []) {
     const v = sp.get(f)

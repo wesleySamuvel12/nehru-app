@@ -69,6 +69,7 @@ export const POST = async (req: NextRequest) => {
       method: 'POST',
       headers: {
         'content-type': 'application/json',
+        authorization: req.headers.get('authorization') || '',
         cookie: req.headers.get('cookie') || '',
         'x-forwarded-for': req.headers.get('x-forwarded-for') || '',
       },
