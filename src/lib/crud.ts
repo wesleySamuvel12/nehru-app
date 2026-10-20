@@ -4,6 +4,7 @@
  * with auth, RBAC, audit logging, role scoping and lifecycle hooks.
  */
 import { NextRequest, NextResponse } from 'next/server'
+import { Prisma } from '@prisma/client'
 import { db, containsText } from './db'
 import { Session, requireAuth } from './auth'
 import { can, normalizeRole } from './rbac'
@@ -11,6 +12,25 @@ import { audit } from './audit'
 import { resolveTenantContext, validateParentOwnership, TenantContext } from './tenant'
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
+
+const MODEL_META = new Map<string, {
+  scalarFields: Set<string>
+  fieldTypes: Map<string, string>
+}>()
+
+if (Prisma?.dmmf?.datamodel?.models) {
+  for (const m of Prisma.dmmf.datamodel.models) {
+    const scalarFields = new Set<string>()
+    const fieldTypes = new Map<string, string>()
+    for (const f of m.fields) {
+      if (f.kind === 'scalar') {
+        scalarFields.add(f.name)
+        fieldTypes.set(f.name, f.type)
+      }
+    }
+    MODEL_META.set(m.name.toLowerCase(), { scalarFields, fieldTypes })
+  }
+}
 
 export interface CrudConfig {
   model: string // prisma delegate: 'student', 'feeInvoice', ...
@@ -67,17 +87,34 @@ function coercePrismaValues(body: any): any {
 function buildWhere(req: NextRequest, config: CrudConfig, session: Session | null) {
   const where: any = {}
   const sp = req.nextUrl.searchParams
+  const meta = MODEL_META.get(config.model.toLowerCase())
+
   const q = sp.get('q')
   if (q && config.searchFields?.length) {
-    where.OR = config.searchFields.map(f => ({ [f]: containsText(q) }))
+    const validSearchFields = meta ? config.searchFields.filter(f => meta.scalarFields.has(f)) : config.searchFields
+    if (validSearchFields.length) {
+      where.OR = validSearchFields.map(f => ({ [f]: containsText(q) }))
+    }
   }
   for (const f of config.filterFields || []) {
     const v = sp.get(f)
     if (v !== null && v !== '' && v !== 'ALL') {
-      // typed values: pass through; Prisma handles ids & statuses. Support date ranges.
-      if (f === 'dateFrom') { where.date = { ...(where.date || {}), gte: new Date(v) } }
-      else if (f === 'dateTo') { where.date = { ...(where.date || {}), lte: new Date(v + 'T23:59:59.999Z') } }
-      else { where[f] = v }
+      const fieldType = meta?.fieldTypes.get(f)
+      if (f === 'dateFrom') {
+        where.date = { ...(where.date || {}), gte: new Date(v) }
+      } else if (f === 'dateTo') {
+        where.date = { ...(where.date || {}), lte: new Date(v + 'T23:59:59.999Z') }
+      } else if (fieldType === 'Int') {
+        const num = parseInt(v, 10)
+        if (!isNaN(num)) where[f] = num
+      } else if (fieldType === 'Float') {
+        const num = parseFloat(v)
+        if (!isNaN(num)) where[f] = num
+      } else if (fieldType === 'Boolean') {
+        where[f] = v === 'true' || v === '1'
+      } else {
+        where[f] = v
+      }
     }
   }
   return where
@@ -86,6 +123,7 @@ function buildWhere(req: NextRequest, config: CrudConfig, session: Session | nul
 export function defineCrud(config: CrudConfig) {
   const entity = config.auditEntity || config.model
   const isGlobalModel = config.model === 'school' || config.model === 'permission'
+  const meta = MODEL_META.get(config.model.toLowerCase())
 
   async function guard(req: NextRequest, isWrite = false) {
     const session = await requireAuth(req)
@@ -125,11 +163,24 @@ export function defineCrud(config: CrudConfig) {
       const page = Math.max(1, parseInt(sp.get('page') || '1'))
       const pageSize = Math.min(200, Math.max(1, parseInt(sp.get('pageSize') || '10')))
       const all = sp.get('all') === '1'
-      const sortBy = sp.get('sortBy') || config.defaultSort?.field
+      const requestedSortBy = sp.get('sortBy')
       const sortDir = (sp.get('sortDir') || config.defaultSort?.dir || 'desc') as 'asc' | 'desc'
+
+      let sortBy: string | undefined = undefined
+      if (requestedSortBy && (!meta || meta.scalarFields.has(requestedSortBy))) {
+        sortBy = requestedSortBy
+      } else if (config.defaultSort?.field && (!meta || meta.scalarFields.has(config.defaultSort.field))) {
+        sortBy = config.defaultSort.field
+      } else if (meta?.scalarFields.has('createdAt')) {
+        sortBy = 'createdAt'
+      } else if (meta?.scalarFields.has('id')) {
+        sortBy = 'id'
+      }
+
       let where = await applyScope(buildWhere(req, config, session), session)
 
-      if (!isGlobalModel && tenant?.schoolId) {
+      const hasSchoolIdField = !meta || meta.scalarFields.has('schoolId')
+      if (!isGlobalModel && tenant?.schoolId && hasSchoolIdField) {
         where = where && Object.keys(where).length ? { AND: [where, { schoolId: tenant.schoolId }] } : { schoolId: tenant.schoolId }
       }
 
@@ -152,7 +203,7 @@ export function defineCrud(config: CrudConfig) {
       })
     } catch (e: any) {
       console.error(`[crud:list:${entity}]`, e)
-      return err(500, 'Unable to load records right now. Please try again.')
+      return err(500, 'Unable to load records right now. Please try again.', { details: process.env.NODE_ENV !== 'production' ? e?.message : undefined })
     }
   }
 

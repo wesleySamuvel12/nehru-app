@@ -38,15 +38,14 @@ export function ErpApp() {
       .finally(() => setBooting(false))
   }, [setSession])
 
-  // Role-appropriate landing: parents/students go to their portal instead of the admin dashboard
+  // Role-appropriate landing: redirect if role cannot access the active module
   React.useEffect(() => {
     if (!session) return
-    if (activeModule === 'dashboard') {
-      if (session.role === 'PARENT') setModule('parent-portal')
-      else if (session.role === 'STUDENT') setModule('student-portal')
+    if (!can(session.role, activeModule)) {
+      setModule(getRoleLandingModule(session.role))
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [session])
+  }, [session, activeModule])
 
   const onLogin = (s: Session, defaultModule: string) => {
     setSession(s)
@@ -57,8 +56,7 @@ export function ErpApp() {
   if (!session) return <LoginScreen onLogin={onLogin} />
 
   // Enforce RBAC on the client too (API enforces server-side)
-  const allowed = can(session.role, activeModule) ||
-    (activeModule === 'dashboard' && session.role !== 'PARENT' && session.role !== 'STUDENT')
+  const allowed = can(session.role, activeModule)
   const roleModuleRegistries = {
     SUPER_ADMIN: SUPER_ADMIN_MODULE_REGISTRY,
     SCHOOL_ADMIN: SCHOOL_ADMIN_MODULE_REGISTRY,

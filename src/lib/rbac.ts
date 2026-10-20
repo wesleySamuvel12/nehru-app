@@ -46,7 +46,7 @@ const MANAGEMENT = [...ALL_ADMINS, 'PRINCIPAL']
 
 /** Module -> roles allowed to access (API + nav). SUPER_ADMIN always allowed. */
 export const MODULE_ACCESS: Record<string, string[]> = {
-  dashboard: [...MANAGEMENT, 'ACCOUNTANT', 'HR', 'COUNSELLOR', 'LIBRARIAN', 'TRANSPORT', 'WARDEN', 'NURSE', 'SECURITY'],
+  dashboard: [...MANAGEMENT, 'TEACHER', 'ACCOUNTANT', 'HR', 'COUNSELLOR', 'LIBRARIAN', 'TRANSPORT', 'WARDEN', 'NURSE', 'SECURITY'],
   admissions: [...MANAGEMENT, 'COUNSELLOR'],
   students: [...MANAGEMENT, 'TEACHER', 'NURSE', 'TRANSPORT', 'WARDEN', 'LIBRARIAN', 'SECURITY'],
   parents: [...MANAGEMENT, 'TEACHER'],
