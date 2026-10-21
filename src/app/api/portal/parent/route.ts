@@ -239,9 +239,8 @@ export async function GET(req: NextRequest) {
     })
   } catch (e: any) {
     console.error('[portal:parent]', e)
-    return err(500, `Unable to load the parent portal right now. Please try again. ${e?.message ? `(${e.message})` : ''}`.trim(), {
-      details: e?.message || String(e),
-      stack: process.env.NODE_ENV !== 'production' ? e?.stack : undefined,
+    return err(500, 'Unable to load the parent portal right now. Please try again.', {
+      details: process.env.NODE_ENV !== 'production' ? e?.message : undefined,
     })
   }
 }

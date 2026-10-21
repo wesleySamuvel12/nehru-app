@@ -134,9 +134,8 @@ export async function GET(req: NextRequest) {
   } catch (e: any) {
     console.error('[dashboard]', e)
     return NextResponse.json({
-      error: `Unable to load dashboard data. ${e?.message ? `(${e.message})` : ''}`.trim(),
-      details: e?.message || String(e),
-      stack: process.env.NODE_ENV !== 'production' ? e?.stack : undefined,
+      error: 'Unable to load dashboard data.',
+      details: process.env.NODE_ENV !== 'production' ? e?.message : undefined,
     }, { status: 500 })
   }
 }
