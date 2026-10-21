@@ -10,8 +10,8 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { SectionCard, EmptyState, ErrorState, StatusBadge } from '@/components/erp/ui'
 import { api, list, ApiError } from '@/lib/api-client'
 import { cn } from '@/lib/utils'
+import { useErp } from '@/lib/store'
 import { safeList, personName, parseClassIds, gradeFromPct, loadExamOptions, loadClassOptions, type Option } from './helpers'
-
 
 interface ResultRow {
   studentId: string
@@ -27,6 +27,9 @@ interface ResultRow {
 }
 
 export default function ResultsTab() {
+  const { session, moduleParams } = useErp()
+  const isTeacher = session?.role === 'TEACHER'
+
   const [exams, setExams] = React.useState<Option[]>([])
   const [examRows, setExamRows] = React.useState<any[]>([])
   const [examId, setExamId] = React.useState('')
@@ -43,7 +46,17 @@ export default function ResultsTab() {
 
   React.useEffect(() => {
     let alive = true
-    loadExamOptions().then(opts => { if (alive) setExams(opts) })
+    loadExamOptions().then(opts => {
+      if (!alive) return
+      setExams(opts)
+      if (opts.length > 0) {
+        if (moduleParams?.examId && opts.some(e => e.value === moduleParams.examId)) {
+          setExamId(moduleParams.examId)
+        } else if (!examId) {
+          setExamId(opts[0].value)
+        }
+      }
+    })
     Promise.all([
       safeList('api/exams', { all: 1 }),
       loadClassOptions(),
@@ -55,22 +68,18 @@ export default function ResultsTab() {
       setGradeConfigs(grades.map((g: any) => ({ minPercent: Number(g.minPercent), grade: g.grade })))
     })
     return () => { alive = false }
-  }, [])
+  }, [moduleParams?.examId, examId])
 
+  /* ── Compute live results when exam and class are selected ── */
   React.useEffect(() => {
-    setClassId('')
-  }, [examId])
-
-  const compute = React.useCallback(async () => {
     if (!examId || !classId) return
-    setLoading(true)
-    setError(null)
-    try {
-      const [stuRes, markRes, subjectRows] = await Promise.all([
-        list('api/students', { classId, all: 1 } as any),
-        list('api/exams/marks', { examId, all: 1 } as any),
-        safeList('api/academics/subjects', { classId, all: 1 }),
-      ])
+    let alive = true
+    Promise.all([
+      list('api/students', { classId, all: 1 } as any),
+      list('api/exams/marks', { examId, all: 1 } as any),
+      safeList('api/academics/subjects', { classId, all: 1 }),
+    ]).then(([stuRes, markRes, subjectRows]) => {
+      if (!alive) return
       const subjectName = new Map<string, string>(subjectRows.map((s: any) => [s.id, s.name]))
 
       const classStudentIds = new Set((stuRes.data || []).map((s: any) => s.id))
@@ -115,13 +124,16 @@ export default function ResultsTab() {
       computed.sort((a, b) => b.percentage - a.percentage)
       computed.forEach((r, i) => { r.rank = i + 1 })
       setRows(computed)
-    } catch (e) {
-      setError((e as ApiError).message || 'Could not compute results.')
-    } finally {
+      setError(null)
       setLoading(false)
-    }
+    }).catch(e => {
+      if (!alive) return
+      setError((e as ApiError).message || 'Could not compute results.')
+      setRows([])
+      setLoading(false)
+    })
+    return () => { alive = false }
   }, [examId, classId, gradeConfigs])
-  React.useEffect(() => { compute() }, [compute])
 
   const publish = async () => {
     if (!rows.length || !examId) return
@@ -178,20 +190,19 @@ export default function ResultsTab() {
   <title>Report Card — ${escapeHtml(row.name)}</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: Georgia, 'Times New Roman', serif; color: #1c1917; padding: 32px; }
-    .sheet { max-width: 720px; margin: 0 auto; border: 2px solid #1c1917; padding: 28px 32px; }
-    .school { text-align: center; border-bottom: 2px solid #1c1917; padding-bottom: 14px; }
-    .school h1 { font-size: 22px; letter-spacing: 1px; text-transform: uppercase; }
-    .school p { font-size: 12px; color: #57534e; margin-top: 4px; }
-    .title { text-align: center; margin: 16px 0; font-size: 15px; letter-spacing: 3px; text-transform: uppercase; }
-    .meta { display: flex; flex-wrap: wrap; gap: 6px 24px; font-size: 13px; margin-bottom: 16px; }
-    .meta b { display: inline-block; min-width: 70px; }
-    table { width: 100%; border-collapse: collapse; font-size: 13px; }
-    th, td { border: 1px solid #44403c; padding: 7px 10px; }
-    th { background: #f5f5f4; text-align: left; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; }
-    .totals td { font-weight: 700; background: #fafaf9; }
-    .summary { display: flex; gap: 14px; margin-top: 18px; font-size: 13px; }
-    .summary div { flex: 1; border: 1px dashed #78716c; padding: 10px; text-align: center; }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; color: #1c1917; padding: 24px; background: #fff; }
+    .sheet { max-width: 760px; margin: 0 auto; border: 2px solid #1c1917; padding: 32px; border-radius: 8px; }
+    .school { text-align: center; border-bottom: 2px solid #1c1917; padding-bottom: 12px; margin-bottom: 16px; }
+    .school h1 { font-size: 22px; letter-spacing: 0.5px; }
+    .school p { font-size: 12px; color: #57534e; margin-top: 2px; }
+    .title { text-align: center; font-size: 15px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 16px; }
+    .meta { display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px 16px; font-size: 13px; margin-bottom: 20px; padding: 12px; background: #f5f5f4; border-radius: 6px; }
+    .meta b { color: #57534e; font-weight: 600; display: inline-block; width: 90px; }
+    table { width: 100%; border-collapse: collapse; margin-bottom: 20px; font-size: 13px; }
+    th, td { border: 1px solid #d6d3d1; padding: 8px 12px; }
+    th { background: #e7e5e4; text-align: left; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; }
+    tr.totals { font-weight: 700; background: #f5f5f4; }
+    .summary { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; text-align: center; margin-top: 16px; border: 1px solid #1c1917; border-radius: 6px; padding: 12px; }
     .summary span { display: block; font-size: 11px; color: #57534e; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 4px; }
     .summary strong { font-size: 18px; }
     .foot { margin-top: 26px; display: flex; justify-content: space-between; font-size: 12px; color: #57534e; }
@@ -254,21 +265,40 @@ export default function ResultsTab() {
     <div className="space-y-4">
       <SectionCard
         title="Results & report cards"
-        description="Results are computed live from entered marks. Publishing saves report cards and notifies parents."
+        description="Results are computed live from entered marks. Review class rankings, subject breakdowns, and print student report cards."
         actions={
-          <>
-            {examRow?.resultPublished && <StatusBadge value="PUBLISHED" />}
-            <Button size="sm" onClick={publish} disabled={!ready || !rows.length || publishing || examRow?.resultPublished}>
-              {publishing ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : <Send className="mr-1.5 h-4 w-4" />}
-              {examRow?.resultPublished ? 'Results published' : 'Publish Results'}
-            </Button>
-          </>
+          isTeacher ? (
+            <div className="flex items-center gap-2">
+              {examRow?.resultPublished ? (
+                <StatusBadge value="PUBLISHED" />
+              ) : (
+                <span className="text-xs text-muted-foreground font-medium bg-muted px-2.5 py-1 rounded-lg">
+                  Pending Admin Publication
+                </span>
+              )}
+            </div>
+          ) : (
+            <>
+              {examRow?.resultPublished && <StatusBadge value="PUBLISHED" />}
+              <Button size="sm" onClick={publish} disabled={!ready || !rows.length || publishing || examRow?.resultPublished}>
+                {publishing ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : <Send className="mr-1.5 h-4 w-4" />}
+                {examRow?.resultPublished ? 'Results published' : 'Publish Results'}
+              </Button>
+            </>
+          )
         }
       >
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <div className="space-y-1.5">
             <span className="text-xs font-medium text-muted-foreground">Exam</span>
-            <Select value={examId || undefined} onValueChange={setExamId}>
+            <Select
+              value={examId || undefined}
+              onValueChange={v => {
+                setExamId(v)
+                setClassId('')
+                setLoading(true)
+              }}
+            >
               <SelectTrigger className="w-full"><SelectValue placeholder="Select exam" /></SelectTrigger>
               <SelectContent className="max-h-64">
                 {exams.length === 0 && <div className="px-3 py-2 text-sm text-muted-foreground">No exams yet.</div>}
@@ -278,7 +308,14 @@ export default function ResultsTab() {
           </div>
           <div className="space-y-1.5">
             <span className="text-xs font-medium text-muted-foreground">Class</span>
-            <Select value={classId || undefined} onValueChange={setClassId} disabled={!examId}>
+            <Select
+              value={classId || undefined}
+              onValueChange={v => {
+                setClassId(v)
+                setLoading(true)
+              }}
+              disabled={!examId}
+            >
               <SelectTrigger className="w-full"><SelectValue placeholder="Select class" /></SelectTrigger>
               <SelectContent className="max-h-64">
                 {classOptions.length === 0 && <div className="px-3 py-2 text-sm text-muted-foreground">Loading…</div>}
@@ -291,59 +328,69 @@ export default function ResultsTab() {
 
       {!ready ? (
         <EmptyState
-          title="Select an exam and class"
-          description="Choose an exam and class to compute totals, grades and ranks from the entered marks."
-          icon={<Award className="h-7 w-7" />}
+          title="Select exam and class"
+          description="Pick an exam and class above to calculate marks totals, percentages and generate report cards."
+          icon={<Award className="h-7 w-7 text-muted-foreground/60" />}
         />
       ) : loading ? (
-        <Skeleton className="h-80 w-full rounded-xl" />
+        <div className="space-y-2">
+          {Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-12 w-full rounded-xl" />)}
+        </div>
       ) : error ? (
-        <ErrorState message={error} onRetry={compute} />
+        <ErrorState title="Could not compute results" description={error} onRetry={() => setLoading(true)} />
       ) : rows.length === 0 ? (
         <EmptyState
-          title="No marks entered"
-          description="Enter marks for this exam, class and its subjects first — results appear here automatically."
-          icon={<Award className="h-7 w-7" />}
+          title="No marks found"
+          description="No student marks have been entered for this exam and class. Head over to the Marks Entry tab to enter marks first."
+          icon={<Award className="h-7 w-7 text-muted-foreground/60" />}
         />
       ) : (
-        <div className="rounded-xl border bg-card">
+        <div className="rounded-xl border border-border/80 bg-card shadow-2xs overflow-hidden">
           <div className="erp-scroll overflow-x-auto">
             <Table>
               <TableHeader>
-                <TableRow>
-                  <TableHead className="w-10">Rank</TableHead>
+                <TableRow className="bg-muted/50">
+                  <TableHead className="w-14 text-center">Rank</TableHead>
                   <TableHead>Student</TableHead>
-                  <TableHead className="text-right">Obtained</TableHead>
-                  <TableHead className="text-right">Total</TableHead>
+                  <TableHead className="text-center">Subjects</TableHead>
+                  <TableHead className="text-right">Score</TableHead>
                   <TableHead className="text-right">%</TableHead>
-                  <TableHead>Grade</TableHead>
-                  <TableHead className="text-right">Report Card</TableHead>
+                  <TableHead className="text-center">Grade</TableHead>
+                  <TableHead className="w-24 text-right">Action</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {rows.map(r => (
-                  <TableRow key={r.studentId}>
+                {rows.map((r) => (
+                  <TableRow key={r.studentId} className="hover:bg-muted/30">
+                    <TableCell className="text-center font-mono font-bold text-muted-foreground">
+                      {r.rank === 1 ? '🥇 1' : r.rank === 2 ? '🥈 2' : r.rank === 3 ? '🥉 3' : `#${r.rank}`}
+                    </TableCell>
                     <TableCell>
-                      <span className={r.rank <= 3 ? 'font-bold text-amber-600 dark:text-amber-400' : 'text-muted-foreground'}>
-                        #{r.rank}
+                      <p className="font-medium text-foreground">{r.name}</p>
+                      <p className="text-xs text-muted-foreground">{r.admissionNo}{r.rollNo ? ` · Roll ${r.rollNo}` : ''}</p>
+                    </TableCell>
+                    <TableCell className="text-center">
+                      <span className="text-xs font-medium text-muted-foreground">{r.perSubject.length} papers</span>
+                    </TableCell>
+                    <TableCell className="text-right tabular-nums font-semibold">
+                      {r.obtained} <span className="text-xs font-normal text-muted-foreground">/ {r.totalMarks}</span>
+                    </TableCell>
+                    <TableCell className="text-right tabular-nums font-semibold">
+                      <span className={r.percentage >= 35 ? 'text-foreground' : 'text-rose-600 dark:text-rose-400 font-bold'}>
+                        {r.percentage}%
                       </span>
                     </TableCell>
-                    <TableCell>
-                      <p className="font-medium">{r.name}</p>
-                      <p className="text-xs text-muted-foreground">{r.admissionNo}</p>
-                    </TableCell>
-                    <TableCell className="text-right font-medium">{r.obtained}</TableCell>
-                    <TableCell className="text-right text-muted-foreground">{r.totalMarks}</TableCell>
-                    <TableCell className="text-right font-semibold">{r.percentage}%</TableCell>
-                    <TableCell>
-                      <span className={cn('inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-semibold',
-                        r.grade === 'F' ? 'border-rose-500/20 bg-rose-500/10 text-rose-700 dark:text-rose-400' : 'border-emerald-500/20 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400')}>
+                    <TableCell className="text-center">
+                      <span className={cn(
+                        'inline-flex items-center justify-center rounded-md px-2 py-0.5 text-xs font-bold border',
+                        r.grade === 'F' ? 'border-rose-500/20 bg-rose-500/10 text-rose-700 dark:text-rose-400' : 'border-emerald-500/20 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400'
+                      )}>
                         {r.grade}
                       </span>
                     </TableCell>
                     <TableCell className="text-right">
-                      <Button variant="outline" size="sm" className="h-8" onClick={() => printCard(r)}>
-                        <Printer className="mr-1 h-3.5 w-3.5" /> Print
+                      <Button variant="outline" size="sm" className="h-8 text-xs font-medium border-border/80" onClick={() => printCard(r)}>
+                        <Printer className="mr-1 h-3.5 w-3.5 text-primary" /> Print
                       </Button>
                     </TableCell>
                   </TableRow>

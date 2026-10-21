@@ -35,6 +35,72 @@ export async function GET(req: NextRequest) {
     if (classId) where.classId = classId
     if (sectionId) where.sectionId = sectionId
 
+    if (session.role === 'TEACHER') {
+      let teacher: any = null
+      if (session.employeeId) {
+        teacher = await db.employee.findFirst({
+          where: { id: session.employeeId, ...schoolWhere },
+        })
+      }
+      if (!teacher) {
+        teacher = await db.employee.findFirst({
+          where: { ...schoolWhere, status: 'ACTIVE' },
+        })
+      }
+
+      if (!teacher) {
+        return json({
+          data: {
+            days, trend: [], byStatus: [], topAbsentees: [],
+            avgPercent: 0, latestDay: '', latestPercent: 0, totalAbsents: 0, trackedStudents: 0,
+          },
+        })
+      }
+
+      const [homeroomSections, taughtSubjects] = await Promise.all([
+        db.section.findMany({
+          where: { ...schoolWhere, teacherId: teacher.id },
+          select: { id: true, classId: true },
+        }),
+        db.subject.findMany({
+          where: { ...schoolWhere, teacherId: teacher.id },
+          select: { id: true, classId: true },
+        }),
+      ])
+
+      const authSectionIds = homeroomSections.map(s => s.id)
+      const authClassIds = [
+        ...new Set([
+          ...homeroomSections.map(s => s.classId),
+          ...taughtSubjects.map(s => s.classId).filter(Boolean) as string[],
+        ]),
+      ]
+
+      if (classId && !authClassIds.includes(classId)) {
+        return err(403, 'You are not authorized to view stats for this class.')
+      }
+      if (sectionId && !authSectionIds.includes(sectionId) && (!classId || !authClassIds.includes(classId))) {
+        return err(403, 'You are not authorized to view stats for this section.')
+      }
+
+      const orClauses: any[] = []
+      if (authSectionIds.length > 0) orClauses.push({ sectionId: { in: authSectionIds } })
+      if (authClassIds.length > 0) orClauses.push({ classId: { in: authClassIds } })
+
+      if (orClauses.length === 0) {
+        return json({
+          data: {
+            days, trend: [], byStatus: [], topAbsentees: [],
+            avgPercent: 0, latestDay: '', latestPercent: 0, totalAbsents: 0, trackedStudents: 0,
+          },
+        })
+      }
+
+      if (!classId && !sectionId) {
+        where.OR = orClauses
+      }
+    }
+
     const [rows, classes, sections] = await Promise.all([
       db.attendance.findMany({
         where,

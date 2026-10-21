@@ -3,11 +3,12 @@
 import * as React from 'react'
 import { DataTable, type Column, type FormField } from '@/components/erp/DataTable'
 import { StatusBadge } from '@/components/erp/ui'
-import { list } from '@/lib/api-client'
+import { api, list } from '@/lib/api-client'
 import { fmtDate } from '@/lib/format'
 import { isPastDay } from '@/role/teacher/modules/admissions/constants'
-
-/* eslint-disable @typescript-eslint/no-explicit-any */
+import { useErp } from '@/lib/store'
+import { Button } from '@/components/ui/button'
+import { FileText } from 'lucide-react'
 
 const TYPE_BADGE: Record<string, string> = {
   HOMEWORK: 'bg-sky-500/10 text-sky-700 dark:text-sky-400 border-sky-500/20',
@@ -34,6 +35,23 @@ const columns: Column[] = [
     },
   },
   { key: 'maxMarks', label: 'Max Marks', hideOnMobile: true },
+  {
+    key: 'stats', label: 'Submissions', sortable: false,
+    render: row => {
+      const stats = row.stats || { total: 0, graded: 0, pending: 0 }
+      if (stats.total === 0) {
+        return <span className="text-xs text-muted-foreground">0 submitted</span>
+      }
+      return (
+        <div className="flex flex-col gap-0.5 text-xs">
+          <span className="font-medium text-foreground">{stats.total} submitted</span>
+          <span className="text-muted-foreground">
+            {stats.graded} graded{stats.pending > 0 ? ` · ${stats.pending} pending` : ''}
+          </span>
+        </div>
+      )
+    },
+  },
   { key: 'status', label: 'Status', badge: true },
 ]
 
@@ -41,6 +59,7 @@ const TYPE_OPTIONS = ['HOMEWORK', 'ASSIGNMENT', 'PROJECT']
 const STATUS_OPTIONS = ['DRAFT', 'PUBLISHED', 'CLOSED']
 
 export default function AssignmentsTab() {
+  const { setModule } = useErp()
   const [classes, setClasses] = React.useState<any[]>([])
   const [sections, setSections] = React.useState<any[]>([])
   const [subjects, setSubjects] = React.useState<any[]>([])
@@ -48,15 +67,33 @@ export default function AssignmentsTab() {
   React.useEffect(() => {
     let alive = true
     Promise.all([
+      api<{ data: any }>('/api/portal/teacher/classes').catch(() => null),
       list('api/academics/classes', { all: 1 }).catch(() => ({ data: [] })),
       list('api/academics/sections', { all: 1 }).catch(() => ({ data: [] })),
       list('api/academics/subjects', { all: 1 }).catch(() => ({ data: [] })),
     ])
-      .then(([classesRes, sectionsRes, subjectsRes]) => {
+      .then(([teacherRes, classesRes, sectionsRes, subjectsRes]) => {
         if (!alive) return
-        setClasses(classesRes.data || [])
-        setSections(sectionsRes.data || [])
-        setSubjects(subjectsRes.data || [])
+        const teacherClasses = teacherRes?.data?.classes
+        if (Array.isArray(teacherClasses) && teacherClasses.length > 0) {
+          setClasses(teacherClasses.map((c: any) => ({ id: c.id, name: c.name })))
+          const secs: any[] = []
+          const subs: any[] = []
+          for (const c of teacherClasses) {
+            if (Array.isArray(c.sections)) {
+              for (const s of c.sections) secs.push({ id: s.id, name: s.name, classId: c.id })
+            }
+            if (Array.isArray(c.subjects)) {
+              for (const sub of c.subjects) subs.push({ id: sub.id, name: sub.name, code: sub.code, classId: c.id })
+            }
+          }
+          setSections(secs.length ? secs : (sectionsRes.data || []))
+          setSubjects(subs.length ? subs : (subjectsRes.data || []))
+        } else {
+          setClasses(classesRes.data || [])
+          setSections(sectionsRes.data || [])
+          setSubjects(subjectsRes.data || [])
+        }
       })
     return () => { alive = false }
   }, [])
@@ -106,6 +143,7 @@ export default function AssignmentsTab() {
       filters={[
         { key: 'type', label: 'Types', options: TYPE_OPTIONS.map(t => ({ label: t.charAt(0) + t.slice(1).toLowerCase(), value: t })) },
         { key: 'status', label: 'Statuses', options: STATUS_OPTIONS.map(s => ({ label: s.charAt(0) + s.slice(1).toLowerCase(), value: s })) },
+        ...(classes.length ? [{ key: 'classId', label: 'Class', options: classes.map(c => ({ label: c.name, value: c.id })) }] : []),
       ]}
       emptyTitle="No assignments yet"
       emptyDescription="Create homework, assignments or projects for your classes."
@@ -123,6 +161,18 @@ export default function AssignmentsTab() {
         attachmentUrl: row.attachmentUrl || '',
         description: row.description || '',
       })}
+      rowActions={(row) => (
+        <Button
+          key="submissions"
+          variant="ghost"
+          size="sm"
+          className="h-8 px-2 text-xs"
+          onClick={() => setModule('lms', { tab: 'submissions', assignmentId: row.id })}
+          title="View student submissions"
+        >
+          <FileText className="mr-1 h-3.5 w-3.5 text-primary" /> Submissions
+        </Button>
+      )}
     />
   )
 }

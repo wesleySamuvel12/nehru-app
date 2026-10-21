@@ -2,11 +2,14 @@
 
 import * as React from 'react'
 import { DataTable, type Column, type FormField } from '@/components/erp/DataTable'
-
+import { useErp } from '@/lib/store'
 
 export default function GradingTab() {
+  const { session } = useErp()
+  const isTeacher = session?.role === 'TEACHER'
+
   const columns: Column[] = [
-    { key: 'grade', label: 'Grade', sortable: true, render: (row) => <span className="font-bold">{row.grade}</span> },
+    { key: 'grade', label: 'Grade', sortable: true, render: (row) => <span className="font-bold text-foreground">{row.grade}</span> },
     { key: 'name', label: 'Band Name', sortable: true },
     { key: 'minPercent', label: 'Min %', sortable: true, render: (row) => `${row.minPercent}%` },
     { key: 'maxPercent', label: 'Max %', sortable: true, render: (row) => `${row.maxPercent}%` },
@@ -29,8 +32,8 @@ export default function GradingTab() {
   return (
     <div className="space-y-3">
       <p className="text-sm text-muted-foreground">
-        Grade bands drive automatic grade calculation in Marks Entry, Results and printed report cards.
-        Lower the Min % of a band to widen it; bands are matched from the highest Min % downwards.
+        Grade bands drive automatic grade calculation in Marks Entry, Results, and student report cards.
+        Bands are matched from the highest Min % downwards according to the school grading system.
       </p>
       <DataTable
         endpoint="api/exams/grades"
@@ -38,7 +41,10 @@ export default function GradingTab() {
         fields={fields}
         defaultSort={{ sortBy: 'minPercent', sortDir: 'desc' }}
         searchPlaceholder="Search grades…"
-        createLabel="Add Grade Band"
+        createLabel={isTeacher ? undefined : 'Add Grade Band'}
+        allowCreate={!isTeacher}
+        allowEdit={!isTeacher}
+        allowDelete={!isTeacher}
         transformSave={(values) => ({
           ...values,
           minPercent: Number(values.minPercent) || 0,
@@ -47,7 +53,7 @@ export default function GradingTab() {
           remark: values.remark || null,
         })}
         emptyTitle="No grade bands"
-        emptyDescription="Add grade bands (e.g. A+ for 90–100%) to enable automatic grading."
+        emptyDescription="School grade bands will appear here."
       />
     </div>
   )

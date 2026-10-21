@@ -24,6 +24,43 @@ const crud = defineCrud({
   defaultSort: { field: 'createdAt', dir: 'desc' },
   required: ['firstName', 'lastName'],
   include: { parent: true, klass: true, section: true },
+  scope: async (session) => {
+    // Row-level authorization: Teachers can only view students in their assigned classes/sections
+    if (session.role === 'TEACHER') {
+      let teacher: any = null
+      if (session.employeeId) {
+        teacher = await db.employee.findUnique({ where: { id: session.employeeId } })
+      }
+      if (!teacher) {
+        teacher = await db.employee.findFirst({
+          where: { schoolId: session.schoolId || undefined, status: 'ACTIVE' },
+        })
+      }
+      if (teacher) {
+        const [homeroomSections, taughtSubjects] = await Promise.all([
+          db.section.findMany({ where: { teacherId: teacher.id }, select: { id: true, classId: true } }),
+          db.subject.findMany({ where: { teacherId: teacher.id }, select: { classId: true } }),
+        ])
+        const classIds = [
+          ...new Set([
+            ...homeroomSections.map(s => s.classId),
+            ...taughtSubjects.map(s => s.classId).filter(Boolean) as string[],
+          ])
+        ]
+        const sectionIds = homeroomSections.map(s => s.id)
+        if (classIds.length || sectionIds.length) {
+          return {
+            OR: [
+              ...(sectionIds.length ? [{ sectionId: { in: sectionIds } }] : []),
+              ...(classIds.length ? [{ classId: { in: classIds } }] : []),
+            ],
+          }
+        }
+        return { id: '__none__' }
+      }
+    }
+    return null
+  },
   beforeSave: async (data: any, _session, mode) => {
     const b = { ...data }
     // Trim core text fields

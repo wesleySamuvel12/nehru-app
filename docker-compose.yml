@@ -9,8 +9,8 @@ services:
       POSTGRES_DB: ${POSTGRES_DB:-nehru_erp}
       PGDATA: /var/lib/postgresql/data/pgdata
     ports:
-      # Bind to localhost (127.0.0.1) to avoid public exposure; host 5433 -> container 5432
-      - "127.0.0.1:${POSTGRES_PORT:-5433}:5432"
+      # Bind to localhost (127.0.0.1) to avoid public exposure; host 5434 -> container 5432
+      - "127.0.0.1:${POSTGRES_PORT:-5434}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:

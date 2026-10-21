@@ -1,7 +1,6 @@
 'use client'
 
-import { list } from '@/lib/api-client'
-
+import { api, list } from '@/lib/api-client'
 
 export const ATTENDANCE_STATUSES = ['PRESENT', 'ABSENT', 'LATE', 'HALF_DAY', 'EXCUSED'] as const
 export type AttendanceStatus = (typeof ATTENDANCE_STATUSES)[number]
@@ -18,11 +17,11 @@ export const STATUS_LABELS: Record<string, string> = {
 
 /** Chip tones per status (active state). */
 export const STATUS_CHIP_ACTIVE: Record<string, string> = {
-  PRESENT: 'bg-emerald-500 text-white border-emerald-500',
-  ABSENT: 'bg-rose-500 text-white border-rose-500',
-  LATE: 'bg-amber-500 text-white border-amber-500',
-  HALF_DAY: 'bg-orange-500 text-white border-orange-500',
-  EXCUSED: 'bg-sky-500 text-white border-sky-500',
+  PRESENT: 'bg-emerald-600 text-white border-emerald-600 font-semibold',
+  ABSENT: 'bg-rose-600 text-white border-rose-600 font-semibold',
+  LATE: 'bg-amber-600 text-white border-amber-600 font-semibold',
+  HALF_DAY: 'bg-orange-600 text-white border-orange-600 font-semibold',
+  EXCUSED: 'bg-sky-600 text-white border-sky-600 font-semibold',
 }
 
 export const STATUS_CHIP_IDLE: Record<string, string> = {
@@ -50,12 +49,57 @@ export function personName(p?: { firstName?: string; lastName?: string } | null)
 
 export interface Option { label: string; value: string }
 
+export interface TeacherClassItem {
+  id: string
+  classId: string
+  sectionId: string
+  className: string
+  sectionName: string
+  displayName: string
+  level: number
+  capacity: number
+  studentCount: number
+  isClassTeacher: boolean
+  subjects: Array<{ id: string; name: string; code: string }>
+}
+
+export async function loadTeacherClasses(): Promise<TeacherClassItem[]> {
+  try {
+    const res = await api<{ data: { classes: TeacherClassItem[] } }>('/api/portal/teacher/classes')
+    return res.data?.classes || []
+  } catch {
+    return []
+  }
+}
+
 export async function loadClassOptions(): Promise<Option[]> {
+  const teacherClasses = await loadTeacherClasses()
+  if (teacherClasses.length > 0) {
+    const seen = new Set<string>()
+    const opts: Option[] = []
+    for (const c of teacherClasses) {
+      if (!seen.has(c.classId)) {
+        seen.add(c.classId)
+        opts.push({ label: c.className, value: c.classId })
+      }
+    }
+    return opts.sort((a, b) => a.label.localeCompare(b.label, undefined, { numeric: true }))
+  }
+
   const rows = await safeList('api/academics/classes', { all: 1, sortBy: 'name', sortDir: 'asc' })
   return rows.map(c => ({ label: c.name, value: c.id }))
 }
 
 export async function loadSectionOptions(classId?: string): Promise<Option[]> {
+  const teacherClasses = await loadTeacherClasses()
+  if (teacherClasses.length > 0) {
+    const filtered = classId ? teacherClasses.filter(c => c.classId === classId) : teacherClasses
+    return filtered.map(c => ({
+      label: classId ? (c.isClassTeacher ? `${c.sectionName} (Homeroom)` : c.sectionName) : c.displayName,
+      value: c.sectionId,
+    }))
+  }
+
   const rows = await safeList('api/academics/sections', classId ? { classId, all: 1 } : { all: 1 })
   const classes = classId ? [] : await safeList('api/academics/classes', { all: 1 })
   const className = new Map<string, string>(classes.map((c: any) => [c.id, c.name]))

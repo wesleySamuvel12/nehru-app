@@ -25,6 +25,9 @@ export async function POST(req: NextRequest) {
   const session = await requireAuth(req)
   if (!session) return err(401, 'Please sign in to continue.')
   if (!can(session.role, 'examinations')) return err(403, 'You do not have permission to publish results.')
+  if (session.role === 'TEACHER') {
+    return err(403, 'Only school administrators and principals can publish finalized report cards.')
+  }
 
   const tenantRes = await resolveTenantContext(req, session, { isWrite: true })
   if (tenantRes.error) return tenantRes.error

@@ -4,12 +4,17 @@ import * as React from 'react'
 import { DataTable, type Column, type FormField, type FilterDef } from '@/components/erp/DataTable'
 import { StatusBadge } from '@/components/erp/ui'
 import { fmtDate } from '@/lib/format'
+import { useErp } from '@/lib/store'
+import { Button } from '@/components/ui/button'
+import { ClipboardEdit, CalendarClock, Award } from 'lucide-react'
 import {
   EXAM_TYPES, EXAM_STATUSES, loadClassOptions, loadYearOptions, loadTermOptions, safeList,
 } from './helpers'
 
-
 export default function ExamsTab() {
+  const { session, setModule } = useErp()
+  const isTeacher = session?.role === 'TEACHER'
+
   const [classMap, setClassMap] = React.useState<Map<string, string>>(new Map())
   const [yearMap, setYearMap] = React.useState<Map<string, string>>(new Map())
   const [termMap, setTermMap] = React.useState<Map<string, string>>(new Map())
@@ -85,7 +90,10 @@ export default function ExamsTab() {
       filters={filters}
       defaultSort={{ sortBy: 'startDate', sortDir: 'desc' }}
       searchPlaceholder="Search exams…"
-      createLabel="Add Exam"
+      createLabel={isTeacher ? undefined : 'Add Exam'}
+      allowCreate={!isTeacher}
+      allowEdit={!isTeacher}
+      allowDelete={!isTeacher}
       rowToForm={(row) => ({
         name: row.name || '',
         type: row.type || 'TERM',
@@ -108,6 +116,39 @@ export default function ExamsTab() {
       }}
       emptyTitle="No exams configured"
       emptyDescription="Create your first exam to start scheduling papers and entering marks."
+      rowActions={(row) => (
+        <div className="flex items-center gap-1">
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-8 px-2.5 text-xs font-medium border-border/80"
+            onClick={() => setModule('examinations', { tab: 'marks', examId: row.id })}
+            title="Enter marks for this exam"
+          >
+            <ClipboardEdit className="mr-1.5 h-3.5 w-3.5 text-primary" /> Marks
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-8 px-2 text-xs text-muted-foreground hover:text-foreground"
+            onClick={() => setModule('examinations', { tab: 'schedule', examId: row.id })}
+            title="View paper schedule"
+          >
+            <CalendarClock className="mr-1 h-3.5 w-3.5" /> Schedule
+          </Button>
+          {row.resultPublished && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-8 px-2 text-xs text-emerald-600 dark:text-emerald-400 hover:text-emerald-700"
+              onClick={() => setModule('examinations', { tab: 'results', examId: row.id })}
+              title="View published results"
+            >
+              <Award className="mr-1 h-3.5 w-3.5" /> Results
+            </Button>
+          )}
+        </div>
+      )}
     />
   )
 }

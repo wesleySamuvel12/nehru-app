@@ -20,13 +20,18 @@ const SCROLL_CSS = `
 
 export default function ExaminationsModule() {
   const moduleParams = useErp(s => s.moduleParams)
-  const [tab, setTab] = React.useState('exams')
+  const paramTab = (moduleParams?.tab && ['exams', 'schedule', 'questions', 'marks', 'results', 'grading'].includes(moduleParams.tab))
+    ? moduleParams.tab
+    : undefined
+  const [tab, setTab] = React.useState(paramTab || 'exams')
+  const [prevParamTab, setPrevParamTab] = React.useState(paramTab)
 
-  React.useEffect(() => {
-    if (moduleParams?.tab && ['exams', 'schedule', 'questions', 'marks', 'results', 'grading'].includes(moduleParams.tab)) {
-      setTab(moduleParams.tab)
+  if (paramTab !== prevParamTab) {
+    setPrevParamTab(paramTab)
+    if (paramTab) {
+      setTab(paramTab)
     }
-  }, [moduleParams?.tab])
+  }
 
   return (
     <>

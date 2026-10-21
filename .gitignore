@@ -59,3 +59,6 @@ server.log
 # Database backups and checksums
 db/*.backup*
 db/*.sha256
+
+# Nested / local copies
+nehru-app/

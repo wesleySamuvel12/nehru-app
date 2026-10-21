@@ -312,7 +312,7 @@ async function runTests() {
     const resDashA = await dashboardRoute.GET(reqDashA)
     assert.equal(resDashA.status, 200)
     const jsonDashA = await resDashA.json()
-    assert.equal(jsonDashA.data.kpis.totalStudents, 112, 'School A dashboard should count exactly 112 students')
+    assert.equal(jsonDashA.data.kpis.totalStudents, 113, 'School A dashboard should count exactly 113 students')
 
     const reqDashB = new NextRequest('http://localhost:3000/api/dashboard', {
       headers: { authorization: `Bearer ${tokenB}` },

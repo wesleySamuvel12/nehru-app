@@ -104,7 +104,7 @@ export const NAV_ITEMS: NavItem[] = [
     label: 'Dashboard',
     icon: 'LayoutDashboard',
     group: 'Overview',
-    roles: [...MANAGEMENT, 'ACCOUNTANT', 'HR', 'COUNSELLOR', 'LIBRARIAN', 'TRANSPORT', 'WARDEN', 'NURSE', 'SECURITY'],
+    roles: [...MANAGEMENT, 'TEACHER', 'ACCOUNTANT', 'HR', 'COUNSELLOR', 'LIBRARIAN', 'TRANSPORT', 'WARDEN', 'NURSE', 'SECURITY'],
   },
   {
     key: 'parent-portal',
