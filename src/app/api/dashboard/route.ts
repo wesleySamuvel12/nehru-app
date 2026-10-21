@@ -41,7 +41,14 @@ export async function GET(req: NextRequest) {
       db.attendance.groupBy({ by: ['date', 'status'], where: { ...schoolWhere, date: { gte: thirtyAgo } }, _count: true }).then((byDate) => {
         const map = new Map<string, { present: number; total: number }>()
         byDate.forEach(r => {
-          const key = r.date.toISOString().slice(0, 10)
+          let key = ''
+          try {
+            const dt = r.date instanceof Date ? r.date : new Date(r.date)
+            key = isNaN(dt.getTime()) ? '' : dt.toISOString().slice(0, 10)
+          } catch {
+            key = ''
+          }
+          if (!key) return
           const e = map.get(key) || { present: 0, total: 0 }
           e.total += r._count
           if (['PRESENT', 'LATE', 'HALF_DAY'].includes(r.status)) e.present += r._count
@@ -124,8 +131,12 @@ export async function GET(req: NextRequest) {
         upcomingEvents: eventsUpcoming,
       },
     })
-  } catch (e) {
+  } catch (e: any) {
     console.error('[dashboard]', e)
-    return NextResponse.json({ error: 'Unable to load dashboard data.' }, { status: 500 })
+    return NextResponse.json({
+      error: `Unable to load dashboard data. ${e?.message ? `(${e.message})` : ''}`.trim(),
+      details: e?.message || String(e),
+      stack: process.env.NODE_ENV !== 'production' ? e?.stack : undefined,
+    }, { status: 500 })
   }
 }

@@ -259,7 +259,7 @@ export default function StudentPortalModule() {
     setLoading(true)
     setError(null)
     try {
-      const res = await api('api/portal/student')
+      const res = await api('/api/portal/student')
       setData(res)
     } catch (e: any) {
       setError(e?.message || 'Unable to load your space right now.')

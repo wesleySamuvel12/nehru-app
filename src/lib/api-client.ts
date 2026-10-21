@@ -40,8 +40,9 @@ export class ApiError extends Error {
 export async function api<T = any>(path: string, init?: RequestInit): Promise<T> {
   let res: Response
   const token = getToken()
+  const url = path.startsWith('http') || path.startsWith('/') ? path : `/${path}`
   try {
-    res = await fetch(path, {
+    res = await fetch(url, {
       ...init,
       headers: {
         'Content-Type': 'application/json',

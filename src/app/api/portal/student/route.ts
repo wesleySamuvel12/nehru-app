@@ -7,7 +7,15 @@ import { resolveTenantContext } from '@/lib/tenant'
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
 const DAY = 86400000
-const dayKey = (d: Date) => d.toISOString().slice(0, 10)
+const dayKey = (d: any) => {
+  if (!d) return ''
+  try {
+    const dt = d instanceof Date ? d : new Date(d)
+    return isNaN(dt.getTime()) ? '' : dt.toISOString().slice(0, 10)
+  } catch {
+    return ''
+  }
+}
 
 /** GET /api/portal/student — one aggregated payload for the Student Portal */
 export async function GET(req: NextRequest) {
@@ -166,7 +174,7 @@ export async function GET(req: NextRequest) {
           orderBy: { date: 'asc' },
         })
       : null
-    const nextExamExam = nextSchedule ? await db.exam.findUnique({ where: { id: nextSchedule.examId }, select: { name: true } }) : null
+    const nextExamExam = nextSchedule?.examId ? await db.exam.findUnique({ where: { id: nextSchedule.examId }, select: { name: true } }) : null
 
     return json({
       profile: {
@@ -180,11 +188,11 @@ export async function GET(req: NextRequest) {
       homework,
       attendance: {
         pct, present, late, halfDay, absent, total,
-        log: attRows.map((r: any) => ({ date: dayKey(new Date(r.date)), status: r.status })),
+        log: attRows.map((r: any) => ({ date: dayKey(r.date), status: r.status })),
         daily: [...attRows]
           .sort((a: any, b: any) => new Date(a.date).getTime() - new Date(b.date).getTime())
           .map((r: any) => ({
-            date: dayKey(new Date(r.date)),
+            date: dayKey(r.date),
             pct: r.status === 'PRESENT' ? 100 : r.status === 'LATE' || r.status === 'HALF_DAY' ? 50 : 0,
           })),
       },
@@ -204,6 +212,9 @@ export async function GET(req: NextRequest) {
     })
   } catch (e: any) {
     console.error('[portal:student]', e)
-    return err(500, 'Unable to load your space right now. Please try again.')
+    return err(500, `Unable to load your space right now. Please try again. ${e?.message ? `(${e.message})` : ''}`.trim(), {
+      details: e?.message || String(e),
+      stack: process.env.NODE_ENV !== 'production' ? e?.stack : undefined,
+    })
   }
 }

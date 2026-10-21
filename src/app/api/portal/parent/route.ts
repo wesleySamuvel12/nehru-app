@@ -8,7 +8,15 @@ import { resolveTenantContext } from '@/lib/tenant'
 
 const DAY = 86400000
 
-function dayKey(d: Date) { return d.toISOString().slice(0, 10) }
+function dayKey(d: any) {
+  if (!d) return ''
+  try {
+    const dt = d instanceof Date ? d : new Date(d)
+    return isNaN(dt.getTime()) ? '' : dt.toISOString().slice(0, 10)
+  } catch {
+    return ''
+  }
+}
 
 /** GET /api/portal/parent — one aggregated payload for the Parent Portal */
 export async function GET(req: NextRequest) {
@@ -91,7 +99,7 @@ export async function GET(req: NextRequest) {
           where: { studentId: s.id, date: { gte: since30 }, status: { not: 'HOLIDAY' } },
           orderBy: { date: 'desc' },
         }),
-        reportCard
+        reportCard?.examId
           ? db.mark.findMany({ where: { studentId: s.id, examId: reportCard.examId, isAbsent: false } })
           : Promise.resolve([]),
         db.feeInvoice.findMany({ where: { studentId: s.id }, orderBy: { dueDate: 'asc' } }),
@@ -231,6 +239,9 @@ export async function GET(req: NextRequest) {
     })
   } catch (e: any) {
     console.error('[portal:parent]', e)
-    return err(500, 'Unable to load the parent portal right now. Please try again.')
+    return err(500, `Unable to load the parent portal right now. Please try again. ${e?.message ? `(${e.message})` : ''}`.trim(), {
+      details: e?.message || String(e),
+      stack: process.env.NODE_ENV !== 'production' ? e?.stack : undefined,
+    })
   }
 }
