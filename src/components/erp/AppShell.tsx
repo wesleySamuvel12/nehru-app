@@ -554,44 +554,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       </Sheet>
 
       <div className="flex min-w-0 flex-1 flex-col">
-        {/* Topbar */}
-        <header className="glass sticky top-0 z-30 flex h-14 shrink-0 items-center gap-2 border-b px-3 sm:px-4">
-          <Button variant="outline" size="icon" className="h-9 w-9 rounded-xl lg:hidden" onClick={() => setMobileOpen(true)} aria-label="Open menu">
-            <Menu className="h-4 w-4" />
-          </Button>
-          {/* Breadcrumb & Back to Dashboard */}
-          {activeModule !== 'dashboard' && (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setModule('dashboard')}
-              className="h-8.5 gap-1.5 rounded-xl border-primary/30 bg-primary/10 text-xs font-bold text-primary hover:bg-primary/20 hover:text-primary transition-all shadow-2xs"
-            >
-              <ArrowLeft className="h-3.5 w-3.5" />
-              <span>Back to Dashboard</span>
-            </Button>
-          )}
-          <div className="hidden min-w-0 items-center gap-1.5 text-sm md:flex" aria-label="Breadcrumb">
-            {current?.group && (
-              <>
-                <span className="truncate text-muted-foreground/80">{current.group}</span>
-                <span className="text-muted-foreground/40" aria-hidden>/</span>
-              </>
-            )}
-            <span className="truncate font-display font-semibold">{current?.label || 'Dashboard'}</span>
-          </div>
-          <div className="flex flex-1 justify-center md:justify-start">
-            <CommandPalette />
-          </div>
-          <div className="flex shrink-0 items-center gap-2">
-            <SchoolSelector />
-            <YearSelector />
-            <NotificationBell />
-            <ThemeToggle />
-            <ProfileMenu />
-          </div>
-        </header>
-
         {/* Main content */}
         <main className="flex-1 overflow-y-auto">
           <div className="mx-auto flex min-h-full w-full max-w-[1400px] flex-col px-3 pb-20 pt-5 sm:px-6 lg:pb-6">

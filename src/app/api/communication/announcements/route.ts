@@ -18,10 +18,44 @@ const crud = defineCrud({
   filterFields: ['type', 'audience', 'priority', 'status'],
   defaultSort: { field: 'publishAt', dir: 'desc' },
   required: ['title', 'body'],
-  beforeSave: (data: any, session: any, mode: 'create' | 'update') => {
+  beforeSave: async (data: any, session: any, mode: 'create' | 'update') => {
     if (data.expiresAt === '') data.expiresAt = null
     if (!data.targetClassId || data.targetClassId === 'NONE') data.targetClassId = null
     if (!data.channels) data.channels = 'IN_APP'
+
+    if (session.role === 'TEACHER') {
+      let teacher: any = null
+      if (session.employeeId) {
+        teacher = await db.employee.findFirst({
+          where: { id: session.employeeId, schoolId: session.schoolId || undefined },
+        })
+      }
+      if (!teacher && session.sub) {
+        const user = await db.user.findUnique({ where: { id: session.sub }, select: { linkedEmployeeId: true } })
+        if (user?.linkedEmployeeId) {
+          teacher = await db.employee.findFirst({
+            where: { id: user.linkedEmployeeId, schoolId: session.schoolId || undefined },
+          })
+        }
+      }
+      if (!teacher) {
+        throw new Error('Teacher employee profile not found.')
+      }
+
+      const [homeroom, subjects] = await Promise.all([
+        db.section.findMany({ where: { teacherId: teacher.id }, select: { classId: true } }),
+        db.subject.findMany({ where: { teacherId: teacher.id }, select: { classId: true } }),
+      ])
+      const authorizedClassIds = new Set([
+        ...homeroom.map(s => s.classId),
+        ...subjects.map(s => s.classId).filter(Boolean) as string[],
+      ])
+
+      if (data.targetClassId && !authorizedClassIds.has(data.targetClassId)) {
+        throw new Error('You can only create notices for your assigned classes.')
+      }
+    }
+
     if (data.status === 'PUBLISHED') {
       data.publishedBy = session.name
       data.publishedById = session.sub

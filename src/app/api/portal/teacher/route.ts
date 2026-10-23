@@ -43,22 +43,59 @@ export async function GET(req: NextRequest) {
   try {
     // 1. Resolve Teacher Employee Record
     let teacher: any = null
-    if (session.employeeId) {
-      teacher = await db.employee.findFirst({
-        where: { id: session.employeeId, ...schoolWhere },
-      })
-    }
+    const sp = req.nextUrl.searchParams
+    const queryTeacherId = sp.get('teacherId')
 
-    if (!teacher) {
-      if (session.role === 'TEACHER') {
+    if (session.role === 'TEACHER') {
+      if (session.employeeId) {
         teacher = await db.employee.findFirst({
-          where: { ...schoolWhere, status: 'ACTIVE' },
+          where: { id: session.employeeId, ...schoolWhere },
         })
-      } else {
+      }
+      if (!teacher) {
+        const user = await db.user.findFirst({
+          where: {
+            OR: [
+              ...(session.sub ? [{ id: session.sub }] : []),
+              ...(session.email ? [{ email: session.email }] : []),
+            ],
+            ...schoolWhere,
+          },
+          select: { linkedEmployeeId: true, schoolId: true },
+        })
+        if (user?.linkedEmployeeId) {
+          teacher = await db.employee.findFirst({
+            where: { id: user.linkedEmployeeId, ...schoolWhere },
+          })
+        }
+      }
+      if (!teacher && session.email) {
+        const emailPrefix = session.email.split('@')[0]
         teacher = await db.employee.findFirst({
-          where: { ...schoolWhere, designation: { contains: 'Teacher' } },
+          where: {
+            OR: [
+              { email: session.email },
+              { email: { startsWith: emailPrefix } },
+            ],
+            ...schoolWhere,
+          },
+        })
+      }
+
+      if (!teacher) {
+        return err(403, 'Teacher employee profile not found for this account.')
+      }
+    } else {
+      if (queryTeacherId) {
+        teacher = await db.employee.findFirst({
+          where: { id: queryTeacherId, ...schoolWhere },
+        })
+      }
+      if (!teacher) {
+        teacher = await db.employee.findFirst({
+          where: { ...schoolWhere, isTeacher: true, status: 'ACTIVE' },
         }) || await db.employee.findFirst({
-          where: schoolWhere,
+          where: { ...schoolWhere, designation: { contains: 'Teacher' } },
         })
       }
     }

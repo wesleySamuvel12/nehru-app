@@ -48,8 +48,25 @@ export async function resolveTenantContext(
       }
     }
 
+    // Resolve alias 'main' or master code to master school ID
+    let activeSchoolId = session.schoolId
+    let activeSchoolCode = session.schoolCode || null
+
+    if (activeSchoolId === 'main' || activeSchoolId === 'NIS-MAIN') {
+      const masterSchool = await db.school.findFirst({ where: { isMaster: true }, select: { id: true, code: true } })
+      if (masterSchool) {
+        activeSchoolId = masterSchool.id
+        activeSchoolCode = masterSchool.code
+      }
+    }
+
+    let normalizedRequested = requestedSchoolId
+    if (requestedSchoolId === 'main' || requestedSchoolId === 'NIS-MAIN') {
+      normalizedRequested = activeSchoolId
+    }
+
     // Reject any cross-school spoofing attempt
-    if (requestedSchoolId && requestedSchoolId !== session.schoolId) {
+    if (normalizedRequested && normalizedRequested !== activeSchoolId) {
       return {
         error: NextResponse.json(
           { error: 'Cross-campus access denied: you cannot access data from another school.' },
@@ -60,8 +77,8 @@ export async function resolveTenantContext(
 
     return {
       context: {
-        schoolId: session.schoolId,
-        schoolCode: session.schoolCode || null,
+        schoolId: activeSchoolId,
+        schoolCode: activeSchoolCode,
         isSuperAdmin: false,
         allSchools: false,
       },
@@ -70,8 +87,14 @@ export async function resolveTenantContext(
 
   // Super Admin:
   if (requestedSchoolId) {
+    let targetSchoolId = requestedSchoolId
+    if (requestedSchoolId === 'main' || requestedSchoolId === 'NIS-MAIN') {
+      const master = await db.school.findFirst({ where: { isMaster: true }, select: { id: true } })
+      if (master) targetSchoolId = master.id
+    }
+
     const school = await db.school.findUnique({
-      where: { id: requestedSchoolId },
+      where: { id: targetSchoolId },
       select: { id: true, code: true },
     })
 

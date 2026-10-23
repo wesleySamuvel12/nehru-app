@@ -44,7 +44,7 @@ export interface Column {
   render?: (row: any) => React.ReactNode
 }
 
-export interface FieldOption { label: string; value: string }
+export interface FieldOption { label: string; value: string; classId?: string; [key: string]: any }
 
 export interface FormField {
   name: string
@@ -159,8 +159,14 @@ export function FormFields({ fields, values, setValues, errors, mode }: {
     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
       {fields.map((f) => {
         const disabled = f.disabled?.(mode)
-        const opts = f.options || loadedOptions[f.name] || []
+        let opts = f.options || loadedOptions[f.name] || []
+        // Dynamically scope sections to chosen class if classId is set
+        if (f.name === 'sectionId' && values['classId']) {
+          const classSpecific = opts.filter((o: any) => !o.classId || o.classId === values['classId'])
+          if (classSpecific.length > 0) opts = classSpecific
+        }
         const id = `ff-${f.name}`
+        const selectValue = values[f.name] ? String(values[f.name]) : undefined
         return (
           <div key={f.name} className={cn('space-y-1.5', f.colSpan === 2 && 'sm:col-span-2')}>
             <Label htmlFor={id} className="text-sm">
@@ -168,8 +174,18 @@ export function FormFields({ fields, values, setValues, errors, mode }: {
             </Label>
             {f.type === 'select' ? (
               <Select
-                value={values[f.name] ?? ''}
-                onValueChange={(v) => setValues(prev => ({ ...prev, [f.name]: v }))}
+                value={selectValue}
+                onValueChange={(v) => {
+                  setValues(prev => {
+                    const next = { ...prev, [f.name]: v }
+                    if (f.name === 'classId') {
+                      const secOpts = loadedOptions['sectionId'] || []
+                      const matching = secOpts.find((o: any) => o.value === prev['sectionId'] && (!o.classId || o.classId === v))
+                      if (!matching) next['sectionId'] = ''
+                    }
+                    return next
+                  })
+                }}
                 disabled={disabled}
               >
                 <SelectTrigger id={id} className={cn('w-full', errors[f.name] && 'border-rose-500')}>
@@ -426,19 +442,47 @@ export function DataTable(props: DataTableProps) {
                 </button>
               )}
             </div>
-            {filters.map(f => (
-              <Select key={f.key} value={filterValues[f.key] || 'ALL'}
-                onValueChange={v => { setFilterValues(prev => ({ ...prev, [f.key]: v })); setPage(1) }}>
-                <SelectTrigger className={cn('h-9 w-[150px]', activeFilterCount > 0 && 'border-primary/50')}>
-                  <Filter className="mr-1 h-3.5 w-3.5 text-muted-foreground" />
-                  <SelectValue placeholder={f.label} />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="ALL">All {f.label}</SelectItem>
-                  {f.options.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
-                </SelectContent>
-              </Select>
-            ))}
+            {filters.map(f => {
+              // Dynamically scope section options when a specific class is selected
+              let currentOpts = f.options
+              if (f.key === 'sectionId' && filterValues['classId'] && filterValues['classId'] !== 'ALL') {
+                const classSpecific = f.options.filter((o: any) => !o.classId || o.classId === filterValues['classId'])
+                if (classSpecific.length > 0) {
+                  currentOpts = classSpecific
+                }
+              }
+
+              return (
+                <Select key={f.key} value={filterValues[f.key] || 'ALL'}
+                  onValueChange={v => {
+                    setFilterValues(prev => {
+                      const next = { ...prev, [f.key]: v }
+                      // If user selects a class, reset sectionId if current section does not belong to the selected class
+                      if (f.key === 'classId') {
+                        const currentSec = prev['sectionId']
+                        if (currentSec && currentSec !== 'ALL') {
+                          const secFilter = filters.find(flt => flt.key === 'sectionId')
+                          const belongs = secFilter?.options.find((o: any) => o.value === currentSec && (!o.classId || o.classId === v))
+                          if (!belongs) {
+                            next['sectionId'] = 'ALL'
+                          }
+                        }
+                      }
+                      return next
+                    })
+                    setPage(1)
+                  }}>
+                  <SelectTrigger className={cn('h-9 min-w-[140px] max-w-[200px]', activeFilterCount > 0 && 'border-primary/50')}>
+                    <Filter className="mr-1 h-3.5 w-3.5 text-muted-foreground" />
+                    <SelectValue placeholder={f.label} />
+                  </SelectTrigger>
+                  <SelectContent className="max-h-64">
+                    <SelectItem value="ALL">All {f.label}</SelectItem>
+                    {currentOpts.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              )
+            })}
             {(activeFilterCount > 0 || search) && (
               <Button variant="ghost" size="sm" className="h-9"
                 onClick={() => { setFilterValues({}); setQ(''); setSearch('') }}>

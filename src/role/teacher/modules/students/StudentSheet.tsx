@@ -66,23 +66,29 @@ export default function StudentSheet({ studentId, open, onOpenChange, onSaved }:
     if (!studentId || !open) return
     let alive = true
 
-    // Attempt specialized teacher portal detail route with fallback
+    // Attempt specialized teacher portal detail route
     api<{ data: any }>(`/api/portal/teacher/students/${studentId}`)
       .then(res => {
         if (!alive) return
         setData(res.data)
         setNotes(res.data?.student?.notes || '')
       })
-      .catch(() => {
-        // Fallback to basic student detail endpoint
-        return api<{ data: any }>(`/api/students/${studentId}`).then(res => {
-          if (!alive) return
-          setData({ student: res.data, academicPerformance: null })
-          setNotes(res.data?.notes || '')
-        })
-      })
       .catch((e: ApiError) => {
-        if (alive) setError(e.message || 'Unable to load student profile.')
+        if (!alive) return
+        if (e.status === 403) {
+          setError(e.message || 'You do not have permission to view records for students outside your assigned classes.')
+          return
+        }
+        // Fallback to basic student detail endpoint if route is unavailable
+        return api<{ data: any }>(`/api/students/${studentId}`)
+          .then(res => {
+            if (!alive) return
+            setData({ student: res.data, academicPerformance: null })
+            setNotes(res.data?.notes || '')
+          })
+          .catch((fallbackErr: ApiError) => {
+            if (alive) setError(fallbackErr.message || 'Unable to load student profile.')
+          })
       })
       .finally(() => {
         if (alive) setLoading(false)

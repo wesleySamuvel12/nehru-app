@@ -54,28 +54,55 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
         })
       }
       if (!teacher) {
+        const user = await db.user.findFirst({
+          where: {
+            OR: [
+              ...(session.sub ? [{ id: session.sub }] : []),
+              ...(session.email ? [{ email: session.email }] : []),
+            ],
+            ...schoolWhere,
+          },
+          select: { linkedEmployeeId: true, schoolId: true },
+        })
+        if (user?.linkedEmployeeId) {
+          teacher = await db.employee.findFirst({
+            where: { id: user.linkedEmployeeId, ...schoolWhere },
+          })
+        }
+      }
+      if (!teacher && session.email) {
+        const emailPrefix = session.email.split('@')[0]
         teacher = await db.employee.findFirst({
-          where: { ...schoolWhere, status: 'ACTIVE' },
+          where: {
+            OR: [
+              { email: session.email },
+              { email: { startsWith: emailPrefix } },
+            ],
+            ...schoolWhere,
+          },
         })
       }
-      if (teacher) {
-        const [homeroomSections, taughtSubjects] = await Promise.all([
-          db.section.findMany({ where: { teacherId: teacher.id }, select: { id: true, classId: true } }),
-          db.subject.findMany({ where: { teacherId: teacher.id }, select: { classId: true } }),
-        ])
-        const teacherClassIds = new Set([
-          ...homeroomSections.map(s => s.classId),
-          ...taughtSubjects.map(s => s.classId).filter(Boolean) as string[],
-        ])
-        const teacherSectionIds = new Set(homeroomSections.map(s => s.id))
 
-        const isAuthorized =
-          (student.sectionId && teacherSectionIds.has(student.sectionId)) ||
-          (student.classId && teacherClassIds.has(student.classId))
+      if (!teacher) {
+        return err(403, 'Teacher profile not found for this account.')
+      }
 
-        if (!isAuthorized) {
-          return err(403, 'You do not have permission to view records for students outside your assigned classes.')
-        }
+      const [homeroomSections, taughtSubjects] = await Promise.all([
+        db.section.findMany({ where: { teacherId: teacher.id, ...schoolWhere }, select: { id: true, classId: true } }),
+        db.subject.findMany({ where: { teacherId: teacher.id, ...schoolWhere }, select: { classId: true } }),
+      ])
+      const teacherClassIds = new Set([
+        ...homeroomSections.map(s => s.classId),
+        ...taughtSubjects.map(s => s.classId).filter(Boolean) as string[],
+      ])
+      const teacherSectionIds = new Set(homeroomSections.map(s => s.id))
+
+      const isAuthorized =
+        (student.sectionId && teacherSectionIds.has(student.sectionId)) ||
+        (student.classId && teacherClassIds.has(student.classId))
+
+      if (!isAuthorized) {
+        return err(403, 'You do not have permission to view records for students outside your assigned classes.')
       }
     }
 

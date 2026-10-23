@@ -1,7 +1,7 @@
 'use client'
 
 import * as React from 'react'
-import { list, api, updateOne } from '@/lib/api-client'
+import { list, api, updateOne, createOne } from '@/lib/api-client'
 import { useErp } from '@/lib/store'
 import { PageHeader, StatCard } from '@/components/erp/ui'
 import { DataTable, Column, FormField, FilterDef } from '@/components/erp/DataTable'
@@ -9,16 +9,27 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Textarea } from '@/components/ui/textarea'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle,
+  DialogDescription, DialogFooter
+} from '@/components/ui/dialog'
+import {
+  Select, SelectContent, SelectItem,
+  SelectTrigger, SelectValue
+} from '@/components/ui/select'
 import StudentSheet from './StudentSheet'
 import { initials, fmtDate, titleCase } from '@/lib/format'
 import { toast } from 'sonner'
 import {
   GraduationCap, Bus, Building2, RefreshCw, UserPlus2, Eye,
   Users, BookOpen, DoorOpen, Search, ArrowRight, X, ShieldAlert,
-  Sparkles, CheckCircle2, School
+  Sparkles, CheckCircle2, School, Bell, CalendarCheck, PenTool,
+  Info, ShieldCheck
 } from 'lucide-react'
 
 
@@ -61,11 +72,29 @@ const fields: FormField[] = [
   { name: 'rollNo', label: 'Roll No', type: 'text', placeholder: '01' },
   {
     name: 'classId', label: 'Class', type: 'select',
-    optionsLoader: async () => (await api<{ data: any }>('/api/lookups')).data.classes.map((c: any) => ({ label: c.name, value: c.id })),
+    optionsLoader: async () => {
+      try {
+        const res = await api<{ data?: any; classes?: any[] }>('/api/lookups')
+        const cls = res?.data?.classes || res?.classes || []
+        if (cls.length) return cls.map((c: any) => ({ label: c.name, value: c.id }))
+      } catch {}
+      const res = await api<{ data: any[] }>('/api/academics/classes?all=1')
+      return (res?.data || []).map((c: any) => ({ label: c.name, value: c.id }))
+    },
   },
   {
     name: 'sectionId', label: 'Section', type: 'select',
-    optionsLoader: async () => (await api<{ data: any }>('/api/lookups')).data.classes.flatMap((c: any) => c.sections.map((s: any) => ({ label: `${c.name} — ${s.name}`, value: s.id }))),
+    optionsLoader: async () => {
+      try {
+        const res = await api<{ data?: any; classes?: any[] }>('/api/lookups')
+        const cls = res?.data?.classes || res?.classes || []
+        if (cls.length) {
+          return cls.flatMap((c: any) => (c.sections || []).map((s: any) => ({ label: `${c.name} — ${s.name}`, value: s.id, classId: c.id })))
+        }
+      } catch {}
+      const res = await api<{ data: any[] }>('/api/academics/sections?all=1')
+      return (res?.data || []).map((s: any) => ({ label: s.name, value: s.id, classId: s.classId }))
+    },
   },
   {
     name: 'parentId', label: 'Parent', type: 'select',
@@ -122,11 +151,26 @@ export default function StudentsModule() {
     return null
   })
 
-  // Active Tab (defaults to directory if filtered or requested, otherwise my-classes)
+  // Active Tab: defaults to student directory (Students List) unless my-classes is explicitly requested
   const [activeTab, setActiveTab] = React.useState<string>(() => {
-    if (moduleParams?.tab === 'directory' || moduleParams?.sectionId) return 'directory'
-    return 'my-classes'
+    if (moduleParams?.tab === 'my-classes') return 'my-classes'
+    return 'directory'
   })
+
+  React.useEffect(() => {
+    if (moduleParams?.tab === 'my-classes') {
+      setActiveTab('my-classes')
+    } else if (moduleParams?.tab === 'directory' || moduleParams?.sectionId) {
+      setActiveTab('directory')
+    }
+    if (moduleParams?.sectionId) {
+      setSelectedRoster({
+        classId: moduleParams.classId || '',
+        sectionId: moduleParams.sectionId,
+        name: moduleParams.className || 'Selected Section',
+      })
+    }
+  }, [moduleParams])
   
   // My Classes state
   const [classesData, setClassesData] = React.useState<{ teacher: any; academicYear: string; classes: AssignedClass[] } | null>(null)
@@ -142,6 +186,47 @@ export default function StudentsModule() {
   const [refreshKey, setRefreshKey] = React.useState(0)
   const [sheetId, setSheetId] = React.useState<string | null>(null)
   const [sheetOpen, setSheetOpen] = React.useState(false)
+
+  // Class Notice Dialog State
+  const [noticeOpen, setNoticeOpen] = React.useState(false)
+  const [noticeTarget, setNoticeTarget] = React.useState<{ classId: string; name: string } | null>(null)
+  const [noticeTitle, setNoticeTitle] = React.useState('')
+  const [noticeBody, setNoticeBody] = React.useState('')
+  const [noticePriority, setNoticePriority] = React.useState<'NORMAL' | 'HIGH' | 'URGENT'>('NORMAL')
+  const [submittingNotice, setSubmittingNotice] = React.useState(false)
+
+  const openNoticeDialog = (cls: AssignedClass) => {
+    setNoticeTarget({ classId: cls.classId, name: cls.displayName })
+    setNoticeTitle('')
+    setNoticeBody('')
+    setNoticePriority('NORMAL')
+    setNoticeOpen(true)
+  }
+
+  const handleSendNotice = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!noticeTarget?.classId || !noticeTitle.trim() || !noticeBody.trim()) {
+      toast.error('Please enter a notice title and message.')
+      return
+    }
+    setSubmittingNotice(true)
+    try {
+      await createOne('api/communication/announcements', {
+        title: noticeTitle.trim(),
+        body: noticeBody.trim(),
+        priority: noticePriority,
+        audience: 'CLASS',
+        targetClassId: noticeTarget.classId,
+        status: 'PUBLISHED',
+      })
+      toast.success(`Notice broadcast successfully to ${noticeTarget.name}`)
+      setNoticeOpen(false)
+    } catch (err: any) {
+      toast.error(err?.message || 'Unable to publish class notice.')
+    } finally {
+      setSubmittingNotice(false)
+    }
+  }
 
   // Fetch Assigned Classes & Directory Stats on mount or refresh
   React.useEffect(() => {
@@ -174,9 +259,24 @@ export default function StudentsModule() {
 
   React.useEffect(() => {
     let alive = true
-    api<{ data: any }>('/api/lookups')
-      .then(res => { if (alive) setLookups(res.data) })
-      .catch(() => { if (alive) setLookups(null) })
+    api<{ data?: any; classes?: any[] }>('/api/lookups')
+      .then(res => {
+        if (!alive) return
+        const data = res?.data || res
+        if (data?.classes?.length) {
+          setLookups(data)
+        } else {
+          api<{ data: any[] }>('/api/academics/classes?all=1')
+            .then(clsRes => { if (alive && clsRes?.data) setLookups({ classes: clsRes.data }) })
+            .catch(() => {})
+        }
+      })
+      .catch(() => {
+        if (!alive) return
+        api<{ data: any[] }>('/api/academics/classes?all=1')
+          .then(clsRes => { if (alive && clsRes?.data) setLookups({ classes: clsRes.data }) })
+          .catch(() => { if (alive) setLookups(null) })
+      })
     return () => { alive = false }
   }, [])
 
@@ -238,8 +338,8 @@ export default function StudentsModule() {
       : (lookups?.classes || []).map((c: any) => ({ label: c.name, value: c.id }))
 
     const sectionOpts = teacherClasses.length > 0
-      ? teacherClasses.map(c => ({ label: c.displayName, value: c.sectionId }))
-      : (lookups?.classes || []).flatMap((c: any) => c.sections.map((s: any) => ({ label: `${c.name} — ${s.name}`, value: s.id })))
+      ? teacherClasses.map(c => ({ label: c.displayName, value: c.sectionId, classId: c.classId }))
+      : (lookups?.classes || []).flatMap((c: any) => (c.sections || []).map((s: any) => ({ label: `${c.name} — ${s.name}`, value: s.id, classId: c.id })))
 
     return [
       { key: 'classId', label: 'Classes', options: classOpts },
@@ -285,15 +385,6 @@ export default function StudentsModule() {
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <div className="flex items-center justify-between border-b pb-3">
           <TabsList className="grid w-full max-w-md grid-cols-2">
-            <TabsTrigger value="my-classes" className="flex items-center gap-2">
-              <School className="h-4 w-4" />
-              <span>My Classes</span>
-              {classesData?.classes?.length ? (
-                <Badge variant="secondary" className="ml-1 text-[11px] px-1.5 py-0 h-5">
-                  {classesData.classes.length}
-                </Badge>
-              ) : null}
-            </TabsTrigger>
             <TabsTrigger value="directory" className="flex items-center gap-2">
               <Users className="h-4 w-4" />
               <span>Student Directory</span>
@@ -302,6 +393,15 @@ export default function StudentsModule() {
                   Filtered
                 </Badge>
               )}
+            </TabsTrigger>
+            <TabsTrigger value="my-classes" className="flex items-center gap-2">
+              <School className="h-4 w-4" />
+              <span>My Classes</span>
+              {classesData?.classes?.length ? (
+                <Badge variant="secondary" className="ml-1 text-[11px] px-1.5 py-0 h-5">
+                  {classesData.classes.length}
+                </Badge>
+              ) : null}
             </TabsTrigger>
           </TabsList>
 
@@ -345,6 +445,36 @@ export default function StudentsModule() {
               </div>
               <div className="text-[11px] text-muted-foreground">Course delivery assignments</div>
             </Card>
+          </div>
+
+          {/* Responsibility Guide Banner */}
+          <div className="rounded-xl border border-primary/20 bg-primary/5 p-4 text-xs text-muted-foreground">
+            <div className="flex items-start gap-3">
+              <div className="mt-0.5 rounded-md bg-primary/10 p-1.5 text-primary shrink-0">
+                <Info className="h-4 w-4" />
+              </div>
+              <div className="space-y-1">
+                <p className="font-semibold text-foreground text-sm">Teacher Roles & Workflow Responsibilities</p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                  <div className="space-y-0.5">
+                    <span className="font-medium text-emerald-700 dark:text-emerald-400 flex items-center gap-1">
+                      <ShieldCheck className="h-3.5 w-3.5" /> Class Teacher (Homeroom)
+                    </span>
+                    <p className="text-[11px] leading-relaxed">
+                      Assigned to a specific section. Manages morning roll-call attendance, student welfare, parent communication, and class notices.
+                    </p>
+                  </div>
+                  <div className="space-y-0.5">
+                    <span className="font-medium text-indigo-700 dark:text-indigo-400 flex items-center gap-1">
+                      <BookOpen className="h-3.5 w-3.5" /> Subject Faculty
+                    </span>
+                    <p className="text-[11px] leading-relaxed">
+                      Assigned to curriculum courses across classes. Manages lesson plans, grading assignments, and entering subject exam marks.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
 
           {/* Controls: Search & Filter */}
@@ -410,6 +540,25 @@ export default function StudentsModule() {
               <Button variant="outline" size="sm" onClick={retryClasses}>
                 <RefreshCw className="mr-2 h-4 w-4" /> Try Again
               </Button>
+            </Card>
+          ) : roleFilter === 'CLASS_TEACHER' && classesData?.classes?.filter(c => c.isClassTeacher).length === 0 ? (
+            <Card className="p-8 text-center border-dashed bg-muted/20 max-w-2xl mx-auto my-4">
+              <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 text-primary mb-3">
+                <School className="h-6 w-6" />
+              </div>
+              <h3 className="font-semibold text-foreground text-base">No Homeroom (Class Teacher) Section Assigned</h3>
+              <p className="text-sm text-muted-foreground mt-2 mb-4 leading-relaxed">
+                You are currently assigned as <strong>Subject Faculty</strong> across <strong>{classesData?.classes?.length || 0} classes</strong> ({classesData?.classes?.[0]?.subjects?.map(s => s.name).join(', ') || 'curriculum subjects'}).
+                Homeroom class teacher duties (daily attendance custody and homeroom notices) are designated by administration per section.
+              </p>
+              <div className="flex flex-wrap justify-center gap-2">
+                <Button variant="default" size="sm" onClick={() => setRoleFilter('ALL')}>
+                  View All Assigned Classes ({classesData?.classes?.length || 0})
+                </Button>
+                <Button variant="outline" size="sm" onClick={() => setActiveTab('directory')}>
+                  Go to Student Directory
+                </Button>
+              </div>
             </Card>
           ) : filteredClasses.length === 0 ? (
             <Card className="p-10 text-center border-dashed">
@@ -502,18 +651,60 @@ export default function StudentsModule() {
                     </div>
                   </CardContent>
 
-                  <CardFooter className="pt-2 border-t bg-muted/20 flex items-center justify-between">
-                    <span className="text-[11px] text-muted-foreground">
-                      {cls.isClassTeacher ? 'Full Class Roster' : 'Course Students'}
-                    </span>
+                  <CardFooter className="pt-2.5 pb-2.5 border-t bg-muted/20 flex flex-wrap items-center justify-between gap-2">
+                    <div className="flex items-center gap-1.5">
+                      {cls.isClassTeacher ? (
+                        <>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-7 px-2 text-[11px] gap-1 text-emerald-700 dark:text-emerald-400 border-emerald-300 dark:border-emerald-800 hover:bg-emerald-50 dark:hover:bg-emerald-950/40"
+                            onClick={() => setModule('attendance', { classId: cls.classId, sectionId: cls.sectionId })}
+                          >
+                            <CalendarCheck className="h-3 w-3" />
+                            <span>Attendance</span>
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-7 px-2 text-[11px] gap-1"
+                            onClick={() => openNoticeDialog(cls)}
+                          >
+                            <Bell className="h-3 w-3" />
+                            <span>Notice</span>
+                          </Button>
+                        </>
+                      ) : (
+                        <>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-7 px-2 text-[11px] gap-1 text-indigo-700 dark:text-indigo-400 border-indigo-300 dark:border-indigo-800 hover:bg-indigo-50 dark:hover:bg-indigo-950/40"
+                            onClick={() => setModule('examinations', { tab: 'marks-entry', classId: cls.classId })}
+                          >
+                            <PenTool className="h-3 w-3" />
+                            <span>Enter Marks</span>
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-7 px-2 text-[11px] gap-1"
+                            onClick={() => openNoticeDialog(cls)}
+                          >
+                            <Bell className="h-3 w-3" />
+                            <span>Notice</span>
+                          </Button>
+                        </>
+                      )}
+                    </div>
                     <Button
                       size="sm"
                       variant="default"
-                      className="h-8 gap-1.5 text-xs font-medium"
+                      className="h-7 px-2.5 gap-1 text-[11px] font-medium"
                       onClick={() => handleOpenRoster(cls)}
                     >
-                      <span>View Roster</span>
-                      <ArrowRight className="h-3.5 w-3.5" />
+                      <span>{cls.isClassTeacher ? 'Class Roster' : 'Course Roster'}</span>
+                      <ArrowRight className="h-3 w-3" />
                     </Button>
                   </CardFooter>
                 </Card>
@@ -647,6 +838,72 @@ export default function StudentsModule() {
         onOpenChange={setSheetOpen}
         onSaved={refreshAll}
       />
+
+      {/* Broadcast Class Notice Dialog */}
+      <Dialog open={noticeOpen} onOpenChange={setNoticeOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-base font-semibold">
+              <Bell className="h-4 w-4 text-primary" />
+              <span>Broadcast Notice to {noticeTarget?.name || 'Class'}</span>
+            </DialogTitle>
+            <DialogDescription className="text-xs">
+              Post an official announcement to all enrolled students and parents in this class.
+            </DialogDescription>
+          </DialogHeader>
+
+          <form onSubmit={handleSendNotice} className="space-y-3.5 py-2">
+            <div className="space-y-1.5">
+              <Label htmlFor="notice-title" className="text-xs font-medium">Notice Title</Label>
+              <Input
+                id="notice-title"
+                placeholder="e.g. Science Lab Requirements / Homework Reminder"
+                value={noticeTitle}
+                onChange={e => setNoticeTitle(e.target.value)}
+                required
+                className="h-9 text-xs"
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="notice-body" className="text-xs font-medium">Notice Message</Label>
+              <Textarea
+                id="notice-body"
+                placeholder="Provide clear details, instructions, or deadlines for the class..."
+                rows={4}
+                value={noticeBody}
+                onChange={e => setNoticeBody(e.target.value)}
+                required
+                className="text-xs resize-none"
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="notice-priority" className="text-xs font-medium">Priority Level</Label>
+              <Select value={noticePriority} onValueChange={(v: any) => setNoticePriority(v)}>
+                <SelectTrigger id="notice-priority" className="h-9 text-xs">
+                  <SelectValue placeholder="Select priority" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="NORMAL">Normal Announcement</SelectItem>
+                  <SelectItem value="HIGH">High Priority (Important Reminder)</SelectItem>
+                  <SelectItem value="URGENT">Urgent Notice (Immediate Attention)</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <DialogFooter className="pt-2">
+              <Button type="button" variant="outline" size="sm" onClick={() => setNoticeOpen(false)} disabled={submittingNotice}>
+                Cancel
+              </Button>
+              <Button type="submit" size="sm" disabled={submittingNotice || !noticeTitle.trim() || !noticeBody.trim()}>
+                <Bell className="mr-1.5 h-3.5 w-3.5" />
+                <span>{submittingNotice ? 'Publishing…' : 'Publish Notice'}</span>
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

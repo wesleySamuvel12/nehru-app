@@ -8,11 +8,12 @@ import { api, clearToken } from '@/lib/api-client'
 import { initials } from '@/lib/format'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { BrandLogo } from '@/components/erp/brand'
+import { useTheme } from 'next-themes'
 import {
   LayoutDashboard, GraduationCap, UserPlus, Users, Briefcase, BookOpen, MonitorPlay, CalendarCheck,
   ClipboardList, Wallet, BadgeCheck, Bus, Building2, ShieldCheck, HeartPulse, Library, Boxes,
   Megaphone, CalendarDays, FileBadge, BarChart3, Plug, Settings, ScrollText, Search,
-  PanelLeftClose, PanelLeftOpen, LogOut, ChevronDown, ChevronRight, User
+  PanelLeftClose, PanelLeftOpen, LogOut, ChevronDown, ChevronRight, User, Sun, Moon
 } from 'lucide-react'
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -186,7 +187,7 @@ export function DynamicSidebar({
         </nav>
 
         {/* Footer Actions */}
-        <div className={cn('border-t bg-muted/20 p-2.5', collapsed && 'flex justify-center')}>
+        <div className={cn('border-t bg-muted/20 p-2.5', collapsed && 'flex flex-col items-center gap-1')}>
           {!collapsed ? (
             <div className="flex items-center justify-between gap-1">
               <button
@@ -195,6 +196,7 @@ export function DynamicSidebar({
               >
                 <Settings className="h-4 w-4" /> Settings
               </button>
+              <SidebarThemeToggle />
               <button
                 onClick={handleLogout}
                 className="flex items-center gap-1 rounded-xl px-2.5 py-2 text-xs font-semibold text-rose-500 hover:bg-rose-500/10 transition-colors"
@@ -203,20 +205,40 @@ export function DynamicSidebar({
               </button>
             </div>
           ) : (
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <button
-                  onClick={handleLogout}
-                  className="flex h-9 w-9 items-center justify-center rounded-xl text-rose-500 hover:bg-rose-500/10 transition-colors"
-                >
-                  <LogOut className="h-4 w-4" />
-                </button>
-              </TooltipTrigger>
-              <TooltipContent side="right" sideOffset={8}>Sign out</TooltipContent>
-            </Tooltip>
+            <>
+              <SidebarThemeToggle compact />
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    onClick={handleLogout}
+                    className="flex h-9 w-9 items-center justify-center rounded-xl text-rose-500 hover:bg-rose-500/10 transition-colors"
+                  >
+                    <LogOut className="h-4 w-4" />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side="right" sideOffset={8}>Sign out</TooltipContent>
+              </Tooltip>
+            </>
           )}
         </div>
       </div>
     </TooltipProvider>
+  )
+}
+
+function SidebarThemeToggle({ compact }: { compact?: boolean }) {
+  const { theme, setTheme } = useTheme()
+  const isDark = theme === 'dark'
+  return (
+    <button
+      onClick={() => setTheme(isDark ? 'light' : 'dark')}
+      aria-label="Toggle theme"
+      className={cn(
+        'flex items-center justify-center rounded-xl text-muted-foreground hover:bg-muted hover:text-foreground transition-colors',
+        compact ? 'h-9 w-9' : 'h-8 w-8'
+      )}
+    >
+      {isDark ? <Sun className="h-4 w-4 text-amber-400" /> : <Moon className="h-4 w-4 text-slate-600" />}
+    </button>
   )
 }

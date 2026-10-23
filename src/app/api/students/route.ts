@@ -29,35 +29,58 @@ const crud = defineCrud({
     if (session.role === 'TEACHER') {
       let teacher: any = null
       if (session.employeeId) {
-        teacher = await db.employee.findUnique({ where: { id: session.employeeId } })
-      }
-      if (!teacher) {
         teacher = await db.employee.findFirst({
-          where: { schoolId: session.schoolId || undefined, status: 'ACTIVE' },
+          where: { id: session.employeeId, schoolId: session.schoolId || undefined },
         })
       }
-      if (teacher) {
-        const [homeroomSections, taughtSubjects] = await Promise.all([
-          db.section.findMany({ where: { teacherId: teacher.id }, select: { id: true, classId: true } }),
-          db.subject.findMany({ where: { teacherId: teacher.id }, select: { classId: true } }),
-        ])
-        const classIds = [
-          ...new Set([
-            ...homeroomSections.map(s => s.classId),
-            ...taughtSubjects.map(s => s.classId).filter(Boolean) as string[],
-          ])
-        ]
-        const sectionIds = homeroomSections.map(s => s.id)
-        if (classIds.length || sectionIds.length) {
-          return {
-            OR: [
-              ...(sectionIds.length ? [{ sectionId: { in: sectionIds } }] : []),
-              ...(classIds.length ? [{ classId: { in: classIds } }] : []),
-            ],
-          }
+      if (!teacher && session.sub) {
+        const user = await db.user.findUnique({
+          where: { id: session.sub },
+          select: { linkedEmployeeId: true },
+        })
+        if (user?.linkedEmployeeId) {
+          teacher = await db.employee.findFirst({
+            where: { id: user.linkedEmployeeId, schoolId: session.schoolId || undefined },
+          })
         }
-        return { id: '__none__' }
       }
+      if (!teacher && session.email) {
+        teacher = await db.employee.findFirst({
+          where: { email: session.email, schoolId: session.schoolId || undefined },
+        })
+      }
+
+      if (!teacher) {
+        // Teacher user has no linked employee: fail closed, never guess another employee!
+        return { id: '__unassociated_teacher__' }
+      }
+
+      const [homeroomSections, taughtSubjects] = await Promise.all([
+        db.section.findMany({
+          where: { teacherId: teacher.id, ...(session.schoolId ? { schoolId: session.schoolId } : {}) },
+          select: { id: true, classId: true },
+        }),
+        db.subject.findMany({
+          where: { teacherId: teacher.id, ...(session.schoolId ? { schoolId: session.schoolId } : {}) },
+          select: { classId: true },
+        }),
+      ])
+      const classIds = [
+        ...new Set([
+          ...homeroomSections.map(s => s.classId),
+          ...taughtSubjects.map(s => s.classId).filter(Boolean) as string[],
+        ])
+      ]
+      const sectionIds = homeroomSections.map(s => s.id)
+      if (classIds.length || sectionIds.length) {
+        return {
+          OR: [
+            ...(sectionIds.length ? [{ sectionId: { in: sectionIds } }] : []),
+            ...(classIds.length ? [{ classId: { in: classIds } }] : []),
+          ],
+        }
+      }
+      return { id: '__none__' }
     }
     return null
   },

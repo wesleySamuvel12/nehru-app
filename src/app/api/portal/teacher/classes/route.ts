@@ -29,28 +29,73 @@ export async function GET(req: NextRequest) {
   try {
     // 1. Resolve Teacher Employee Record
     let teacher: any = null
-    if (session.employeeId) {
-      teacher = await db.employee.findFirst({
-        where: { id: session.employeeId, ...schoolWhere },
-      })
-    }
+    const sp = req.nextUrl.searchParams
+    const queryTeacherId = sp.get('teacherId')
 
-    if (!teacher) {
-      if (session.role === 'TEACHER') {
+    if (session.role === 'TEACHER') {
+      // For TEACHER role: strictly derive identity from the authenticated session
+      if (session.employeeId) {
         teacher = await db.employee.findFirst({
-          where: { ...schoolWhere, status: 'ACTIVE' },
+          where: { id: session.employeeId, ...schoolWhere },
         })
-      } else {
+      }
+      if (!teacher) {
+        const user = await db.user.findFirst({
+          where: {
+            OR: [
+              ...(session.sub ? [{ id: session.sub }] : []),
+              ...(session.email ? [{ email: session.email }] : []),
+            ],
+            ...schoolWhere,
+          },
+          select: { linkedEmployeeId: true, schoolId: true },
+        })
+        if (user?.linkedEmployeeId) {
+          teacher = await db.employee.findFirst({
+            where: { id: user.linkedEmployeeId, ...schoolWhere },
+          })
+        }
+      }
+      if (!teacher && session.email) {
+        const emailPrefix = session.email.split('@')[0]
         teacher = await db.employee.findFirst({
-          where: { ...schoolWhere, designation: { contains: 'Teacher' } },
+          where: {
+            OR: [
+              { email: session.email },
+              { email: { startsWith: emailPrefix } },
+            ],
+            ...schoolWhere,
+          },
+        })
+      }
+
+      if (!teacher) {
+        return err(403, 'No teacher employee profile is associated with your authenticated user account.')
+      }
+    } else {
+      // For Admins / Principals: allow previewing a specific teacher or default to first teacher
+      if (queryTeacherId) {
+        teacher = await db.employee.findFirst({
+          where: { id: queryTeacherId, ...schoolWhere },
+        })
+      }
+      if (!teacher) {
+        teacher = await db.employee.findFirst({
+          where: { ...schoolWhere, isTeacher: true, status: 'ACTIVE' },
         }) || await db.employee.findFirst({
-          where: schoolWhere,
+          where: { ...schoolWhere, designation: { contains: 'Teacher' } },
         })
       }
     }
 
     if (!teacher) {
-      return json({ data: { teacher: null, classes: [], academicYear: null } })
+      return json({
+        data: {
+          teacher: null,
+          classes: [],
+          academicYear: null,
+        },
+      })
     }
 
     // 2. Fetch Active Academic Year & Term
@@ -143,6 +188,7 @@ export async function GET(req: NextRequest) {
         const cls = classes.find(c => c.id === sec.classId)
         const isClassTeacher = sec.teacherId === teacher.id
         const subjects = subjectByClass.get(sec.classId) || []
+        const isSubjectTeacher = subjects.length > 0
         const studentCount = countMap.get(sec.id) || 0
 
         return {
@@ -157,6 +203,7 @@ export async function GET(req: NextRequest) {
           capacity: sec.capacity || 40,
           studentCount,
           isClassTeacher,
+          isSubjectTeacher,
           classTeacherName: sec.teacherName || (isClassTeacher ? `${teacher.firstName} ${teacher.lastName}` : null),
           subjects: subjects.length ? subjects : [{ id: 'sub-gen', name: 'General', code: 'GEN' }],
         }
@@ -168,6 +215,9 @@ export async function GET(req: NextRequest) {
           id: teacher.id,
           name: `${teacher.firstName} ${teacher.lastName}`,
           designation: teacher.designation,
+          isHomeroomTeacher: homeroomSections.length > 0,
+          homeroomCount: homeroomSections.length,
+          subjectCount: taughtSubjects.length,
         },
         academicYear: currentYear?.name || '2026-27',
         classes: assignedClasses,

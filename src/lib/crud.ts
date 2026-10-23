@@ -255,6 +255,7 @@ export function defineCrud(config: CrudConfig) {
   const detail = async (req: NextRequest, context: IdContext | string) => {
     const g = await guard(req)
     if (g.error) return g.error
+    const session = g.session!
     const tenant = g.tenant
     const id = typeof context === 'string' ? context : await getId(context)
     try {
@@ -264,6 +265,20 @@ export function defineCrud(config: CrudConfig) {
 
       if (!isGlobalModel && tenant?.schoolId && row.schoolId && row.schoolId !== tenant.schoolId) {
         return err(404, 'Record not found.')
+      }
+
+      // Check role scope if configured
+      if (config.scope) {
+        const scopedWhere = await config.scope(session)
+        if (scopedWhere) {
+          const authorized = await d.findFirst({
+            where: { id, ...scopedWhere },
+            select: { id: true },
+          })
+          if (!authorized) {
+            return err(403, 'You do not have permission to view this record.')
+          }
+        }
       }
 
       return json({ data: strip(row, config) })

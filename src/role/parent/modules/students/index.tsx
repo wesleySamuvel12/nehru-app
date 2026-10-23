@@ -53,11 +53,29 @@ const fields: FormField[] = [
   { name: 'rollNo', label: 'Roll No', type: 'text', placeholder: '01' },
   {
     name: 'classId', label: 'Class', type: 'select',
-    optionsLoader: async () => (await api<{ data: any }>('/api/lookups')).data.classes.map((c: any) => ({ label: c.name, value: c.id })),
+    optionsLoader: async () => {
+      try {
+        const res = await api<{ data?: any; classes?: any[] }>('/api/lookups')
+        const cls = res?.data?.classes || res?.classes || []
+        if (cls.length) return cls.map((c: any) => ({ label: c.name, value: c.id }))
+      } catch {}
+      const res = await api<{ data: any[] }>('/api/academics/classes?all=1')
+      return (res?.data || []).map((c: any) => ({ label: c.name, value: c.id }))
+    },
   },
   {
     name: 'sectionId', label: 'Section', type: 'select',
-    optionsLoader: async () => (await api<{ data: any }>('/api/lookups')).data.classes.flatMap((c: any) => c.sections.map((s: any) => ({ label: `${c.name} — ${s.name}`, value: s.id }))),
+    optionsLoader: async () => {
+      try {
+        const res = await api<{ data?: any; classes?: any[] }>('/api/lookups')
+        const cls = res?.data?.classes || res?.classes || []
+        if (cls.length) {
+          return cls.flatMap((c: any) => (c.sections || []).map((s: any) => ({ label: `${c.name} — ${s.name}`, value: s.id, classId: c.id })))
+        }
+      } catch {}
+      const res = await api<{ data: any[] }>('/api/academics/sections?all=1')
+      return (res?.data || []).map((s: any) => ({ label: s.name, value: s.id, classId: s.classId }))
+    },
   },
   {
     name: 'parentId', label: 'Parent', type: 'select',
@@ -106,9 +124,24 @@ export default function StudentsModule() {
 
   React.useEffect(() => {
     let alive = true
-    api<{ data: any }>('/api/lookups')
-      .then(res => { if (alive) setLookups(res.data) })
-      .catch(() => { if (alive) setLookups(null) })
+    api<{ data?: any; classes?: any[] }>('/api/lookups')
+      .then(res => {
+        if (!alive) return
+        const data = res?.data || res
+        if (data?.classes?.length) {
+          setLookups(data)
+        } else {
+          api<{ data: any[] }>('/api/academics/classes?all=1')
+            .then(clsRes => { if (alive && clsRes?.data) setLookups({ classes: clsRes.data }) })
+            .catch(() => {})
+        }
+      })
+      .catch(() => {
+        if (!alive) return
+        api<{ data: any[] }>('/api/academics/classes?all=1')
+          .then(clsRes => { if (alive && clsRes?.data) setLookups({ classes: clsRes.data }) })
+          .catch(() => { if (alive) setLookups(null) })
+      })
     return () => { alive = false }
   }, [])
 
@@ -116,7 +149,7 @@ export default function StudentsModule() {
 
   const filters: FilterDef[] = React.useMemo(() => {
     const classOpts = (lookups?.classes || []).map((c: any) => ({ label: c.name, value: c.id }))
-    const sectionOpts = (lookups?.classes || []).flatMap((c: any) => c.sections.map((s: any) => ({ label: `${c.name} — ${s.name}`, value: s.id })))
+    const sectionOpts = (lookups?.classes || []).flatMap((c: any) => (c.sections || []).map((s: any) => ({ label: `${c.name} — ${s.name}`, value: s.id, classId: c.id })))
     return [
       { key: 'classId', label: 'Classes', options: classOpts },
       { key: 'sectionId', label: 'Sections', options: sectionOpts },

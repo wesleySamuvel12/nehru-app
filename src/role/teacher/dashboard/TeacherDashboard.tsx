@@ -69,8 +69,7 @@ export default function TeacherDashboard() {
     return (
       <div className="py-12">
         <ErrorState
-          title="Could not load your dashboard"
-          description={error}
+          message={error}
           onRetry={handleRefresh}
         />
       </div>
