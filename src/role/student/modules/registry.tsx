@@ -6,7 +6,8 @@ const lazy = (loader: () => Promise<{ default: ComponentType }>) =>
   dynamic(loader, { loading, ssr: false })
 
 export const STUDENT_MODULE_REGISTRY: Record<string, ComponentType> = {
-  'dashboard': lazy(() => import('./dashboard')),
+  'student-portal': lazy(() => import('@/role/student/pages/StudentPortal')),
+  'dashboard': lazy(() => import('@/role/student/pages/StudentPortal')),
   'admissions': lazy(() => import('./admissions')),
   'students': lazy(() => import('./students')),
   'parents': lazy(() => import('./parents')),

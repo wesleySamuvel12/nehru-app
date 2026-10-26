@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import path from 'node:path'
 import { createJiti } from 'jiti'
 
-const rootDir = '/Users/dhanalingaml/Desktop/nehru-app-1'
+const rootDir = process.cwd()
 const jiti = createJiti(import.meta.url, {
   jsx: true,
   alias: {

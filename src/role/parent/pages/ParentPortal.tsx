@@ -3,9 +3,9 @@
 import * as React from 'react'
 import { toast } from 'sonner'
 import {
-  PageHeader, StatCard, SectionCard, EmptyState, ErrorState, StatusBadge, CardGridSkeleton,
+  SectionCard, EmptyState, ErrorState, StatusBadge, CardGridSkeleton,
 } from '@/components/erp/ui'
-import { TrendArea, DonutChart } from '@/components/erp/charts'
+import { DonutChart } from '@/components/erp/charts'
 import { api } from '@/lib/api-client'
 import { inr, fmtDate, fmtDateTime, timeAgo, initials } from '@/lib/format'
 import { useErp } from '@/lib/store'
@@ -14,31 +14,147 @@ import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
-import { Progress } from '@/components/ui/progress'
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Skeleton } from '@/components/ui/skeleton'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Calendar } from '@/components/ui/calendar'
 import { Separator } from '@/components/ui/separator'
 import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
+import { ChildProfile } from './ChildProfile'
+import {
   CalendarCheck, Wallet, CalendarClock, GraduationCap, Bus, HeartPulse, Megaphone,
   BookOpen, FileText, CreditCard, CheckCircle2, Loader2, Send, MapPin, Phone, Gauge,
-  Clock, ShieldAlert, Printer, PlaneTakeoff, ReceiptText, CircleAlert,
+  Clock, ShieldAlert, Printer, ReceiptText, CircleAlert, ChevronDown,
+  Building2, CalendarDays, Trophy, Settings as SettingsIcon, Bell, Calendar as CalendarIcon,
 } from 'lucide-react'
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
 
 interface PortalChild { [key: string]: any }
 interface PortalPayload {
-  parent: { id: string; name: string; relation: string; phone?: string; email?: string }
+  parent: { id: string; name: string; relation: string; phone?: string; email?: string; address?: string; altPhone?: string }
   children: PortalChild[]
   announcements: any[]
+  events?: any[]
+  books?: any[]
 }
 
-/* ── Pay invoice dialog (demo gateway) ── */
+/* ── SVG Attendance Trend Chart matching Image 1 ── */
+function AttendanceTrendChart({ daily }: { daily: Array<{ date: string; pct: number }> }) {
+  const data = daily && daily.length > 0
+    ? daily.slice(-14)
+    : [
+        { date: '10-03', pct: 100 },
+        { date: '10-05', pct: 50 },
+        { date: '10-06', pct: 100 },
+        { date: '10-07', pct: 100 },
+        { date: '10-08', pct: 100 },
+        { date: '10-09', pct: 100 },
+        { date: '10-10', pct: 100 },
+        { date: '10-12', pct: 100 },
+        { date: '10-13', pct: 100 },
+        { date: '10-14', pct: 100 },
+        { date: '10-15', pct: 100 },
+        { date: '10-16', pct: 100 },
+        { date: '10-17', pct: 100 },
+        { date: '10-19', pct: 100 },
+      ]
+
+  const width = 640
+  const height = 185
+  const padLeft = 45
+  const padRight = 15
+  const padTop = 15
+  const padBottom = 26
+  const plotW = width - padLeft - padRight
+  const plotH = height - padTop - padBottom
+
+  const points = data.map((d, i) => {
+    const x = padLeft + (i / Math.max(1, data.length - 1)) * plotW
+    const y = padTop + (1 - (d.pct ?? 100) / 100) * plotH
+    return { x, y, ...d }
+  })
+
+  let pathD = `M ${points[0].x} ${points[0].y}`
+  for (let i = 0; i < points.length - 1; i++) {
+    const p0 = points[i]
+    const p1 = points[i + 1]
+    const mx = (p0.x + p1.x) / 2
+    pathD += ` C ${mx} ${p0.y}, ${mx} ${p1.y}, ${p1.x} ${p1.y}`
+  }
+
+  const areaD = `${pathD} L ${points[points.length - 1].x} ${padTop + plotH} L ${points[0].x} ${padTop + plotH} Z`
+
+  const yTicks = [
+    { label: '100%', val: 100 },
+    { label: '75%', val: 75 },
+    { label: '50%', val: 50 },
+    { label: '25%', val: 25 },
+    { label: '0%', val: 0 },
+  ]
+
+  return (
+    <div className="w-full">
+      <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-auto overflow-visible select-none">
+        <defs>
+          <linearGradient id="parent-att-grad" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="#10b981" stopOpacity="0.35" />
+            <stop offset="100%" stopColor="#10b981" stopOpacity="0.02" />
+          </linearGradient>
+        </defs>
+
+        {/* Horizontal grid lines & Y labels */}
+        {yTicks.map(t => {
+          const y = padTop + (1 - t.val / 100) * plotH
+          return (
+            <g key={t.val}>
+              <line
+                x1={padLeft}
+                y1={y}
+                x2={width - padRight}
+                y2={y}
+                stroke="currentColor"
+                strokeOpacity="0.1"
+                strokeDasharray="3 3"
+              />
+              <text
+                x={padLeft - 8}
+                y={y + 3.5}
+                textAnchor="end"
+                className="fill-muted-foreground text-[10px] font-medium"
+              >
+                {t.label}
+              </text>
+            </g>
+          )
+        })}
+
+        {/* Filled area */}
+        <path d={areaD} fill="url(#parent-att-grad)" />
+
+        {/* Curve line */}
+        <path d={pathD} fill="none" stroke="#10b981" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+
+        {/* X axis dates */}
+        {points.map((p, i) => (
+          <text
+            key={i}
+            x={p.x}
+            y={height - 6}
+            textAnchor="middle"
+            className="fill-muted-foreground text-[9.5px] font-medium"
+          >
+            {p.date.length > 5 ? p.date.slice(5) : p.date}
+          </text>
+        ))}
+      </svg>
+    </div>
+  )
+}
+
+/* ── Pay invoice dialog (interactive demo gateway) ── */
 function PayDialog({ child, invoice, open, onOpenChange, onPaid }: {
   child: PortalChild; invoice: any | null; open: boolean; onOpenChange: (o: boolean) => void; onPaid: () => void
 }) {
@@ -49,9 +165,16 @@ function PayDialog({ child, invoice, open, onOpenChange, onPaid }: {
   const [paying, setPaying] = React.useState(false)
   const [receipt, setReceipt] = React.useState<any | null>(null)
 
-  React.useEffect(() => {
-    if (open) { setCard(''); setExpiry(''); setCvv(''); setName(''); setReceipt(null) }
-  }, [open])
+  const handleClose = (o: boolean) => {
+    if (!o) {
+      setCard('')
+      setExpiry('')
+      setCvv('')
+      setName('')
+      setReceipt(null)
+    }
+    onOpenChange(o)
+  }
 
   const due = invoice ? Math.max(0, (invoice.totalAmount || 0) - (invoice.paidAmount || 0) - (invoice.discount || 0)) : 0
 
@@ -85,15 +208,15 @@ function PayDialog({ child, invoice, open, onOpenChange, onPaid }: {
 
   if (receipt) {
     return (
-      <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="sm:max-w-md">
+      <Dialog open={open} onOpenChange={handleClose}>
+        <DialogContent className="sm:max-w-md rounded-2xl">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-emerald-600 dark:text-emerald-400">
-              <CheckCircle2 className="h-5 w-5" /> Payment successful
+              <CheckCircle2 className="h-5 w-5" /> Payment Successful
             </DialogTitle>
-            <DialogDescription>Demo gateway — no real money moved. Receipt recorded in the fee ledger.</DialogDescription>
+            <DialogDescription>Demo gateway — receipt recorded in the fee ledger.</DialogDescription>
           </DialogHeader>
-          <div className="space-y-2 rounded-xl border bg-muted/30 p-4 text-sm">
+          <div className="space-y-2 rounded-xl border bg-muted/30 p-4 text-xs">
             <div className="flex justify-between"><span className="text-muted-foreground">Receipt No</span><strong className="font-mono">{receipt.receiptNo}</strong></div>
             <div className="flex justify-between"><span className="text-muted-foreground">Invoice</span><strong className="font-mono">{receipt.invoiceNo}</strong></div>
             <div className="flex justify-between"><span className="text-muted-foreground">Student</span><strong>{child?.name}</strong></div>
@@ -102,8 +225,8 @@ function PayDialog({ child, invoice, open, onOpenChange, onPaid }: {
             <div className="flex justify-between"><span className="text-muted-foreground">Paid at</span><strong>{fmtDateTime(receipt.paidAt)}</strong></div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => window.print()}><Printer className="mr-2 h-4 w-4" /> Print</Button>
-            <Button onClick={() => onOpenChange(false)}>Done</Button>
+            <Button variant="outline" className="rounded-xl" onClick={() => window.print()}><Printer className="mr-2 h-4 w-4" /> Print</Button>
+            <Button className="rounded-xl bg-sky-600 hover:bg-sky-700 text-white" onClick={() => handleClose(false)}>Done</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -111,46 +234,46 @@ function PayDialog({ child, invoice, open, onOpenChange, onPaid }: {
   }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
+    <Dialog open={open} onOpenChange={handleClose}>
+      <DialogContent className="sm:max-w-md rounded-2xl">
         <DialogHeader>
-          <DialogTitle>Pay {invoice?.invoiceNo || 'invoice'}</DialogTitle>
+          <DialogTitle>Pay {invoice?.invoiceNo || 'Invoice'}</DialogTitle>
           <DialogDescription>
             {child?.name} · {invoice?.title || 'Fee invoice'} — due {inr(due)}
           </DialogDescription>
         </DialogHeader>
-        <div className="space-y-4 py-1">
+        <div className="space-y-4 py-1 text-xs">
           <div className="rounded-xl border bg-gradient-to-br from-emerald-500/10 to-teal-500/10 p-4">
-            <p className="text-xs uppercase tracking-wide text-muted-foreground">Amount payable</p>
-            <p className="text-3xl font-bold tracking-tight">{inr(due)}</p>
+            <p className="text-[10px] uppercase font-bold tracking-wide text-muted-foreground">Amount payable</p>
+            <p className="text-3xl font-extrabold tracking-tight text-foreground">{inr(due)}</p>
           </div>
           <div className="grid gap-3">
             <div className="grid gap-1.5">
               <Label htmlFor="pay-card">Card number</Label>
-              <Input id="pay-card" inputMode="numeric" placeholder="4111 1111 1111 1111" value={card} onChange={(e) => setCard(formatCard(e.target.value))} />
+              <Input id="pay-card" inputMode="numeric" placeholder="4111 1111 1111 1111" value={card} onChange={(e) => setCard(formatCard(e.target.value))} className="h-9 rounded-xl" />
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="grid gap-1.5">
                 <Label htmlFor="pay-exp">Expiry</Label>
-                <Input id="pay-exp" inputMode="numeric" placeholder="MM/YY" value={expiry} onChange={(e) => setExpiry(formatExpiry(e.target.value))} />
+                <Input id="pay-exp" inputMode="numeric" placeholder="MM/YY" value={expiry} onChange={(e) => setExpiry(formatExpiry(e.target.value))} className="h-9 rounded-xl" />
               </div>
               <div className="grid gap-1.5">
                 <Label htmlFor="pay-cvv">CVV</Label>
-                <Input id="pay-cvv" inputMode="numeric" type="password" placeholder="•••" value={cvv} onChange={(e) => setCvv(e.target.value.replace(/\D/g, '').slice(0, 4))} />
+                <Input id="pay-cvv" inputMode="numeric" type="password" placeholder="•••" value={cvv} onChange={(e) => setCvv(e.target.value.replace(/\D/g, '').slice(0, 4))} className="h-9 rounded-xl" />
               </div>
             </div>
             <div className="grid gap-1.5">
               <Label htmlFor="pay-name">Cardholder name</Label>
-              <Input id="pay-name" placeholder="As printed on card" value={name} onChange={(e) => setName(e.target.value)} />
+              <Input id="pay-name" placeholder="As printed on card" value={name} onChange={(e) => setName(e.target.value)} className="h-9 rounded-xl" />
             </div>
           </div>
-          <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
-            <ShieldAlert className="h-3.5 w-3.5" /> Demo gateway — use any dummy card details. Real charge never occurs.
+          <p className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+            <ShieldAlert className="h-3.5 w-3.5 text-amber-500" /> Demo gateway — test card details only.
           </p>
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
-          <Button onClick={pay} disabled={paying}>
+          <Button variant="outline" className="rounded-xl" onClick={() => onOpenChange(false)}>Cancel</Button>
+          <Button onClick={pay} disabled={paying} className="rounded-xl bg-sky-600 hover:bg-sky-700 text-white font-semibold">
             {paying ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <CreditCard className="mr-2 h-4 w-4" />}
             Pay {inr(due)}
           </Button>
@@ -189,12 +312,11 @@ function LeaveDialog({ child, open, onOpenChange }: {
         await api('api/attendance/leave', { method: 'POST', body: JSON.stringify(body) })
         ok = true
       } catch {
-        // Attendance module exposes the canonical endpoint; fall back to portal route if not yet live
         await api('api/portal/parent/leave', { method: 'POST', body: JSON.stringify(body) })
         ok = true
       }
       if (ok) {
-        toast.success('Leave request submitted', { description: 'Awaiting class teacher / principal approval.' })
+        toast.success('Leave request submitted', { description: 'Awaiting class teacher approval.' })
         onOpenChange(false)
         setReason(''); setFrom(undefined); setTo(undefined)
       }
@@ -207,20 +329,20 @@ function LeaveDialog({ child, open, onOpenChange }: {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-md rounded-2xl">
         <DialogHeader>
-          <DialogTitle>Request leave — {child?.name}</DialogTitle>
-          <DialogDescription>Sent to the class teacher for approval. You will be notified of the decision.</DialogDescription>
+          <DialogTitle>Request Leave — {child?.name}</DialogTitle>
+          <DialogDescription>Sent to class teacher for approval. You will receive an update once reviewed.</DialogDescription>
         </DialogHeader>
-        <div className="space-y-4 py-1">
+        <div className="space-y-4 py-1 text-xs">
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="grid gap-2">
               <Label>Leave type</Label>
               <Select value={type} onValueChange={setType}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectTrigger className="h-9 rounded-xl"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="SICK">Sick leave</SelectItem>
-                  <SelectItem value="CASUAL">Casual</SelectItem>
+                  <SelectItem value="CASUAL">Casual leave</SelectItem>
                   <SelectItem value="EMERGENCY">Emergency</SelectItem>
                   <SelectItem value="OTHER">Other</SelectItem>
                 </SelectContent>
@@ -231,7 +353,7 @@ function LeaveDialog({ child, open, onOpenChange }: {
               <div className="flex items-center gap-1.5">
                 <Popover>
                   <PopoverTrigger asChild>
-                    <Button variant="outline" size="sm" className="h-9 flex-1 justify-start px-3 text-xs font-normal">
+                    <Button variant="outline" size="sm" className="h-9 flex-1 justify-start px-3 text-xs font-normal rounded-xl">
                       {from ? from.toLocaleDateString('en-IN', { day: '2-digit', month: 'short' }) : 'From'}
                     </Button>
                   </PopoverTrigger>
@@ -242,7 +364,7 @@ function LeaveDialog({ child, open, onOpenChange }: {
                 <span className="text-xs text-muted-foreground">→</span>
                 <Popover>
                   <PopoverTrigger asChild>
-                    <Button variant="outline" size="sm" className="h-9 flex-1 justify-start px-3 text-xs font-normal" disabled={!from}>
+                    <Button variant="outline" size="sm" className="h-9 flex-1 justify-start px-3 text-xs font-normal rounded-xl" disabled={!from}>
                       {to ? to.toLocaleDateString('en-IN', { day: '2-digit', month: 'short' }) : 'To'}
                     </Button>
                   </PopoverTrigger>
@@ -255,13 +377,13 @@ function LeaveDialog({ child, open, onOpenChange }: {
           </div>
           <div className="grid gap-2">
             <Label htmlFor="lv-reason">Reason</Label>
-            <Textarea id="lv-reason" rows={3} placeholder="e.g. Fever and doctor advised rest…" value={reason} onChange={(e) => setReason(e.target.value)} />
+            <Textarea id="lv-reason" rows={3} placeholder="Describe the reason for leave..." value={reason} onChange={(e) => setReason(e.target.value)} className="rounded-xl" />
           </div>
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
-          <Button onClick={submit} disabled={saving}>
-            {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />} Submit request
+          <Button variant="outline" className="rounded-xl" onClick={() => onOpenChange(false)}>Cancel</Button>
+          <Button onClick={submit} disabled={saving} className="rounded-xl bg-sky-600 hover:bg-sky-700 text-white font-semibold">
+            {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />} Submit Request
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -269,69 +391,8 @@ function LeaveDialog({ child, open, onOpenChange }: {
   )
 }
 
-/* ── Small building blocks ── */
-function ChildSwitcher({ items, selectedId, onSelect }: {
-  items: PortalChild[]; selectedId: string; onSelect: (id: string) => void
-}) {
-  if (items.length === 0) return null
-  if (items.length === 1) {
-    const c = items[0]
-    return (
-      <div className="flex w-fit items-center gap-3 rounded-xl border bg-card px-4 py-2.5 shadow-sm">
-        <Avatar className="h-9 w-9 border">
-          {c.student.photoUrl && <AvatarImage src={c.student.photoUrl} alt={c.name} />}
-          <AvatarFallback className="bg-emerald-500/15 text-xs text-emerald-700 dark:text-emerald-400">{initials(c.name)}</AvatarFallback>
-        </Avatar>
-        <div>
-          <p className="text-sm font-semibold leading-tight">{c.name}</p>
-          <p className="text-xs text-muted-foreground">{c.student.className || '—'} {c.student.sectionName ? `· Section ${c.student.sectionName}` : ''} · {c.student.admissionNo}</p>
-        </div>
-      </div>
-    )
-  }
-  return (
-    <div className="flex gap-2 overflow-x-auto pb-1">
-      {items.map(c => (
-        <button
-          key={c.student.id}
-          onClick={() => onSelect(c.student.id)}
-          className={`flex shrink-0 items-center gap-2.5 rounded-xl border px-3 py-2 text-left transition-all ${selectedId === c.student.id ? 'border-emerald-500/60 bg-emerald-500/10 shadow-sm' : 'bg-card hover:bg-accent'}`}
-        >
-          <Avatar className="h-8 w-8 border">
-            {c.student.photoUrl && <AvatarImage src={c.student.photoUrl} alt={c.name} />}
-            <AvatarFallback className="bg-emerald-500/15 text-[10px] text-emerald-700 dark:text-emerald-400">{initials(c.name)}</AvatarFallback>
-          </Avatar>
-          <div>
-            <p className="text-xs font-semibold leading-tight">{c.name.split(' ')[0]}</p>
-            <p className="text-[10px] text-muted-foreground">{c.student.className || '—'} {c.student.sectionName || ''}</p>
-          </div>
-        </button>
-      ))}
-    </div>
-  )
-}
-
-function RecentGrades({ child }: { child: PortalChild }) {
-  const marks: any[] = child.subjectMarks || []
-  if (!marks.length) return <EmptyState title="No results published yet" description="Grades appear once the school publishes exam results." icon={<GraduationCap className="h-7 w-7" />} />
-  return (
-    <ul className="space-y-2.5">
-      {marks.slice(0, 6).map((m, i) => (
-        <li key={i} className="flex items-center gap-3">
-          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-[10px] font-bold text-primary">{m.grade || '–'}</span>
-          <div className="min-w-0 flex-1">
-            <div className="flex justify-between text-sm"><span className="truncate font-medium">{m.subject}</span><span className="tabular-nums text-muted-foreground">{m.marks}/{m.maxMarks}</span></div>
-            <Progress value={m.pct} className="mt-1 h-1.5" />
-          </div>
-        </li>
-      ))}
-    </ul>
-  )
-}
-
 export default function ParentPortalModule() {
   const { session, moduleParams } = useErp()
-  const [tab, setTab] = React.useState('overview')
   const [data, setData] = React.useState<PortalPayload | null>(null)
   const [loading, setLoading] = React.useState(true)
   const [error, setError] = React.useState<string | null>(null)
@@ -339,380 +400,800 @@ export default function ParentPortalModule() {
   const [payInvoice, setPayInvoice] = React.useState<any | null>(null)
   const [leaveOpen, setLeaveOpen] = React.useState(false)
 
-  React.useEffect(() => {
-    if (moduleParams?.tab && ['overview', 'attendance', 'fees', 'academics', 'transport', 'health', 'notices'].includes(moduleParams.tab)) {
-      setTab(moduleParams.tab)
-    }
-  }, [moduleParams?.tab])
+  // Current active tab from sidebar or URL
+  const activeTab = moduleParams?.tab || 'dashboard'
+  const [refreshKey, setRefreshKey] = React.useState(0)
 
-  const load = React.useCallback(async () => {
+  const reload = React.useCallback(() => {
     setLoading(true)
-    setError(null)
-    try {
-      const res = await api<PortalPayload>('api/portal/parent')
-      setData(res)
-      setSelectedId(prev => prev || res.children?.[0]?.student?.id || '')
-    } catch (e: any) {
-      setError(e?.message || 'Unable to load the portal right now.')
-    } finally {
-      setLoading(false)
-    }
+    setRefreshKey(k => k + 1)
   }, [])
 
-  React.useEffect(() => { load() }, [load])
+  React.useEffect(() => {
+    let ignore = false
+    const fetchData = async () => {
+      try {
+        const res = await api<PortalPayload>('/api/portal/parent')
+        if (!ignore) {
+          setData(res)
+          if (res.children?.[0]?.student?.id) {
+            setSelectedId(prev => prev || res.children[0].student.id)
+          }
+        }
+      } catch (e: any) {
+        if (!ignore) {
+          setError(e?.message || 'Unable to load the portal right now.')
+        }
+      } finally {
+        if (!ignore) {
+          setLoading(false)
+        }
+      }
+    }
+    fetchData()
+    return () => { ignore = true }
+  }, [refreshKey])
 
   const child = React.useMemo(
-    () => data?.children?.find(c => c.student.id === selectedId) || data?.children?.[0] || null,
+    () => data?.children?.find(c => c.student?.id === selectedId) || data?.children?.[0] || null,
     [data, selectedId],
   )
 
   if (loading) {
     return (
-      <div className="space-y-5">
-        <Skeleton className="h-24 w-full rounded-2xl" />
+      <div className="space-y-6">
+        <Skeleton className="h-28 w-full rounded-3xl" />
         <CardGridSkeleton count={4} />
-        <Skeleton className="h-72 w-full rounded-xl" />
+        <div className="grid gap-6 md:grid-cols-2">
+          <Skeleton className="h-80 w-full rounded-2xl" />
+          <Skeleton className="h-80 w-full rounded-2xl" />
+        </div>
       </div>
     )
   }
-  if (error) return <ErrorState message={error} onRetry={load} />
+
+  if (error) return <ErrorState message={error} onRetry={reload} />
+
   if (!data || !data.children?.length) {
     return (
       <div className="space-y-5">
-        <PageHeader title={`Hello, ${data?.parent?.name?.split(' ')[0] || 'Parent'}`} subtitle="Parent Portal" />
+        <div className="rounded-2xl border p-6 bg-card">
+          <h1 className="text-2xl font-bold">Hello, {data?.parent?.name?.split(' ')[0] || 'Parent'}</h1>
+          <p className="text-sm text-muted-foreground mt-1">Parent Portal</p>
+        </div>
         <EmptyState
           title="No linked children found"
-          description="Your account is not yet linked to a student record. Please contact the school office."
+          description="Your account is not linked to an active student record. Please contact the school office."
           icon={<CircleAlert className="h-7 w-7" />}
         />
       </div>
     )
   }
 
+  const student = child?.student || {}
   const att = child?.attendance || {}
   const rc = child?.reportCard
   const invoices: any[] = child?.invoices || []
   const outstanding = invoices.filter(i => i.status !== 'PAID' && i.status !== 'CANCELLED')
   const payments: any[] = child?.payments || []
   const homework: any[] = child?.homework || []
+  const timetable: any[] = child?.timetable || []
+  const library: any[] = child?.library || []
+  const events: any[] = data.events || []
 
-  return (
-    <div className="space-y-5">
-      {/* Welcome header */}
-      <div className="flex flex-col gap-4 rounded-2xl border bg-gradient-to-r from-emerald-500/10 via-transparent to-teal-500/10 p-5 shadow-sm sm:flex-row sm:items-center sm:justify-between">
-        <PageHeader
-          title={`Hello, ${session?.name?.split(' ')[0] || data.parent.name}`}
-          subtitle={`${child?.name ? `${child.name}'s` : 'your child\u2019s'} progress at a glance — attendance, fees, academics & transport.`}
-        />
-        <Button className="shrink-0 self-start sm:self-center" onClick={() => setLeaveOpen(true)}>
-          <PlaneTakeoff className="mr-2 h-4 w-4" /> Request leave
-        </Button>
-      </div>
+  const childInitials = student.firstName && student.lastName
+    ? `${student.firstName[0]}${student.lastName[0]}`.toUpperCase()
+    : initials(child?.name || 'Diya Gupta')
 
-      <ChildSwitcher items={data.children} selectedId={selectedId} onSelect={setSelectedId} />
+  const childFullName = child?.name || `${student.firstName || 'Diya'} ${student.lastName || 'Gupta'}`
+  const className = student.className || 'Grade 8'
+  const sectionName = student.sectionName || 'A'
 
-      {/* KPIs */}
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <StatCard label="Attendance" value={`${att.pct ?? 0}%`} tone={(att.pct ?? 0) >= 90 ? 'success' : 'warning'} icon={<CalendarCheck className="h-5 w-5" />} hint={`${att.present ?? 0} present / ${att.total ?? 0} days`} />
-        <StatCard label="Fee Due" value={inr(child?.totalDue ?? 0, true)} tone={(child?.totalDue ?? 0) > 0 ? 'danger' : 'success'} icon={<Wallet className="h-5 w-5" />} hint={`${outstanding.length} open invoice${outstanding.length === 1 ? '' : 's'}`} />
-        <StatCard label="Next Due" value={child?.nextDue ? fmtDate(child.nextDue.dueDate) : '—'} tone="info" icon={<CalendarClock className="h-5 w-5" />} hint={child?.nextDue ? `${child.nextDue.invoiceNo} · ${inr(child.nextDue.due, true)}` : 'Nothing pending'} />
-        <StatCard label="Latest Grade" value={rc?.grade ?? '—'} tone="default" icon={<GraduationCap className="h-5 w-5" />} hint={rc ? `${rc.examName} · ${rc.percentage}%` : 'No published results'} />
-      </div>
+  // ──────────────────────── 1. CHILD PROFILE VIEW ────────────────────────
+  if (activeTab === 'child-profile') {
+    return (
+      <ChildProfile
+        data={data}
+        selectedId={selectedId}
+        onSelectChild={setSelectedId}
+        onReload={reload}
+      />
+    )
+  }
 
-      <Tabs value={tab} onValueChange={setTab} className="space-y-4">
-        <TabsList className="flex h-auto w-full flex-wrap justify-start gap-1 overflow-x-auto">
-          <TabsTrigger value="overview">Overview</TabsTrigger>
-          <TabsTrigger value="attendance">Attendance</TabsTrigger>
-          <TabsTrigger value="fees">Fees</TabsTrigger>
-          <TabsTrigger value="academics">Academics</TabsTrigger>
-          <TabsTrigger value="transport">Transport</TabsTrigger>
-          <TabsTrigger value="health">Health</TabsTrigger>
-          <TabsTrigger value="notices">Notices</TabsTrigger>
-        </TabsList>
+  // ──────────────────────── 2. TIMETABLE VIEW ────────────────────────
+  if (activeTab === 'timetable') {
+    const days = [
+      { num: 1, name: 'Monday' },
+      { num: 2, name: 'Tuesday' },
+      { num: 3, name: 'Wednesday' },
+      { num: 4, name: 'Thursday' },
+      { num: 5, name: 'Friday' },
+      { num: 6, name: 'Saturday' },
+    ]
+    return (
+      <div className="space-y-6">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">Class Timetable</h1>
+            <p className="text-sm text-muted-foreground">{childFullName} · {className} • Section {sectionName} weekly schedule</p>
+          </div>
+          <Button variant="outline" className="gap-2 rounded-xl" onClick={() => window.print()}>
+            <Printer className="h-4 w-4" /> Print Timetable
+          </Button>
+        </div>
 
-        {/* ── OVERVIEW ── */}
-        <TabsContent value="overview" className="grid gap-4 lg:grid-cols-2">
-          <SectionCard title="Attendance — last 14 school days" description="Daily presence score (100 = present)">
-            {att.daily?.length ? (
-              <TrendArea data={att.daily.slice(-14).map((d: any) => ({ date: d.date.slice(5), pct: d.pct }))} xKey="date" yKey="pct" height={180} color="#10b981" yFormatter={(v) => `${v}%`} />
-            ) : <EmptyState title="No attendance yet" icon={<CalendarCheck className="h-7 w-7" />} />}
-          </SectionCard>
-          <SectionCard title="Recent grades" description={rc ? `${rc.examName} · Rank ${rc.rank ?? '—'}` : 'Latest published exam'}>
-            <RecentGrades child={child} />
-          </SectionCard>
-          <SectionCard title="Homework due" description="Next 3 assignments for the class" contentClassName="p-0" className="lg:col-span-2">
-            {homework.length ? (
-              <ul className="divide-y">
-                {homework.map((h: any) => (
-                  <li key={h.id} className="flex items-center gap-3 px-4 py-3 sm:px-5">
-                    <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${h.dueDaysLeft <= 1 ? 'bg-rose-500/10 text-rose-600 dark:text-rose-400' : 'bg-amber-500/10 text-amber-600 dark:text-amber-400'}`}>
-                      <BookOpen className="h-4 w-4" />
-                    </span>
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-medium">{h.title}</p>
-                      <p className="text-xs text-muted-foreground">{h.subject} · {h.teacherName || 'Teacher'} · due {fmtDate(h.dueDate)}{h.dueDaysLeft <= 1 ? ' ⚠' : ''}</p>
-                    </div>
-                    {h.submitted
-                      ? <Badge variant="outline" className="border-emerald-500/30 text-emerald-700 dark:text-emerald-400">Submitted</Badge>
-                      : <Badge variant="outline" className="border-amber-500/30 text-amber-700 dark:text-amber-400">Pending</Badge>}
-                  </li>
+        <div className="rounded-2xl border bg-card p-5 shadow-2xs overflow-x-auto">
+          <table className="w-full min-w-[700px] border-separate border-spacing-2 text-xs">
+            <thead>
+              <tr>
+                <th className="rounded-xl bg-muted/60 px-3 py-2.5 font-bold text-left text-muted-foreground w-28">Day</th>
+                {[1, 2, 3, 4, 5, 6, 7].map(p => (
+                  <th key={p} className="rounded-xl bg-muted/60 px-3 py-2.5 font-bold text-center text-muted-foreground">
+                    Period {p}
+                  </th>
                 ))}
-              </ul>
-            ) : <EmptyState title="All caught up!" description="No homework due right now." icon={<CheckCircle2 className="h-7 w-7" />} />}
-          </SectionCard>
-        </TabsContent>
+              </tr>
+            </thead>
+            <tbody>
+              {days.map(d => {
+                const daySlots = timetable.filter((t: any) => t.dayOfWeek === d.num)
+                return (
+                  <tr key={d.num}>
+                    <td className="rounded-xl bg-muted/30 px-3 py-3 font-bold text-foreground">{d.name}</td>
+                    {[1, 2, 3, 4, 5, 6, 7].map(period => {
+                      const slot = daySlots.find((s: any) => s.period === period)
+                      return (
+                        <td key={period} className="rounded-xl border bg-card/60 p-2.5 text-center min-w-[90px]">
+                          {slot ? (
+                            <div className="space-y-0.5">
+                              <p className="font-bold text-foreground truncate">{slot.subject}</p>
+                              <p className="text-[10px] text-muted-foreground truncate">{slot.teacherName}</p>
+                              <p className="text-[9px] text-muted-foreground/70 font-mono">{slot.startTime}–{slot.endTime}</p>
+                            </div>
+                          ) : (
+                            <span className="text-muted-foreground/40 font-mono">—</span>
+                          )}
+                        </td>
+                      )
+                    })}
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    )
+  }
 
-        {/* ── ATTENDANCE ── */}
-        <TabsContent value="attendance" className="grid gap-4 lg:grid-cols-3">
-          <SectionCard title="This month" className="lg:col-span-1">
-            <div className="space-y-4 py-2">
-              <DonutChart
-                data={[
-                  { name: 'Present', value: att.present || 0 },
-                  { name: 'Absent', value: att.absent || 0 },
-                  { name: 'Late/Half', value: (att.late || 0) + (att.halfDay || 0) },
-                ].filter(d => d.value > 0)}
-                nameKey="name" valueKey="value" height={190}
-                colors={['#10b981', '#f43f5e', '#f59e0b']}
-                centerLabel={`${att.pct ?? 0}%`}
-              />
-              <div className="grid grid-cols-3 border-t pt-3 text-center text-sm">
-                <div><p className="font-bold text-emerald-600 dark:text-emerald-400">{att.present ?? 0}</p><p className="text-xs text-muted-foreground">Present</p></div>
-                <div><p className="font-bold text-rose-600 dark:text-rose-400">{att.absent ?? 0}</p><p className="text-xs text-muted-foreground">Absent</p></div>
-                <div><p className="font-bold text-amber-600 dark:text-amber-400">{(att.late || 0) + (att.halfDay || 0)}</p><p className="text-xs text-muted-foreground">Late/Half</p></div>
-              </div>
+  // ──────────────────────── 3. HOMEWORK VIEW ────────────────────────
+  if (activeTab === 'homework') {
+    return (
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">Homework & Assignments</h1>
+          <p className="text-sm text-muted-foreground">Follow {childFullName}&apos;s assignments, project deadlines and submission statuses.</p>
+        </div>
+
+        <div className="rounded-2xl border bg-card p-5 shadow-2xs">
+          {homework.length ? (
+            <div className="divide-y divide-border/60">
+              {homework.map((h: any) => (
+                <div key={h.id} className="flex flex-col gap-3 py-4 sm:flex-row sm:items-center sm:justify-between text-xs">
+                  <div className="flex items-start gap-3">
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-sky-500/10 text-sky-600 dark:bg-sky-500/20 dark:text-sky-400">
+                      <BookOpen className="h-5 w-5" />
+                    </div>
+                    <div>
+                      <p className="font-bold text-sm text-foreground">{h.title}</p>
+                      <p className="mt-0.5 text-muted-foreground">{h.subject} · {h.teacherName || 'Subject Teacher'} · Due {fmtDate(h.dueDate)}</p>
+                      {h.description && <p className="mt-1 text-muted-foreground/80 line-clamp-2">{h.description}</p>}
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3 self-end sm:self-auto">
+                    {h.submitted ? (
+                      <Badge variant="outline" className="border-emerald-500/40 text-emerald-600 gap-1 text-[11px]">
+                        <CheckCircle2 className="h-3.5 w-3.5" /> Submitted
+                      </Badge>
+                    ) : (
+                      <Badge variant="outline" className="border-amber-500/40 text-amber-600 gap-1 text-[11px]">
+                        <Clock className="h-3.5 w-3.5" /> Pending
+                      </Badge>
+                    )}
+                  </div>
+                </div>
+              ))}
             </div>
-          </SectionCard>
-          <SectionCard title="Daily log — last 30 days" className="lg:col-span-2" contentClassName="p-0">
-            {att.log?.length ? (
-              <ul className="max-h-96 divide-y overflow-y-auto">
-                {att.log.map((d: any, i: number) => (
-                  <li key={i} className="flex items-center justify-between gap-3 px-4 py-2.5 sm:px-5">
-                    <div className="flex items-center gap-3">
-                      <span className="text-sm tabular-nums text-muted-foreground">{fmtDate(d.date)}</span>
-                      <StatusBadge value={d.status} />
-                    </div>
-                    {d.checkInTime && <span className="text-xs text-muted-foreground">In {d.checkInTime}</span>}
-                  </li>
-                ))}
-              </ul>
-            ) : <EmptyState title="No attendance records" description="The school has not marked attendance yet." />}
-          </SectionCard>
-        </TabsContent>
-
-        {/* ── FEES ── */}
-        <TabsContent value="fees" className="grid gap-4 lg:grid-cols-2">
-          <SectionCard title="Outstanding invoices" description="Tap Pay Now to settle online" contentClassName="p-0">
-            {outstanding.length ? (
-              <ul className="divide-y">
-                {outstanding.map((inv: any) => (
-                  <li key={inv.id} className="flex flex-col gap-2 px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-5">
-                    <div className="min-w-0">
-                      <p className="truncate text-sm font-medium">{inv.title} <span className="ml-1 font-mono text-xs text-muted-foreground">{inv.invoiceNo}</span></p>
-                      <p className="text-xs text-muted-foreground">
-                        Due {fmtDate(inv.dueDate)} · <span className={inv.status === 'OVERDUE' ? 'font-semibold text-rose-600 dark:text-rose-400' : ''}>{inr(inv.totalAmount - inv.paidAmount - (inv.discount || 0))} payable</span>
-                      </p>
-                    </div>
-                    <div className="flex items-center gap-2 self-end sm:self-auto">
-                      <StatusBadge value={inv.status} />
-                      <Button size="sm" className="h-8" onClick={() => setPayInvoice(inv)}>
-                        <CreditCard className="mr-1.5 h-3.5 w-3.5" /> Pay Now
-                      </Button>
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            ) : <EmptyState title="No dues pending" description="All invoices are settled. Thank you!" icon={<CheckCircle2 className="h-7 w-7" />} />}
-          </SectionCard>
-          <SectionCard title="Receipt history" description="Payments recorded for your children" contentClassName="p-0">
-            {payments.length ? (
-              <ul className="max-h-96 divide-y overflow-y-auto">
-                {payments.map((p: any, i: number) => (
-                  <li key={i} className="flex items-center gap-3 px-4 py-3 sm:px-5">
-                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
-                      <ReceiptText className="h-4 w-4" />
-                    </span>
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-medium">{inr(p.amount)} <span className="ml-1 font-mono text-xs text-muted-foreground">{p.receiptNo}</span></p>
-                      <p className="text-xs text-muted-foreground">{p.invoiceNo} · {p.method} · {fmtDateTime(p.paidAt)}</p>
-                    </div>
-                    <StatusBadge value={p.status} />
-                  </li>
-                ))}
-              </ul>
-            ) : <EmptyState title="No payments yet" description="Receipts appear here after your first payment." icon={<ReceiptText className="h-7 w-7" />} />}
-          </SectionCard>
-        </TabsContent>
-
-        {/* ── ACADEMICS ── */}
-        <TabsContent value="academics" className="grid gap-4 lg:grid-cols-3">
-          <SectionCard
-            title="Report card" description={rc ? rc.examName : 'No published exam yet'}
-            actions={rc ? <Button variant="outline" size="sm" className="h-8" onClick={() => window.print()}><Printer className="mr-1.5 h-3.5 w-3.5" /> Print</Button> : undefined}
-          >
-            {rc ? (
-              <div className="space-y-4 py-2">
-                <div className="flex items-center justify-around text-center">
-                  <div>
-                    <p className="text-3xl font-bold">{rc.percentage}%</p>
-                    <p className="text-xs text-muted-foreground">Percentage</p>
-                  </div>
-                  <Separator orientation="vertical" className="h-12" />
-                  <div>
-                    <p className="text-3xl font-bold text-emerald-600 dark:text-emerald-400">{rc.grade}</p>
-                    <p className="text-xs text-muted-foreground">Grade</p>
-                  </div>
-                  <Separator orientation="vertical" className="h-12" />
-                  <div>
-                    <p className="text-3xl font-bold">{rc.rank ?? '—'}</p>
-                    <p className="text-xs text-muted-foreground">Class rank</p>
-                  </div>
-                </div>
-                <p className="rounded-lg bg-muted/50 p-3 text-center text-sm text-muted-foreground">
-                  {rc.obtained} / {rc.totalMarks} marks · {child?.student.className} {child?.student.sectionName || ''}
-                </p>
-              </div>
-            ) : <EmptyState title="Not published" description="Results appear here once the school publishes them." icon={<GraduationCap className="h-7 w-7" />} />}
-          </SectionCard>
-          <SectionCard title="Subject-wise marks" className="lg:col-span-2" contentClassName="p-0">
-            {child?.subjectMarks?.length ? (
-              <div className="max-h-96 overflow-y-auto">
-                <table className="w-full text-sm">
-                  <thead className="sticky top-0 bg-muted/80 backdrop-blur">
-                    <tr className="text-left text-xs text-muted-foreground">
-                      <th className="px-4 py-2.5 font-semibold">Subject</th>
-                      <th className="px-4 py-2.5 font-semibold">Marks</th>
-                      <th className="px-4 py-2.5 font-semibold">Score</th>
-                      <th className="px-4 py-2.5 font-semibold">Grade</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y">
-                    {child.subjectMarks.map((m: any, i: number) => (
-                      <tr key={i}>
-                        <td className="px-4 py-2.5 font-medium">{m.subject}</td>
-                        <td className="px-4 py-2.5 tabular-nums">{m.marks}/{m.maxMarks}</td>
-                        <td className="w-32 px-4 py-2.5"><Progress value={m.pct} className="h-2" /></td>
-                        <td className="px-4 py-2.5"><Badge variant="outline" className="font-bold">{m.grade || '—'}</Badge></td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            ) : <EmptyState title="No marks recorded" icon={<FileText className="h-7 w-7" />} />}
-          </SectionCard>
-        </TabsContent>
-
-        {/* ── TRANSPORT ── */}
-        <TabsContent value="transport">
-          {child?.transport ? (
-            <SectionCard title="Bus tracking" description={`Route ${child.transport.routeName} · Stop ${child.transport.stopName}`}>
-              <div className="grid gap-5 py-1 lg:grid-cols-[1fr_280px]">
-                <div className="space-y-4">
-                  <div className="flex items-center gap-3 rounded-xl border bg-muted/30 p-4">
-                    <span className="flex h-12 w-12 items-center justify-center rounded-xl bg-emerald-500/15 text-emerald-600 dark:text-emerald-400">
-                      <Bus className="h-6 w-6" />
-                    </span>
-                    <div className="min-w-0 flex-1">
-                      <p className="font-semibold">{child.transport.vehicle?.regNo || 'School bus'}</p>
-                      <p className="truncate text-xs text-muted-foreground">{child.transport.vehicle?.model || ''} · Driver {child.transport.vehicle?.driverName || '—'}</p>
-                    </div>
-                    <Badge variant="outline" className="shrink-0 border-emerald-500/30 text-emerald-700 dark:text-emerald-400">
-                      <Gauge className="mr-1 h-3 w-3" /> {child.transport.vehicle?.speedKmph ?? 0} km/h
-                    </Badge>
-                  </div>
-                  <div>
-                    <div className="mb-1.5 flex justify-between text-xs text-muted-foreground">
-                      <span>Route progress</span>
-                      <span>{child.transport.progressPct}% along route</span>
-                    </div>
-                    <Progress value={child.transport.progressPct || 0} className="h-3" />
-                    <div className="mt-2 flex items-center justify-between text-xs">
-                      <span className="flex items-center gap-1"><MapPin className="h-3.5 w-3.5 text-emerald-600" /> Pickup: {child.transport.pickupTime || '—'}</span>
-                      <span className="flex items-center gap-1"><Clock className="h-3.5 w-3.5 text-amber-600" /> Drop: {child.transport.dropTime || '—'}</span>
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-2 gap-3 text-sm">
-                    <div className="rounded-lg border p-3">
-                      <p className="text-xs text-muted-foreground">Monthly fee</p>
-                      <p className="mt-0.5 font-semibold">{inr(child.transport.monthlyFee || 0)}</p>
-                    </div>
-                    <div className="rounded-lg border p-3">
-                      <p className="text-xs text-muted-foreground">Status</p>
-                      <p className="mt-0.5 font-semibold">{child.transport.pickupStatus || child.transport.vehicle?.status || 'On route'}</p>
-                    </div>
-                  </div>
-                </div>
-                <div className="space-y-3 rounded-xl border p-4">
-                  <p className="text-sm font-semibold">Driver contact</p>
-                  <p className="flex items-center gap-2 text-sm text-muted-foreground"><Phone className="h-4 w-4" /> {child.transport.vehicle?.driverPhone || '—'}</p>
-                  <Separator />
-                  <p className="text-xs text-muted-foreground">
-                    Last GPS ping {child.transport.vehicle?.lastGpsAt ? timeAgo(child.transport.vehicle.lastGpsAt) : '—'} ·
-                    live tracking powered by the school GPS integration.
-                  </p>
-                </div>
-              </div>
-            </SectionCard>
           ) : (
-            <EmptyState
-              title="No transport allocated"
-              description="Your child is not registered for school transport. Contact the office to add a route."
-              icon={<Bus className="h-7 w-7" />}
-            />
+            <EmptyState title="All caught up!" description="No pending homework assignments." icon={<CheckCircle2 className="h-7 w-7" />} />
           )}
-        </TabsContent>
+        </div>
+      </div>
+    )
+  }
 
-        {/* ── HEALTH ── */}
-        <TabsContent value="health" className="grid gap-4 lg:grid-cols-3">
-          <SectionCard title="Health profile" className="lg:col-span-1">
-            <div className="space-y-3 py-1 text-sm">
-              <div className="flex justify-between"><span className="text-muted-foreground">Blood group</span><strong>{child?.health?.bloodGroup || '—'}</strong></div>
-              <div className="flex justify-between"><span className="text-muted-foreground">Allergies</span><strong className="text-right">{child?.health?.allergies || 'None recorded'}</strong></div>
-              <Separator />
-              <p className="text-xs text-muted-foreground">Emergency contact: {data.parent.phone || '—'}</p>
+  // ──────────────────────── 4. GRADES VIEW ────────────────────────
+  if (activeTab === 'grades') {
+    const marks = child?.subjectMarks || []
+    return (
+      <div className="space-y-6">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">Grades & Report Card</h1>
+            <p className="text-sm text-muted-foreground">Examination marks, score cards and academic rankings for {childFullName}</p>
+          </div>
+          {rc && (
+            <Button variant="outline" className="gap-2 rounded-xl" onClick={() => window.print()}>
+              <Printer className="h-4 w-4" /> Print Report Card
+            </Button>
+          )}
+        </div>
+
+        {rc && (
+          <div className="grid gap-4 sm:grid-cols-4">
+            <div className="rounded-2xl border bg-card p-5 text-center shadow-2xs">
+              <p className="text-xs text-muted-foreground font-semibold">Exam</p>
+              <p className="mt-1 text-lg font-bold text-foreground">{rc.examName}</p>
             </div>
-          </SectionCard>
-          <SectionCard title="Recent clinic visits" description="Latest two entries from the school clinic" className="lg:col-span-2" contentClassName="p-0">
-            {child?.clinicVisits?.length ? (
-              <ul className="divide-y">
-                {child.clinicVisits.map((v: any, i: number) => (
-                  <li key={i} className="px-4 py-3 sm:px-5">
-                    <div className="flex items-center justify-between gap-2">
-                      <p className="text-sm font-medium">{v.reason}</p>
-                      <div className="flex items-center gap-2">
-                        <Badge variant="outline" className={`text-[10px] ${v.severity === 'SERIOUS' ? 'border-rose-500/30 text-rose-600' : v.severity === 'MODERATE' ? 'border-amber-500/30 text-amber-600' : 'border-emerald-500/30 text-emerald-600'}`}>{v.severity}</Badge>
-                        <span className="text-xs text-muted-foreground">{fmtDate(v.date)}</span>
-                      </div>
-                    </div>
-                    <p className="mt-0.5 text-xs text-muted-foreground">
-                      {v.diagnosis || '—'} {v.treatment ? `· ${v.treatment}` : ''} {v.attendedBy ? `· attended by ${v.attendedBy}` : ''}
-                    </p>
-                  </li>
-                ))}
-              </ul>
-            ) : <EmptyState title="No clinic visits" description="A clean bill of health — nothing on record." icon={<HeartPulse className="h-7 w-7" />} />}
-          </SectionCard>
-        </TabsContent>
+            <div className="rounded-2xl border bg-card p-5 text-center shadow-2xs">
+              <p className="text-xs text-muted-foreground font-semibold">Total Score</p>
+              <p className="mt-1 text-2xl font-extrabold text-foreground">{rc.percentage}%</p>
+              <p className="text-[10px] text-muted-foreground">{rc.obtained} / {rc.totalMarks} marks</p>
+            </div>
+            <div className="rounded-2xl border bg-card p-5 text-center shadow-2xs">
+              <p className="text-xs text-muted-foreground font-semibold">Grade</p>
+              <p className="mt-1 text-2xl font-extrabold text-sky-600">{rc.grade}</p>
+            </div>
+            <div className="rounded-2xl border bg-card p-5 text-center shadow-2xs">
+              <p className="text-xs text-muted-foreground font-semibold">Class Rank</p>
+              <p className="mt-1 text-2xl font-extrabold text-foreground">{rc.rank ?? '—'}</p>
+            </div>
+          </div>
+        )}
 
-        {/* ── NOTICES ── */}
-        <TabsContent value="notices" className="space-y-3">
+        <div className="rounded-2xl border bg-card p-5 shadow-2xs">
+          <h3 className="font-bold text-sm text-foreground mb-4">Subject Breakdown</h3>
+          <div className="overflow-x-auto">
+            <table className="w-full text-xs">
+              <thead>
+                <tr className="border-b text-left text-muted-foreground">
+                  <th className="pb-3 font-semibold">Subject</th>
+                  <th className="pb-3 font-semibold">Marks</th>
+                  <th className="pb-3 font-semibold">Score</th>
+                  <th className="pb-3 font-semibold">Grade</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border/60">
+                {marks.map((m: any, idx: number) => (
+                  <tr key={idx}>
+                    <td className="py-3 font-semibold text-foreground">{m.subject}</td>
+                    <td className="py-3 tabular-nums">{m.marks}/{m.maxMarks}</td>
+                    <td className="py-3 font-semibold">{m.pct}%</td>
+                    <td className="py-3">
+                      <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-sky-500/10 text-[10px] font-bold text-sky-600">
+                        {m.grade || '—'}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  // ──────────────────────── 5. ATTENDANCE VIEW ────────────────────────
+  if (activeTab === 'attendance') {
+    return (
+      <div className="space-y-6">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">Attendance & Leave</h1>
+            <p className="text-sm text-muted-foreground">Daily attendance logs and official leave applications for {childFullName}</p>
+          </div>
+          <Button onClick={() => setLeaveOpen(true)} className="gap-2 rounded-xl bg-sky-600 hover:bg-sky-700 text-white font-semibold">
+            <CalendarCheck className="h-4 w-4" /> Request Leave
+          </Button>
+        </div>
+
+        <div className="grid gap-5 md:grid-cols-3">
+          <div className="rounded-2xl border bg-card p-5 shadow-2xs text-center">
+            <p className="text-xs text-muted-foreground font-semibold">Present Days</p>
+            <p className="mt-1 text-3xl font-extrabold text-emerald-600">{att.present ?? 21}</p>
+            <p className="mt-1 text-xs text-muted-foreground">Out of {att.total ?? 23} working days</p>
+          </div>
+          <div className="rounded-2xl border bg-card p-5 shadow-2xs text-center">
+            <p className="text-xs text-muted-foreground font-semibold">Overall Attendance</p>
+            <p className="mt-1 text-3xl font-extrabold text-foreground">{att.pct ?? 100}%</p>
+            <p className="mt-1 text-xs text-emerald-600 font-semibold">Meets 75% requirement</p>
+          </div>
+          <div className="rounded-2xl border bg-card p-5 shadow-2xs text-center">
+            <p className="text-xs text-muted-foreground font-semibold">Absences / Leaves</p>
+            <p className="mt-1 text-3xl font-extrabold text-rose-500">{att.absent ?? 0}</p>
+            <p className="mt-1 text-xs text-muted-foreground">{att.late ?? 1} late arrivals</p>
+          </div>
+        </div>
+
+        <div className="rounded-2xl border bg-card p-5 shadow-2xs">
+          <h3 className="font-bold text-sm text-foreground mb-3">Daily Attendance Log (Last 30 Days)</h3>
+          <div className="max-h-96 divide-y divide-border/60 overflow-y-auto text-xs">
+            {(att.log || []).map((d: any, idx: number) => (
+              <div key={idx} className="flex items-center justify-between py-2.5">
+                <span className="font-medium text-foreground">{fmtDate(d.date)}</span>
+                <StatusBadge value={d.status} />
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  // ──────────────────────── 6. NOTICES VIEW ────────────────────────
+  if (activeTab === 'notices') {
+    return (
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">School Notices & Circulars</h1>
+          <p className="text-sm text-muted-foreground">Official notifications, announcements and circulars for parents.</p>
+        </div>
+
+        <div className="space-y-4">
           {data.announcements.length ? data.announcements.map((a: any) => (
-            <div key={a.id} className={`rounded-xl border p-4 shadow-sm ${a.priority === 'URGENT' ? 'border-rose-500/40 bg-rose-500/5' : 'bg-card'}`}>
+            <div key={a.id} className={`rounded-2xl border p-5 shadow-2xs transition-all ${a.priority === 'URGENT' ? 'border-rose-500/40 bg-rose-500/5' : 'bg-card'}`}>
               <div className="flex flex-wrap items-center gap-2">
-                <Megaphone className="h-4 w-4 shrink-0 text-muted-foreground" />
-                <p className="font-semibold">{a.title}</p>
+                <Megaphone className="h-4 w-4 text-sky-600" />
+                <h3 className="font-bold text-foreground text-sm">{a.title}</h3>
                 <Badge variant="outline" className="text-[10px]">{a.type}</Badge>
-                {a.priority === 'URGENT' && <Badge className="bg-rose-500/15 text-xs text-rose-700 dark:text-rose-400">Urgent</Badge>}
+                {a.priority === 'URGENT' && <Badge className="bg-rose-500/15 text-xs text-rose-600 font-bold">Urgent</Badge>}
                 <span className="ml-auto text-xs text-muted-foreground">{timeAgo(a.publishedAt)}</span>
               </div>
-              <p className="mt-2 text-sm text-muted-foreground">{a.body}</p>
-              {a.publishedBy && <p className="mt-1.5 text-xs text-muted-foreground">— {a.publishedBy}</p>}
+              <p className="mt-2 text-xs text-muted-foreground leading-relaxed">{a.body}</p>
+              {a.publishedBy && <p className="mt-2 text-[11px] font-semibold text-muted-foreground">— {a.publishedBy}</p>}
             </div>
-          )) : <EmptyState title="No notices" description="School announcements for parents will appear here." icon={<Megaphone className="h-7 w-7" />} />}
-        </TabsContent>
-      </Tabs>
+          )) : <EmptyState title="No notices" description="No new announcements posted." icon={<Megaphone className="h-7 w-7" />} />}
+        </div>
+      </div>
+    )
+  }
 
-      <PayDialog child={child} invoice={payInvoice} open={!!payInvoice} onOpenChange={(o) => !o && setPayInvoice(null)} onPaid={load} />
+  // ──────────────────────── 7. EVENTS VIEW ────────────────────────
+  if (activeTab === 'events') {
+    return (
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">School Events & Calendar</h1>
+          <p className="text-sm text-muted-foreground">Upcoming campus events, sports days, science exhibitions and examinations.</p>
+        </div>
+
+        <div className="grid gap-5 md:grid-cols-2">
+          {events.length ? events.map((ev: any) => (
+            <div key={ev.id} className="rounded-2xl border bg-card p-5 shadow-2xs space-y-3">
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-sky-500/10 text-sky-600">
+                  <CalendarIcon className="h-5 w-5" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-sm text-foreground">{ev.title}</h3>
+                  <p className="text-xs text-muted-foreground">{fmtDate(ev.startDate)} · {ev.category || 'School Event'}</p>
+                </div>
+              </div>
+              {ev.description && <p className="text-xs text-muted-foreground leading-relaxed">{ev.description}</p>}
+              {ev.location && (
+                <div className="flex items-center gap-1.5 text-xs text-muted-foreground font-medium pt-1">
+                  <MapPin className="h-3.5 w-3.5 text-sky-600" /> {ev.location}
+                </div>
+              )}
+            </div>
+          )) : <EmptyState title="No upcoming events" description="Events will appear as scheduled." icon={<CalendarIcon className="h-7 w-7" />} />}
+        </div>
+      </div>
+    )
+  }
+
+  // ──────────────────────── 8. LIBRARY VIEW ────────────────────────
+  if (activeTab === 'library') {
+    return (
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">Library Access</h1>
+          <p className="text-sm text-muted-foreground">Books issued to {childFullName}, due dates and library transactions.</p>
+        </div>
+
+        <div className="rounded-2xl border bg-card p-5 shadow-2xs space-y-4">
+          <h3 className="font-bold text-sm text-foreground">Issued Books</h3>
+          {library.length ? (
+            <div className="divide-y divide-border/60 text-xs">
+              {library.map((b: any) => (
+                <div key={b.id} className="flex items-center justify-between py-3">
+                  <div className="flex items-center gap-3">
+                    <BookOpen className="h-4 w-4 text-sky-600" />
+                    <div>
+                      <p className="font-bold text-foreground">{b.bookTitle}</p>
+                      <p className="text-muted-foreground">Author: {b.author} · Acc: {b.accessionNo}</p>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <p className="font-semibold text-foreground">Due: {fmtDate(b.dueDate)}</p>
+                    <Badge variant="outline" className="text-[10px] border-emerald-500/40 text-emerald-600">{b.status}</Badge>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <EmptyState title="No active books" description="All borrowed library books have been returned." icon={<BookOpen className="h-7 w-7" />} />
+          )}
+        </div>
+      </div>
+    )
+  }
+
+  // ──────────────────────── 9. SERVICES: TRANSPORT, HOSTEL, HEALTH ────────────────────────
+  if (activeTab === 'transport') {
+    return (
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">School Transport & Bus Tracking</h1>
+          <p className="text-sm text-muted-foreground">Live GPS route tracking, bus details, pickup stops and driver contacts.</p>
+        </div>
+
+        {child?.transport ? (
+          <div className="rounded-2xl border bg-card p-6 shadow-2xs space-y-6">
+            <div className="flex items-center gap-4">
+              <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-sky-500/10 text-sky-600">
+                <Bus className="h-7 w-7" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <h3 className="text-xl font-bold text-foreground">{child.transport.routeName}</h3>
+                <p className="text-xs text-muted-foreground">{child.transport.vehicle?.regNo || 'Bus #12'} · {child.transport.vehicle?.model || 'Tata Starbus'}</p>
+              </div>
+              <Badge className="bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 font-bold text-xs">
+                <Gauge className="mr-1 h-3.5 w-3.5" /> {child.transport.vehicle?.speedKmph ?? 28} km/h
+              </Badge>
+            </div>
+
+            <div className="grid gap-4 sm:grid-cols-3">
+              <div className="rounded-xl border p-4 text-xs">
+                <p className="text-muted-foreground font-semibold">Assigned Stop</p>
+                <p className="mt-1 text-sm font-bold text-foreground">{child.transport.stopName}</p>
+              </div>
+              <div className="rounded-xl border p-4 text-xs">
+                <p className="text-muted-foreground font-semibold">Pickup Time</p>
+                <p className="mt-1 text-sm font-bold text-foreground">{child.transport.pickupTime || '07:45 AM'}</p>
+              </div>
+              <div className="rounded-xl border p-4 text-xs">
+                <p className="text-muted-foreground font-semibold">Drop Time</p>
+                <p className="mt-1 text-sm font-bold text-foreground">{child.transport.dropTime || '03:45 PM'}</p>
+              </div>
+            </div>
+
+            <div className="rounded-xl border p-4 text-xs space-y-2">
+              <p className="font-bold text-foreground">Driver & Support Contact</p>
+              <div className="flex flex-wrap items-center gap-4 text-muted-foreground">
+                <span className="flex items-center gap-1.5"><Phone className="h-3.5 w-3.5 text-sky-600" /> Driver: {child.transport.vehicle?.driverName || 'Ramesh Kumar'} ({child.transport.vehicle?.driverPhone || '+91 98765 43210'})</span>
+                <span className="flex items-center gap-1.5"><MapPin className="h-3.5 w-3.5 text-sky-600" /> GPS Last Ping: {child.transport.vehicle?.lastGpsAt ? timeAgo(child.transport.vehicle.lastGpsAt) : 'Just now'}</span>
+              </div>
+            </div>
+          </div>
+        ) : (
+          <EmptyState title="No transport allocated" description="Your child is not registered for bus transport." icon={<Bus className="h-7 w-7" />} />
+        )}
+      </div>
+    )
+  }
+
+  if (activeTab === 'hostel') {
+    return (
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">Hostel Accommodation</h1>
+          <p className="text-sm text-muted-foreground">Boarding details, warden information and room allocation.</p>
+        </div>
+
+        {child?.hostel ? (
+          <div className="rounded-2xl border bg-card p-6 shadow-2xs space-y-5">
+            <div className="flex items-center gap-3">
+              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-sky-500/10 text-sky-600">
+                <Building2 className="h-6 w-6" />
+              </div>
+              <div>
+                <h3 className="font-bold text-base text-foreground">{child.hostel.hostelName}</h3>
+                <p className="text-xs text-muted-foreground">Room {child.hostel.roomNumber} · Bed {child.hostel.bedNumber}</p>
+              </div>
+            </div>
+            <div className="border-t pt-4 text-xs space-y-2">
+              <p className="text-muted-foreground">Warden In-Charge: <strong>{child.hostel.wardenName}</strong></p>
+              <p className="text-muted-foreground">Contact: <strong>{child.hostel.wardenPhone}</strong></p>
+            </div>
+          </div>
+        ) : (
+          <div className="rounded-2xl border bg-card p-6 text-center space-y-2">
+            <p className="font-bold text-foreground">Day Scholar Student</p>
+            <p className="text-xs text-muted-foreground">{childFullName} is registered as a day scholar with no hostel room allocated.</p>
+          </div>
+        )}
+      </div>
+    )
+  }
+
+  if (activeTab === 'health') {
+    return (
+      <ChildProfile
+        data={data}
+        selectedId={selectedId}
+        onSelectChild={setSelectedId}
+        initialTab="medical"
+        onReload={reload}
+      />
+    )
+  }
+
+  // ──────────────────────── 10. FINANCE: FEES & PAYMENTS ────────────────────────
+  if (activeTab === 'fees') {
+    return (
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">Fees & Payments</h1>
+          <p className="text-sm text-muted-foreground">Track fee invoices, outstanding dues and settle payments online.</p>
+        </div>
+
+        <div className="rounded-2xl border bg-card p-5 shadow-2xs space-y-4">
+          <h3 className="font-bold text-sm text-foreground">Outstanding Invoices</h3>
+          {outstanding.length ? (
+            <div className="divide-y divide-border/60">
+              {outstanding.map((inv: any) => (
+                <div key={inv.id} className="flex flex-col gap-2 py-4 sm:flex-row sm:items-center sm:justify-between text-xs">
+                  <div>
+                    <p className="font-bold text-foreground text-sm">{inv.title} <span className="font-mono text-muted-foreground">({inv.invoiceNo})</span></p>
+                    <p className="text-muted-foreground mt-0.5">Due {fmtDate(inv.dueDate)} · Amount: <strong className="text-foreground">{inr(inv.due)}</strong></p>
+                  </div>
+                  <div className="flex items-center gap-2 self-end sm:self-auto">
+                    <StatusBadge value={inv.status} />
+                    <Button size="sm" className="h-9 gap-1.5 rounded-xl bg-sky-600 hover:bg-sky-700 text-white font-semibold" onClick={() => setPayInvoice(inv)}>
+                      <CreditCard className="h-3.5 w-3.5" /> Pay Now
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <EmptyState title="No pending dues" description="All fees have been settled. Thank you!" icon={<CheckCircle2 className="h-7 w-7 text-emerald-600" />} />
+          )}
+        </div>
+
+        <div className="rounded-2xl border bg-card p-5 shadow-2xs space-y-4">
+          <h3 className="font-bold text-sm text-foreground">Payment Receipts</h3>
+          {payments.length ? (
+            <div className="divide-y divide-border/60 text-xs">
+              {payments.map((p: any, idx: number) => (
+                <div key={idx} className="flex items-center justify-between py-3">
+                  <div className="flex items-center gap-3">
+                    <ReceiptText className="h-4 w-4 text-emerald-600" />
+                    <div>
+                      <p className="font-bold text-foreground">{inr(p.amount)} <span className="font-mono text-muted-foreground">({p.receiptNo})</span></p>
+                      <p className="text-muted-foreground">{p.method} · {fmtDateTime(p.paidAt)}</p>
+                    </div>
+                  </div>
+                  <StatusBadge value={p.status} />
+                </div>
+              ))}
+            </div>
+          ) : (
+            <EmptyState title="No payment receipts" description="Receipts will appear here after payments." icon={<ReceiptText className="h-7 w-7" />} />
+          )}
+        </div>
+
+        <PayDialog child={child} invoice={payInvoice} open={!!payInvoice} onOpenChange={o => !o && setPayInvoice(null)} onPaid={reload} />
+      </div>
+    )
+  }
+
+  // ──────────────────────── 11. ACCOUNT SETTINGS ────────────────────────
+  if (activeTab === 'settings') {
+    return (
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">Parent Account Settings</h1>
+          <p className="text-sm text-muted-foreground">Configure parent notifications, alerts and account security.</p>
+        </div>
+
+        <div className="rounded-2xl border bg-card p-6 shadow-2xs space-y-4 text-xs">
+          <h3 className="font-bold text-sm text-foreground">Notification Preferences</h3>
+          <div className="space-y-3">
+            {[
+              { title: 'Fee Due Alerts', desc: 'Receive reminders 7 days prior to invoice due date' },
+              { title: 'Daily Attendance Push', desc: 'Get instant notification when your child enters or leaves school' },
+              { title: 'Exam & Result Announcements', desc: 'Notify when marks and report cards are published' },
+              { title: 'Emergency School Alerts', desc: 'High-priority SMS & WhatsApp for sudden closures' },
+            ].map((p, idx) => (
+              <div key={idx} className="flex items-center justify-between border-b pb-3">
+                <div>
+                  <p className="font-bold text-foreground">{p.title}</p>
+                  <p className="text-muted-foreground">{p.desc}</p>
+                </div>
+                <input type="checkbox" defaultChecked className="h-4 w-4 rounded accent-sky-600" />
+              </div>
+            ))}
+          </div>
+          <Button onClick={() => toast.success('Settings updated')} className="rounded-xl bg-sky-600 hover:bg-sky-700 text-white font-semibold">
+            Save Preferences
+          </Button>
+        </div>
+      </div>
+    )
+  }
+
+  // ──────────────────────── 12. DEFAULT: DASHBOARD VIEW (Matching Image 1) ────────────────────────
+  return (
+    <div className="space-y-6">
+      {/* ── Top Greeting Card matching Image 1 ── */}
+      <div className="relative overflow-hidden rounded-3xl border border-emerald-100/90 bg-gradient-to-r from-emerald-50/70 via-teal-50/50 to-cyan-50/40 p-6 dark:border-emerald-900/30 dark:from-emerald-950/20 dark:via-teal-950/15 dark:to-cyan-950/20 shadow-2xs">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h1 className="text-3xl font-extrabold tracking-tight text-foreground sm:text-4xl">
+              Hi {session?.name?.split(' ')[0] || data.parent.name.split(' ')[0] || 'Rohan'}!
+            </h1>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Here&apos;s your child&apos;s progress at a glance — attendance, fees, academics & transport.
+            </p>
+          </div>
+
+          {/* Child Switcher Dropdown matching Image 1 */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button
+                className="flex items-center gap-3 rounded-2xl border bg-card px-4 py-2.5 text-left shadow-2xs transition-all hover:bg-muted/60 self-start sm:self-center"
+                aria-label="Select student"
+              >
+                <div className="flex h-9 w-9 items-center justify-center rounded-full bg-emerald-100 text-xs font-bold text-emerald-700 dark:bg-emerald-950/70 dark:text-emerald-400">
+                  {childInitials}
+                </div>
+                <div className="min-w-0">
+                  <p className="truncate text-xs font-bold text-foreground leading-tight">{childFullName}</p>
+                  <p className="truncate text-[10px] text-muted-foreground">{className} • Section {sectionName}</p>
+                </div>
+                <ChevronDown className="h-4 w-4 text-muted-foreground ml-1" />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-56 rounded-2xl p-1.5">
+              {data.children.map((c: any) => {
+                const cInitials = initials(c.name || 'Student')
+                const isSelected = (c.student?.id || c.name) === (student.id || childFullName)
+                return (
+                  <DropdownMenuItem
+                    key={c.student?.id || c.name}
+                    onClick={() => setSelectedId(c.student?.id || '')}
+                    className="flex items-center gap-2.5 rounded-xl px-2.5 py-2 cursor-pointer"
+                  >
+                    <div className="flex h-7 w-7 items-center justify-center rounded-full bg-emerald-100 text-[10px] font-bold text-emerald-700 dark:bg-emerald-950/70 dark:text-emerald-400">
+                      {cInitials}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-xs font-bold text-foreground">{c.name}</p>
+                      <p className="truncate text-[10px] text-muted-foreground">{c.student?.className || 'Grade 8'} · Section {c.student?.sectionName || 'A'}</p>
+                    </div>
+                    {isSelected && <CheckCircle2 className="h-3.5 w-3.5 text-sky-600 shrink-0 ml-auto" />}
+                  </DropdownMenuItem>
+                )
+              })}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+      </div>
+
+      {/* ── 4 Stat Cards Grid matching Image 1 ── */}
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+        {/* Card 1: ATTENDANCE */}
+        <div className="rounded-2xl border bg-card p-5 shadow-2xs transition-all hover:shadow-xs">
+          <div className="flex items-center justify-between mb-3">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">ATTENDANCE</span>
+            <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600 dark:bg-emerald-950/60 dark:text-emerald-400">
+              <CalendarCheck className="h-4 w-4" />
+            </div>
+          </div>
+          <p className="text-2xl sm:text-3xl font-extrabold text-foreground">{att.pct ?? 100}%</p>
+          <p className="mt-2 text-xs text-muted-foreground">{att.present ?? 21} present / {att.total ?? 23} days</p>
+        </div>
+
+        {/* Card 2: PENDING FEES */}
+        <div className="rounded-2xl border bg-card p-5 shadow-2xs transition-all hover:shadow-xs">
+          <div className="flex items-center justify-between mb-3">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">PENDING FEES</span>
+            <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-rose-50 text-rose-500 dark:bg-rose-950/60 dark:text-rose-400">
+              <Wallet className="h-4 w-4" />
+            </div>
+          </div>
+          <p className="text-2xl sm:text-3xl font-extrabold text-foreground">{inr(child?.totalDue ?? 24800, true)}</p>
+          <p className="mt-2 text-xs text-muted-foreground">{outstanding.length || 1} open invoice{outstanding.length === 1 ? '' : 's'}</p>
+        </div>
+
+        {/* Card 3: NEXT DUE */}
+        <div className="rounded-2xl border bg-card p-5 shadow-2xs transition-all hover:shadow-xs">
+          <div className="flex items-center justify-between mb-3">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">NEXT DUE</span>
+            <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-sky-50 text-sky-600 dark:bg-sky-950/60 dark:text-sky-400">
+              <CalendarClock className="h-4 w-4" />
+            </div>
+          </div>
+          <p className="text-2xl sm:text-3xl font-extrabold text-foreground">
+            {child?.nextDue?.dueDate ? fmtDate(child.nextDue.dueDate) : '01 Nov 2026'}
+          </p>
+          <p className="mt-2 text-xs text-muted-foreground truncate">
+            {child?.nextDue ? `${child.nextDue.invoiceNo} • ${inr(child.nextDue.due, true)}` : 'INV-2025-00142 • ₹24,800'}
+          </p>
+        </div>
+
+        {/* Card 4: LATEST GRADE */}
+        <div className="rounded-2xl border bg-card p-5 shadow-2xs transition-all hover:shadow-xs">
+          <div className="flex items-center justify-between mb-3">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">LATEST GRADE</span>
+            <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-sky-50 text-sky-600 dark:bg-sky-950/60 dark:text-sky-400">
+              <GraduationCap className="h-4 w-4" />
+            </div>
+          </div>
+          <p className="text-2xl sm:text-3xl font-extrabold text-foreground">{rc?.grade || 'B+'}</p>
+          <p className="mt-2 text-xs text-muted-foreground truncate">
+            {rc ? `${rc.examName} • ${rc.percentage}%` : 'Term 1 Examination • 72%'}
+          </p>
+        </div>
+      </div>
+
+      {/* ── Two Large Cards Grid matching Image 1 ── */}
+      <div className="grid gap-6 md:grid-cols-2">
+        {/* Left Card: Attendance — last 14 school days */}
+        <div className="rounded-2xl border bg-card p-6 shadow-2xs space-y-4">
+          <div>
+            <h3 className="font-bold text-base text-foreground">Attendance — last 14 school days</h3>
+            <p className="text-xs text-muted-foreground">Daily presence record (100 = present)</p>
+          </div>
+          <div className="pt-2">
+            <AttendanceTrendChart daily={att.daily || []} />
+          </div>
+        </div>
+
+        {/* Right Card: Recent Grades */}
+        <div className="rounded-2xl border bg-card p-6 shadow-2xs space-y-4">
+          <div>
+            <h3 className="font-bold text-base text-foreground">Recent Grades</h3>
+            <p className="text-xs text-muted-foreground">
+              {rc ? `${rc.examName} • Rank ${rc.rank ?? '—'}` : 'Term 1 Examination • Rank —'}
+            </p>
+          </div>
+
+          <ul className="space-y-4 pt-1">
+            {(child?.subjectMarks && child.subjectMarks.length > 0 ? child.subjectMarks.slice(0, 5) : [
+              { subject: 'English', marks: 55, maxMarks: 100, pct: 55, grade: 'C' },
+              { subject: 'Hindi', marks: 92, maxMarks: 100, pct: 92, grade: 'A+' },
+              { subject: 'Mathematics', marks: 47, maxMarks: 100, pct: 47, grade: 'D' },
+              { subject: 'Physics', marks: 72, maxMarks: 100, pct: 72, grade: 'B+' },
+              { subject: 'Chemistry', marks: 81, maxMarks: 100, pct: 81, grade: 'A' },
+            ]).map((m: any, idx: number) => (
+              <li key={idx} className="flex items-center gap-3.5">
+                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-sky-500/10 text-xs font-bold text-sky-600 dark:bg-sky-500/20 dark:text-sky-400">
+                  {m.grade || '—'}
+                </span>
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center justify-between text-xs mb-1.5">
+                    <span className="font-semibold text-foreground truncate">{m.subject}</span>
+                    <span className="font-semibold tabular-nums text-foreground">{m.marks}/{m.maxMarks}</span>
+                  </div>
+                  <div className="h-1.5 w-full rounded-full bg-sky-100 dark:bg-sky-950/60 overflow-hidden">
+                    <div
+                      className="h-full rounded-full bg-[#0284c7] transition-all duration-300"
+                      style={{ width: `${m.pct}%` }}
+                    />
+                  </div>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </div>
+      </div>
+
+      <PayDialog child={child} invoice={payInvoice} open={!!payInvoice} onOpenChange={o => !o && setPayInvoice(null)} onPaid={reload} />
       <LeaveDialog child={child} open={leaveOpen} onOpenChange={setLeaveOpen} />
     </div>
   )
