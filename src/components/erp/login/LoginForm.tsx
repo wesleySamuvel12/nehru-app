@@ -11,7 +11,6 @@ import { Session } from '@/lib/store'
 import { PasswordField } from './PasswordField'
 import { PrimaryAuthButton } from './PrimaryAuthButton'
 import { AuthStatusMessage } from './AuthStatusMessage'
-import { SchoolSelection } from './SchoolSelection'
 import {
   Mail, ShieldCheck, CheckCircle2, Sparkles, KeyRound,
   Crown, ShieldAlert, BookOpen, Briefcase, HeartHandshake,
@@ -56,7 +55,6 @@ export function LoginForm({ onLogin, onForgotPassword, onPhaseChange }: LoginFor
   const [copiedEmail, setCopiedEmail] = React.useState<string | null>(null)
   const [focusedField, setFocusedField] = React.useState<'email' | 'search' | null>(null)
   const [showAllRoles, setShowAllRoles] = React.useState(false)
-  const [selectedCampus, setSelectedCampus] = React.useState<string | null>(null)
 
   // Category and search filter for sample drawer
   const [activeCategory, setActiveCategory] = React.useState<'All' | 'Admin' | 'Staff' | 'Portals'>('All')
@@ -230,13 +228,6 @@ export function LoginForm({ onLogin, onForgotPassword, onPhaseChange }: LoginFor
             ))}
           </div>
         </div>
-
-        {/* Institutional Campus Context */}
-        <SchoolSelection
-          selectedSchoolId={selectedCampus}
-          onSelectSchool={id => setSelectedCampus(id)}
-          disabled={loading || phase === 'success'}
-        />
 
         {/* Email Address Input */}
         <div className="space-y-1.5 text-left">
