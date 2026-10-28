@@ -2,62 +2,21 @@
 
 import * as React from 'react'
 import { cn } from '@/lib/utils'
-import { api, ApiError, setToken } from '@/lib/api-client'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import { Checkbox } from '@/components/ui/checkbox'
-import { BrandMark } from '@/components/erp/brand'
 import { Session } from '@/lib/store'
 import { CursorFlowCanvas } from '@/components/erp/CursorFlowCanvas'
-import {
-  Lock, Mail, Loader2, ShieldCheck, ArrowRight, Eye, EyeOff,
-  CheckCircle2, Sparkles, KeyRound, Crown, ShieldAlert, BookOpen,
-  Briefcase, HeartHandshake, GraduationCap, Users, Heart, Library,
-  Bus, Home, Stethoscope, Search, Copy, Check, Zap, ChevronDown, ChevronUp
-} from 'lucide-react'
-
-const QUICK_ACCOUNTS = [
-  { role: 'Super Admin', email: 'admin@nis.edu.in', category: 'Admin', label: 'Full System Control', icon: <ShieldAlert className="h-3.5 w-3.5 text-amber-400" /> },
-  { role: 'School Admin', email: 'schooladmin@nis.edu.in', category: 'Admin', label: 'Campus Administration', icon: <ShieldCheck className="h-3.5 w-3.5 text-orange-400" /> },
-  { role: 'Principal', email: 'principal@nis.edu.in', category: 'Admin', label: 'Management & Approvals', icon: <Crown className="h-3.5 w-3.5 text-yellow-400" /> },
-  { role: 'Teacher', email: 'teacher@nis.edu.in', category: 'Staff', label: 'Academics & Grading', icon: <BookOpen className="h-3.5 w-3.5 text-emerald-400" /> },
-  { role: 'Accountant', email: 'accounts@nis.edu.in', category: 'Staff', label: 'Fees, Payroll & Finance', icon: <Briefcase className="h-3.5 w-3.5 text-teal-400" /> },
-  { role: 'HR Manager', email: 'hr@nis.edu.in', category: 'Staff', label: 'Staff & Recruitment', icon: <Users className="h-3.5 w-3.5 text-blue-400" /> },
-  { role: 'Counsellor', email: 'counsellor@nis.edu.in', category: 'Staff', label: 'Admissions & Welfare', icon: <Heart className="h-3.5 w-3.5 text-rose-400" /> },
-  { role: 'Librarian', email: 'librarian@nis.edu.in', category: 'Staff', label: 'Library Catalog & Books', icon: <Library className="h-3.5 w-3.5 text-purple-400" /> },
-  { role: 'Transport', email: 'transport@nis.edu.in', category: 'Staff', label: 'Routes, Vehicles & Fleet', icon: <Bus className="h-3.5 w-3.5 text-sky-400" /> },
-  { role: 'Warden', email: 'warden@nis.edu.in', category: 'Staff', label: 'Hostel & Dormitories', icon: <Home className="h-3.5 w-3.5 text-cyan-400" /> },
-  { role: 'Nurse', email: 'nurse@nis.edu.in', category: 'Staff', label: 'Clinic & Student Health', icon: <Stethoscope className="h-3.5 w-3.5 text-pink-400" /> },
-  { role: 'Security', email: 'security@nis.edu.in', category: 'Staff', label: 'Gate Pass & Visitors', icon: <ShieldCheck className="h-3.5 w-3.5 text-slate-400" /> },
-  { role: 'Parent', email: 'parent@nis.edu.in', category: 'Portals', label: 'Child Dashboard & Fees', icon: <HeartHandshake className="h-3.5 w-3.5 text-rose-400" /> },
-  { role: 'Student', email: 'student@nis.edu.in', category: 'Portals', label: 'My Learning & Grades', icon: <GraduationCap className="h-3.5 w-3.5 text-indigo-400" /> },
-]
-
-type LoginPhase = 'idle' | 'checking' | 'success'
-type LoginType = 'Auto' | 'Super Admin' | 'School Admin'
+import { BrandPanel } from '@/components/erp/login/BrandPanel'
+import { LoginForm } from '@/components/erp/login/LoginForm'
+import { ForgotPasswordModal } from '@/components/erp/login/ForgotPasswordModal'
+import { BrandMark } from '@/components/erp/brand'
+import { ShieldCheck, Sparkles } from 'lucide-react'
 
 export function LoginScreen({ onLogin }: { onLogin: (s: Session, defaultModule: string) => void }) {
-  const [email, setEmail] = React.useState('')
-  const [password, setPassword] = React.useState('')
-  const [showPw, setShowPw] = React.useState(false)
-  const [remember, setRemember] = React.useState(true)
-  const [loading, setLoading] = React.useState(false)
-  const [phase, setPhase] = React.useState<LoginPhase>('idle')
-  const [error, setError] = React.useState<string | null>(null)
-  const [errorField, setErrorField] = React.useState<'email' | 'password' | null>(null)
-  const [shake, setShake] = React.useState(0)
-  const [copiedEmail, setCopiedEmail] = React.useState<string | null>(null)
-  const [focusedField, setFocusedField] = React.useState<'email' | 'password' | 'search' | null>(null)
   const [successFade, setSuccessFade] = React.useState(false)
-  const [showAllRoles, setShowAllRoles] = React.useState(false)
+  const [forgotPasswordOpen, setForgotPasswordOpen] = React.useState(false)
+  const [prefilledEmail, setPrefilledEmail] = React.useState('')
+  const [activeRolePalette, setActiveRolePalette] = React.useState('DEFAULT')
 
-  // Quick Access Category and Search Filter
-  const [activeCategory, setActiveCategory] = React.useState<'All' | 'Admin' | 'Staff' | 'Portals'>('All')
-  const [quickSearch, setQuickSearch] = React.useState('')
-  const loginType: LoginType = 'Auto'
-
-  // Card 3D tilt & dynamic spotlight tracking
+  // 3D Card tilt tracking on mousemove for desktop
   const cardRef = React.useRef<HTMLDivElement | null>(null)
   const [transformStyle, setTransformStyle] = React.useState('perspective(1000px) rotateX(0deg) rotateY(0deg)')
 
@@ -72,100 +31,54 @@ export function LoginScreen({ onLogin }: { onLogin: (s: Session, defaultModule: 
 
     const centerX = rect.width / 2
     const centerY = rect.height / 2
-    const rotateX = ((y - centerY) / centerY) * -3.5
-    const rotateY = ((x - centerX) / centerX) * 3.5
-    setTransformStyle(`perspective(1000px) rotateX(${rotateX.toFixed(2)}deg) rotateY(${rotateY.toFixed(2)}deg) scale3d(1.004, 1.004, 1.004)`)
+    const rotateX = ((y - centerY) / centerY) * -3
+    const rotateY = ((x - centerX) / centerX) * 3
+    setTransformStyle(`perspective(1000px) rotateX(${rotateX.toFixed(2)}deg) rotateY(${rotateY.toFixed(2)}deg) scale3d(1.003, 1.003, 1.003)`)
   }
 
   const handleMouseLeave = () => {
     setTransformStyle('perspective(1000px) rotateX(0deg) rotateY(0deg) scale3d(1, 1, 1)')
   }
 
-  const submit = async (e?: React.FormEvent, overrideEmail?: string, overridePw?: string, overrideLoginType?: LoginType) => {
-    e?.preventDefault()
-    if (loading) return
-    const targetEmail = (overrideEmail || email).trim()
-    const targetPw = overridePw || password
-
-    if (!targetEmail || !targetPw) {
-      setError('Please enter both email and password.')
-      setErrorField(!targetEmail ? 'email' : 'password')
-      setShake(s => s + 1)
-      return
-    }
-
-    setLoading(true)
-    setPhase('checking')
-    setError(null)
-    setErrorField(null)
-
-    try {
-      const res = await api<{ data: Session; token?: string; defaultModule: string }>('/api/auth/login', {
-        method: 'POST', body: JSON.stringify({ email: targetEmail, password: targetPw, selectedLoginType: overrideLoginType || loginType, remember }),
-      })
-      if (res.token) setToken(res.token)
-      setPhase('success')
-      // Smooth playful success choreography: checkmark pops, then form smoothly fades & slides into dashboard
-      setTimeout(() => setSuccessFade(true), 320)
-      setTimeout(() => onLogin(res.data, res.defaultModule), 680)
-    } catch (err) {
-      setPhase('idle')
-      setLoading(false)
-      const msg = (err as ApiError).message || 'Sign-in failed. Please try again.'
-      setError(msg)
-      setErrorField(/password/i.test(msg) ? 'password' : /email/i.test(msg) ? 'email' : null)
-      setShake(s => s + 1)
-    }
+  const handleOpenForgotPassword = (email?: string) => {
+    setPrefilledEmail(email || '')
+    setForgotPasswordOpen(true)
   }
-
-  const handleFillSample = (accEmail: string, accPw = 'demo1234') => {
-    setEmail(accEmail)
-    setPassword(accPw)
-    setError(null)
-    setErrorField(null)
-  }
-
-  const handleCopyEmail = (e: React.MouseEvent, accEmail: string) => {
-    e.stopPropagation()
-    navigator.clipboard?.writeText(accEmail)
-    setCopiedEmail(accEmail)
-    setTimeout(() => setCopiedEmail(null), 2000)
-  }
-
-  const handleQuickLogin = (accEmail: string) => {
-    setEmail(accEmail)
-    setPassword('demo1234')
-    submit(undefined, accEmail, 'demo1234', 'Auto')
-  }
-
-  // Password strength calculation
-  const pwStrength = React.useMemo(() => {
-    if (!password) return 0
-    if (password.length >= 8 && /[A-Z]/.test(password) && /[0-9]/.test(password)) return 3
-    if (password.length >= 6) return 2
-    return 1
-  }, [password])
 
   return (
-    <div className="mesh-bg relative flex min-h-screen w-full flex-col items-center justify-center overflow-hidden bg-slate-950 px-4 py-8 text-slate-100 selection:bg-sky-500 selection:text-white sm:px-6 lg:px-8">
+    <div className="mesh-bg relative flex min-h-screen w-full items-center justify-center overflow-x-hidden bg-slate-950 px-4 py-8 text-slate-100 selection:bg-sky-500 selection:text-white sm:px-6 lg:px-12">
       {/* Dynamic Cursor Flow Canvas */}
-      <CursorFlowCanvas />
+      <CursorFlowCanvas activeRole={activeRolePalette} />
 
-      {/* Ambient glowing color halos */}
-      <div className="pointer-events-none absolute -top-40 -left-40 h-[500px] w-[500px] rounded-full bg-sky-600/15 blur-[130px] anim-float" style={{ ['--delay' as string]: '0s' }} />
-      <div className="pointer-events-none absolute top-1/3 -right-40 h-[600px] w-[600px] rounded-full bg-orange-500/10 blur-[140px] anim-float" style={{ ['--delay' as string]: '2s' }} />
+      {/* Atmospheric glowing color halos */}
+      <div
+        className="pointer-events-none absolute -top-40 -left-40 h-[600px] w-[600px] rounded-full bg-sky-600/15 blur-[140px] anim-float"
+        style={{ ['--delay' as string]: '0s' }}
+      />
+      <div
+        className="pointer-events-none absolute top-1/3 -right-40 h-[650px] w-[650px] rounded-full bg-orange-500/10 blur-[150px] anim-float"
+        style={{ ['--delay' as string]: '2.5s' }}
+      />
+      <div
+        className="pointer-events-none absolute -bottom-40 left-1/3 h-[500px] w-[500px] rounded-full bg-indigo-600/10 blur-[130px] anim-float"
+        style={{ ['--delay' as string]: '4s' }}
+      />
 
-      {/* Main Centered Universal Form Container */}
-      <div className={cn(
-        "relative z-20 flex w-full max-w-[540px] flex-col items-center transition-all duration-500 ease-out",
-        successFade && "opacity-0 scale-[0.97] -translate-y-3 blur-[2px] pointer-events-none"
-      )}>
-        
-        {/* School Logo & Brand Header with Soft Bouncy Load */}
-        <div className="anim-login-up mb-5 flex flex-col items-center text-center" style={{ ['--delay' as string]: '0ms' }}>
+      {/* Two-Panel Enterprise Container */}
+      <div
+        className={cn(
+          'relative z-20 mx-auto flex w-full max-w-6xl flex-col items-center justify-center transition-all duration-500 ease-out lg:flex-row lg:items-stretch lg:gap-12',
+          successFade && 'pointer-events-none -translate-y-3 scale-[0.98] opacity-0 blur-[2px]'
+        )}
+      >
+        {/* Left Panel: Enterprise Branding & Workflow Highlights (Desktop) */}
+        <BrandPanel />
+
+        {/* Mobile-Only Header */}
+        <div className="anim-login-up mb-6 flex flex-col items-center text-center lg:hidden" style={{ ['--delay' as string]: '0ms' }}>
           <div className="group relative mb-2.5 flex items-center justify-center">
-            <div className="absolute inset-0 rounded-2xl bg-gradient-to-r from-sky-500 to-orange-500 blur-md opacity-40 transition-opacity duration-300 group-hover:opacity-75" />
-            <BrandMark tileClassName="relative h-14 w-14 shadow-xl" breathe />
+            <div className="absolute inset-0 rounded-2xl bg-gradient-to-r from-sky-500 to-orange-500 opacity-40 blur-md transition-opacity duration-300 group-hover:opacity-75" />
+            <BrandMark tileClassName="relative h-14 w-14 shadow-xl border-white/20" breathe />
           </div>
           <h1 className="font-display text-2xl font-black tracking-tight text-white sm:text-3xl">
             Nehru International
@@ -177,456 +90,51 @@ export function LoginScreen({ onLogin }: { onLogin: (s: Session, defaultModule: 
           </div>
         </div>
 
-        {/* Universal 3D Glassmorphic Card with Staggered Entrance */}
-        <div
-          key={shake}
-          ref={cardRef}
-          onMouseMove={handleMouseMove}
-          onMouseLeave={handleMouseLeave}
-          style={{ transform: transformStyle, ['--delay' as string]: '90ms' }}
-          className={cn(
-            'spotlight-card anim-login-up relative w-full rounded-3xl border border-white/15 bg-slate-900/85 p-6 sm:p-7 backdrop-blur-2xl shadow-[0_25px_60px_rgba(0,0,0,0.7)] transition-all duration-200 ease-out',
-            shake > 0 && 'anim-nudge'
-          )}
-        >
-          {/* Card Header */}
-          <div className="relative z-10 mb-5 text-center">
-            <div className="mx-auto mb-2 inline-flex items-center gap-1.5 rounded-full border border-sky-500/30 bg-sky-500/10 px-3 py-1 text-[11px] font-semibold text-sky-300">
-              <Sparkles className="h-3 w-3 text-orange-400" /> Unified Portal Sign-In
-            </div>
-            <h2 className="font-display text-xl font-bold text-white sm:text-2xl">
-              {phase === 'success' ? 'Authenticated' : 'Welcome Back'}
-            </h2>
-            <p className="mt-1 text-xs text-slate-400 sm:text-sm">
-              {phase === 'success'
-                ? 'Resolving permissions & opening your workspace…'
-                : 'Sign in to access your institutional portal.'}
-            </p>
+        {/* Right Panel: Authentication Card */}
+        <div className="flex w-full max-w-[500px] flex-col items-center justify-center lg:w-1/2">
+          <div
+            ref={cardRef}
+            onMouseMove={handleMouseMove}
+            onMouseLeave={handleMouseLeave}
+            style={{ transform: transformStyle, ['--delay' as string]: '120ms' }}
+            className="spotlight-card anim-login-up relative w-full rounded-3xl border border-white/15 bg-slate-900/85 p-6 shadow-[0_25px_60px_rgba(0,0,0,0.7)] backdrop-blur-2xl transition-all duration-200 ease-out sm:p-8"
+          >
+            <LoginForm
+              onLogin={(s, defaultModule) => {
+                setSuccessFade(true)
+                setTimeout(() => onLogin(s, defaultModule), 400)
+              }}
+              onForgotPassword={handleOpenForgotPassword}
+              onPhaseChange={phase => {
+                if (phase === 'success') {
+                  setSuccessFade(true)
+                }
+              }}
+            />
           </div>
 
-          {/* Form */}
-          <form onSubmit={submit} className="relative z-10 space-y-4" noValidate>
-            {/* Quick Sample Selector Bar */}
-            <div className="rounded-2xl border border-sky-500/25 bg-sky-950/40 p-3 backdrop-blur-md transition-all duration-200">
-              <div className="mb-2 flex items-center justify-between gap-2">
-                <div className="flex items-center gap-1.5 text-xs font-semibold text-sky-300">
-                  <Sparkles className="h-3.5 w-3.5 text-amber-400" />
-                  <span>Sample Login Quick Fill</span>
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <span className="rounded-md border border-white/10 bg-slate-900/80 px-2 py-0.5 font-mono text-[10px] text-slate-300">
-                    Sample PW: <span className="font-semibold text-emerald-400">demo1234</span>
-                  </span>
-                </div>
-              </div>
-
-              {/* Dropdown with all 14 sample accounts */}
-              <div className="flex items-center gap-2">
-                <select
-                  value={QUICK_ACCOUNTS.some(a => a.email === email) ? email : ''}
-                  onChange={e => {
-                    const target = e.target.value
-                    if (target) handleFillSample(target)
-                  }}
-                  className="input-playful h-9 w-full rounded-xl border border-white/10 bg-slate-950/80 px-3 text-xs text-white focus:border-sky-500 focus:outline-none focus:ring-2 focus:ring-sky-500/30"
-                >
-                  <option value="" disabled>Choose any of the 14 sample logins to autofill…</option>
-                  <optgroup label="── Administration ──">
-                    {QUICK_ACCOUNTS.filter(a => a.category === 'Admin').map(a => (
-                      <option key={a.email} value={a.email}>
-                        Sample: {a.role} ({a.email})
-                      </option>
-                    ))}
-                  </optgroup>
-                  <optgroup label="── Staff & Operations ──">
-                    {QUICK_ACCOUNTS.filter(a => a.category === 'Staff').map(a => (
-                      <option key={a.email} value={a.email}>
-                        Sample: {a.role} ({a.email})
-                      </option>
-                    ))}
-                  </optgroup>
-                  <optgroup label="── Portals (Students & Parents) ──">
-                    {QUICK_ACCOUNTS.filter(a => a.category === 'Portals').map(a => (
-                      <option key={a.email} value={a.email}>
-                        Sample: {a.role} ({a.email})
-                      </option>
-                    ))}
-                  </optgroup>
-                </select>
-
-                {QUICK_ACCOUNTS.find(a => a.email === email) && (
-                  <Button
-                    type="button"
-                    size="sm"
-                    disabled={loading || phase === 'success'}
-                    onClick={() => handleQuickLogin(email)}
-                    className="btn-playful h-9 shrink-0 gap-1.5 rounded-xl bg-sky-600 px-3 text-xs text-white shadow-md hover:bg-sky-500"
-                    title="Instant sign-in with this sample account"
-                  >
-                    <Zap className="h-3.5 w-3.5 text-amber-300" />
-                    Sign In
-                  </Button>
-                )}
-              </div>
-
-              {/* Quick sample chips */}
-              <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
-                <span className="text-[10px] font-medium text-slate-400">Quick sample:</span>
-                {[
-                  { name: 'Super Admin', email: 'admin@nis.edu.in' },
-                  { name: 'Teacher', email: 'teacher@nis.edu.in' },
-                  { name: 'Student', email: 'student@nis.edu.in' },
-                  { name: 'Parent', email: 'parent@nis.edu.in' },
-                ].map(chip => (
-                  <button
-                    key={chip.email}
-                    type="button"
-                    onClick={() => handleFillSample(chip.email)}
-                    className={cn(
-                      'flex items-center gap-1 rounded-lg border px-2 py-0.5 text-[10px] font-medium transition-all duration-200 active:scale-95',
-                      email === chip.email
-                        ? 'border-sky-400 bg-sky-500/25 text-sky-200 shadow-sm'
-                        : 'border-white/10 bg-slate-900/60 text-slate-300 hover:border-sky-500/40 hover:bg-white/5'
-                    )}
-                  >
-                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
-                    {chip.name}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Email / Username Input with Gentle Zoom & Glowing Border */}
-            <div className="space-y-1.5 text-left">
-              <div className="flex items-center justify-between">
-                <Label
-                  htmlFor="email"
-                  className={cn(
-                    'text-xs font-semibold text-slate-300 transition-colors duration-200',
-                    focusedField === 'email' && 'text-sky-300',
-                    errorField === 'email' && 'text-rose-400'
-                  )}
-                >
-                  Email Address
-                </Label>
-                {QUICK_ACCOUNTS.find(a => a.email === email) && (
-                  <span className="inline-flex items-center gap-1 rounded-full border border-emerald-500/20 bg-emerald-500/10 px-2 py-0.5 text-[10px] font-medium text-emerald-400">
-                    <CheckCircle2 className="h-2.5 w-2.5" /> Sample {QUICK_ACCOUNTS.find(a => a.email === email)?.role}
-                  </span>
-                )}
-              </div>
-              <div className="group relative">
-                <Mail
-                  className={cn(
-                    "pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400 transition-all duration-300 ease-out",
-                    focusedField === 'email' && "scale-110 -rotate-6 text-sky-400"
-                  )}
-                />
-                <Input
-                  id="email"
-                  type="email"
-                  autoComplete="email"
-                  placeholder="you@nis.edu.in (or choose sample above)"
-                  value={email}
-                  onChange={e => setEmail(e.target.value)}
-                  onFocus={() => setFocusedField('email')}
-                  onBlur={() => setFocusedField(null)}
-                  disabled={loading}
-                  className={cn(
-                    'input-playful h-11 rounded-xl border-white/10 bg-slate-950/60 pl-10 text-sm text-white placeholder:text-slate-500 hover:border-white/20',
-                    errorField === 'email' && 'border-rose-500/70 focus:ring-rose-500/30',
-                    focusedField === 'email' && !errorField && 'scale-[1.015] border-sky-400/90 bg-slate-950/90 shadow-[0_0_0_3.5px_rgba(56,189,248,0.22),0_8px_24px_-4px_rgba(14,165,233,0.28)]'
-                  )}
-                />
-              </div>
-            </div>
-
-            {/* Password Input with Gentle Zoom & Glowing Border */}
-            <div className="space-y-1.5 text-left">
-              <div className="flex items-center justify-between">
-                <Label
-                  htmlFor="password"
-                  className={cn(
-                    'text-xs font-semibold text-slate-300 transition-colors duration-200',
-                    focusedField === 'password' && 'text-sky-300',
-                    errorField === 'password' && 'text-rose-400'
-                  )}
-                >
-                  Password
-                </Label>
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setPassword('demo1234')}
-                    className="flex items-center gap-1 text-[11px] text-sky-400 transition-colors hover:text-sky-300 hover:underline"
-                    title="Fill sample demo password"
-                  >
-                    <KeyRound className="h-3 w-3" /> Fill Sample PW (demo1234)
-                  </button>
-                  <span className="text-xs text-slate-600">·</span>
-                  <button
-                    type="button"
-                    onClick={() => setError('Password reset is handled by system administrators.')}
-                    className="text-[11px] text-slate-400 transition-colors hover:text-sky-400"
-                  >
-                    Forgot password?
-                  </button>
-                </div>
-              </div>
-              <div className="group relative">
-                <Lock
-                  className={cn(
-                    "pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400 transition-all duration-300 ease-out",
-                    focusedField === 'password' && "scale-110 -rotate-6 text-sky-400"
-                  )}
-                />
-                <Input
-                  id="password"
-                  type={showPw ? 'text' : 'password'}
-                  autoComplete="current-password"
-                  placeholder="••••••••"
-                  value={password}
-                  onChange={e => setPassword(e.target.value)}
-                  onFocus={() => setFocusedField('password')}
-                  onBlur={() => setFocusedField(null)}
-                  disabled={loading}
-                  className={cn(
-                    'input-playful h-11 rounded-xl border-white/10 bg-slate-950/60 pl-10 pr-10 text-sm text-white placeholder:text-slate-500 hover:border-white/20',
-                    errorField === 'password' && 'border-rose-500/70 focus:ring-rose-500/30',
-                    focusedField === 'password' && !errorField && 'scale-[1.015] border-sky-400/90 bg-slate-950/90 shadow-[0_0_0_3.5px_rgba(56,189,248,0.22),0_8px_24px_-4px_rgba(14,165,233,0.28)]'
-                  )}
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPw(v => !v)}
-                  aria-label={showPw ? 'Hide password' : 'Show password'}
-                  className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 transition-colors hover:text-white"
-                >
-                  {showPw ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                </button>
-              </div>
-
-              {/* Password Strength Indicator */}
-              {password.length > 0 && (
-                <div className="flex items-center gap-1.5 pt-1">
-                  <div className="flex flex-1 gap-1">
-                    <div className={cn('h-1 flex-1 rounded-full transition-colors duration-300', pwStrength >= 1 ? 'bg-amber-400' : 'bg-slate-700')} />
-                    <div className={cn('h-1 flex-1 rounded-full transition-colors duration-300', pwStrength >= 2 ? 'bg-emerald-400' : 'bg-slate-700')} />
-                    <div className={cn('h-1 flex-1 rounded-full transition-colors duration-300', pwStrength >= 3 ? 'bg-sky-400' : 'bg-slate-700')} />
-                  </div>
-                  <span className="text-[10px] font-medium text-slate-400">
-                    {pwStrength === 1 ? 'Basic' : pwStrength === 2 ? 'Good' : 'Strong'}
-                  </span>
-                </div>
-              )}
-            </div>
-
-            {/* Remember Me & Security Badge */}
-            <div className="flex items-center justify-between pt-0.5 text-xs">
-              <label className="flex cursor-pointer items-center gap-2 text-slate-300 transition-colors hover:text-white">
-                <Checkbox
-                  checked={remember}
-                  onCheckedChange={v => setRemember(v === true)}
-                  className="border-white/20 data-[state=checked]:border-sky-500 data-[state=checked]:bg-sky-500"
-                />
-                Remember me
-              </label>
-              <span className="inline-flex items-center gap-1 text-[11px] text-slate-400">
-                <ShieldCheck className="h-3.5 w-3.5 text-emerald-400" /> SSL Encrypted
-              </span>
-            </div>
-
-            {/* Error Alert */}
-            {error && (
-              <div role="alert" className="anim-pop rounded-xl border border-rose-500/30 bg-rose-500/15 px-3.5 py-2.5 text-left text-xs text-rose-300">
-                {error}
-              </div>
-            )}
-
-            {/* Playful Submit Button with Small Spinner & Smooth Success State */}
-            <Button
-              type="submit"
-              disabled={loading || phase === 'success'}
-              className={cn(
-                'btn-playful group relative h-12 w-full overflow-hidden rounded-xl font-semibold text-white shadow-xl',
-                phase === 'success'
-                  ? 'bg-emerald-600 scale-[1.02] shadow-[0_0_30px_rgba(16,185,129,0.4)]'
-                  : 'bg-gradient-to-r from-sky-600 via-sky-500 to-orange-500 hover:from-sky-500 hover:to-orange-400'
-              )}
-            >
-              <div className="relative z-10 flex items-center justify-center gap-2">
-                {phase === 'idle' && (
-                  <>
-                    <span>Sign In</span>
-                    <ArrowRight className="h-4 w-4 transition-transform duration-200 group-hover:translate-x-1" />
-                  </>
-                )}
-                {phase === 'checking' && (
-                  <>
-                    <Loader2 className="h-4 w-4 animate-spin text-white" />
-                    <span className="tracking-wide">Verifying…</span>
-                  </>
-                )}
-                {phase === 'success' && (
-                  <>
-                    <CheckCircle2 className="h-4 w-4 text-emerald-100 anim-check-bounce" />
-                    <span className="font-bold tracking-wide">Success</span>
-                  </>
-                )}
-              </div>
-            </Button>
-          </form>
-
-          {/* Quick Access Demo Login Section (All 14 Roles) with Minimal Collapsible Drawer */}
-          <div className="relative z-10 mt-5 border-t border-white/10 pt-3.5">
-            <div className="flex items-center justify-between">
-              <button
-                type="button"
-                onClick={() => setShowAllRoles(v => !v)}
-                className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-slate-300 transition-colors hover:text-sky-300"
-              >
-                <KeyRound className="h-3.5 w-3.5 text-orange-400" />
-                <span>Sample Accounts (14 Roles)</span>
-                {showAllRoles ? (
-                  <ChevronUp className="h-3.5 w-3.5 text-slate-400" />
-                ) : (
-                  <ChevronDown className="h-3.5 w-3.5 text-slate-400" />
-                )}
-              </button>
-              <span className="rounded-full border border-white/10 bg-slate-950/60 px-2 py-0.5 font-mono text-[10px] text-slate-300">
-                Password: <span className="font-bold text-emerald-400">demo1234</span>
-              </span>
-            </div>
-
-            {/* Expandable Collapsible Role Cards Drawer */}
-            {showAllRoles && (
-              <div className="anim-fade-up mt-3 space-y-2">
-                {/* Category Filter Tabs & Quick Search */}
-                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                  <div className="flex flex-wrap items-center gap-1 rounded-xl border border-white/10 bg-slate-950/60 p-1">
-                    {(['All', 'Admin', 'Staff', 'Portals'] as const).map(cat => {
-                      const count = cat === 'All' ? QUICK_ACCOUNTS.length : QUICK_ACCOUNTS.filter(a => a.category === cat).length
-                      return (
-                        <button
-                          key={cat}
-                          type="button"
-                          onClick={() => setActiveCategory(cat)}
-                          className={cn(
-                            'rounded-lg px-2.5 py-1 text-[11px] font-medium transition-all duration-200 active:scale-95',
-                            activeCategory === cat
-                              ? 'bg-sky-500 font-semibold text-white shadow-sm'
-                              : 'text-slate-400 hover:bg-white/5 hover:text-white'
-                          )}
-                        >
-                          {cat} <span className="text-[10px] opacity-70">({count})</span>
-                        </button>
-                      )
-                    })}
-                  </div>
-
-                  {/* Quick Search */}
-                  <div className="relative w-full sm:w-36">
-                    <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3 w-3 -translate-y-1/2 text-slate-500" />
-                    <input
-                      type="text"
-                      placeholder="Filter sample..."
-                      value={quickSearch}
-                      onChange={e => setQuickSearch(e.target.value)}
-                      onFocus={() => setFocusedField('search')}
-                      onBlur={() => setFocusedField(null)}
-                      className={cn(
-                        'input-playful h-7 w-full rounded-lg border border-white/10 bg-slate-950/80 pl-7 pr-2 text-[11px] text-slate-200 placeholder:text-slate-500 focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500',
-                        focusedField === 'search' && 'scale-[1.02] border-sky-400'
-                      )}
-                    />
-                  </div>
-                </div>
-
-                {/* Quick Access Account Cards Grid */}
-                <div className="custom-scrollbar grid max-h-[220px] grid-cols-1 gap-2 overflow-y-auto pr-1 sm:grid-cols-2">
-                  {QUICK_ACCOUNTS.filter(acc => {
-                    const matchCat = activeCategory === 'All' || acc.category === activeCategory
-                    const q = quickSearch.toLowerCase().trim()
-                    const matchQuery = !q || acc.role.toLowerCase().includes(q) || acc.label.toLowerCase().includes(q) || acc.email.toLowerCase().includes(q)
-                    return matchCat && matchQuery
-                  }).map(acc => (
-                    <div
-                      key={acc.email}
-                      className="group relative flex flex-col justify-between rounded-xl border border-white/10 bg-slate-950/60 p-2.5 transition-all duration-200 hover:border-sky-500/50 hover:bg-sky-500/5 hover:shadow-md"
-                    >
-                      <div>
-                        <div className="flex items-center justify-between gap-1.5">
-                          <span className="flex items-center gap-1.5 text-xs font-bold text-slate-200 group-hover:text-sky-300">
-                            {acc.icon} {acc.role}
-                          </span>
-                          <span className="rounded border border-sky-500/30 bg-sky-500/15 px-1.5 py-0.2 font-mono text-[9px] font-semibold tracking-wider uppercase text-sky-300">
-                            Sample
-                          </span>
-                        </div>
-
-                        <div className="mt-1 flex items-center justify-between gap-1">
-                          <span className="truncate font-mono text-[11px] text-slate-400 group-hover:text-slate-300">
-                            {acc.email}
-                          </span>
-                          <button
-                            type="button"
-                            onClick={(e) => handleCopyEmail(e, acc.email)}
-                            aria-label={`Copy ${acc.email}`}
-                            className="shrink-0 rounded p-1 text-slate-500 transition-colors hover:bg-white/10 hover:text-white"
-                            title="Copy sample email"
-                          >
-                            {copiedEmail === acc.email ? (
-                              <Check className="h-3 w-3 text-emerald-400" />
-                            ) : (
-                              <Copy className="h-3 w-3" />
-                            )}
-                          </button>
-                        </div>
-
-                        <span className="mt-0.5 block line-clamp-1 text-[10px] text-slate-400">
-                          {acc.label}
-                        </span>
-                      </div>
-
-                      {/* Dual Action Buttons: Autofill or Instant Login */}
-                      <div className="mt-2.5 flex items-center gap-1.5 border-t border-white/5 pt-1.5">
-                        <button
-                          type="button"
-                          disabled={loading || phase === 'success'}
-                          onClick={() => handleFillSample(acc.email)}
-                          className="flex-1 rounded-lg border border-white/10 bg-slate-900/80 px-2 py-1 text-center text-[10px] font-medium text-slate-300 transition-colors hover:bg-white/10 hover:text-white disabled:opacity-50 active:scale-95"
-                        >
-                          Autofill
-                        </button>
-                        <button
-                          type="button"
-                          disabled={loading || phase === 'success'}
-                          onClick={() => handleQuickLogin(acc.email)}
-                          className="flex flex-1 items-center justify-center gap-1 rounded-lg bg-sky-600/80 px-2 py-1 text-[10px] font-semibold text-white shadow-sm transition-colors hover:bg-sky-500 disabled:opacity-50 active:scale-95"
-                        >
-                          <Zap className="h-2.5 w-2.5 text-amber-300" />
-                          Sign In
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
+          {/* Footer Metadata */}
+          <div
+            className="anim-login-up mt-5 flex flex-wrap items-center justify-center gap-3 text-center text-xs text-slate-400"
+            style={{ ['--delay' as string]: '260ms' }}
+          >
+            <span className="flex items-center gap-1.5">
+              <ShieldCheck className="h-3.5 w-3.5 text-sky-400" /> Dynamic Role-Based Access Control
+            </span>
+            <span className="h-1 w-1 rounded-full bg-slate-600" />
+            <span className="flex items-center gap-1.5">
+              <Sparkles className="h-3.5 w-3.5 text-orange-400" /> Nehru International ERP v2.4
+            </span>
           </div>
-        </div>
-
-        {/* Footer Info with Soft Entrance */}
-        <div className="anim-login-up mt-5 flex flex-wrap items-center justify-center gap-4 text-center text-xs text-slate-400" style={{ ['--delay' as string]: '200ms' }}>
-          <span className="flex items-center gap-1.5">
-            <ShieldCheck className="h-3.5 w-3.5 text-sky-400" /> Dynamic Role-Based Access Control
-          </span>
-          <span className="h-1 w-1 rounded-full bg-slate-600" />
-          <span className="flex items-center gap-1.5">
-            <Sparkles className="h-3.5 w-3.5 text-orange-400" /> Nehru International ERP v2.4
-          </span>
         </div>
       </div>
+
+      {/* Forgot Password / Account Recovery Dialog */}
+      <ForgotPasswordModal
+        isOpen={forgotPasswordOpen}
+        onClose={() => setForgotPasswordOpen(false)}
+        initialEmail={prefilledEmail}
+      />
     </div>
   )
 }

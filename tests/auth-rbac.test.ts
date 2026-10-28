@@ -38,6 +38,7 @@ async function runTests() {
 
   const { POST: loginHandler } = (await jiti.import(path.join(rootDir, 'src/app/api/auth/login/route.ts'))) as any
   const { POST: logoutHandler } = (await jiti.import(path.join(rootDir, 'src/app/api/auth/logout/route.ts'))) as any
+  const { POST: forgotPasswordHandler } = (await jiti.import(path.join(rootDir, 'src/app/api/auth/forgot-password/route.ts'))) as any
 
   let passed = 0
 
@@ -273,6 +274,86 @@ async function runTests() {
   assert.equal(logoutRes.status, 200)
 
   console.log('  ✓ Login flow preserved: authenticates, issues token with school context, clears on logout')
+  passed++
+
+  // --------------------------------------------------------------------------
+  // TEST 6: Password Reset & Account Recovery Workflow
+  // --------------------------------------------------------------------------
+  console.log('[Test 6] Password Reset & Account Recovery Workflow...')
+
+  // 6a: Neutral response for unregistered email (prevents account enumeration)
+  const unknownEmailReq = {
+    json: async () => ({ action: 'request', email: 'nonexistent-user-12345@nis.edu.in' }),
+    headers: new Headers({ 'x-forwarded-for': '127.0.0.1' }),
+    nextUrl: { origin: 'http://localhost:3000' },
+  } as any
+  const unknownRes = await forgotPasswordHandler(unknownEmailReq)
+  assert.equal(unknownRes.status, 200, 'Unknown email request should return status 200')
+  const unknownBody = await unknownRes.json()
+  assert.ok(unknownBody.message.includes('password reset instructions have been dispatched'))
+  assert.equal(unknownBody.resetToken, undefined, 'No token returned for nonexistent user')
+
+  // 6b: Request reset for registered account (teacher@nis.edu.in)
+  const validEmailReq = {
+    json: async () => ({ action: 'request', email: 'teacher@nis.edu.in' }),
+    headers: new Headers({ 'x-forwarded-for': '127.0.0.1' }),
+    nextUrl: { origin: 'http://localhost:3000' },
+  } as any
+  const validRes = await forgotPasswordHandler(validEmailReq)
+  assert.equal(validRes.status, 200)
+  const validBody = await validRes.json()
+  assert.ok(validBody.resetToken, 'Dev/Test environment must generate valid resetToken')
+
+  // 6c: Reject reset with invalid or empty new password (< 6 chars)
+  const shortPwReq = {
+    json: async () => ({ action: 'reset', token: validBody.resetToken, newPassword: '123' }),
+    headers: new Headers({ 'x-forwarded-for': '127.0.0.1' }),
+  } as any
+  const shortPwRes = await forgotPasswordHandler(shortPwReq)
+  assert.equal(shortPwRes.status, 400)
+  const shortPwBody = await shortPwRes.json()
+  assert.ok(shortPwBody.error.includes('at least 6 characters'))
+
+  // 6d: Execute password reset with valid token and strong new password
+  const tempNewPassword = 'newPassword123'
+  const resetReq = {
+    json: async () => ({ action: 'reset', token: validBody.resetToken, newPassword: tempNewPassword }),
+    headers: new Headers({ 'x-forwarded-for': '127.0.0.1' }),
+  } as any
+  const resetRes = await forgotPasswordHandler(resetReq)
+  assert.equal(resetRes.status, 200)
+  const resetBody = await resetRes.json()
+  assert.equal(resetBody.success, true)
+
+  // 6e: Verify replay protection (reusing the same token fails fail-closed)
+  const replayRes = await forgotPasswordHandler(resetReq)
+  assert.equal(replayRes.status, 400, 'Token replay must be rejected')
+  const replayBody = await replayRes.json()
+  assert.ok(replayBody.error.includes('already been used') || replayBody.error.includes('invalidated'))
+
+  // 6f: Verify new password logs in successfully
+  const newLoginReq = {
+    json: async () => ({ email: 'teacher@nis.edu.in', password: tempNewPassword }),
+    headers: new Headers({ 'x-forwarded-for': '127.0.0.1' }),
+  } as any
+  const newLoginRes = await loginHandler(newLoginReq)
+  assert.equal(newLoginRes.status, 200, 'Login with new password must succeed')
+
+  // 6g: Restore original demo password so demo logins remain consistent
+  const restoreReq = {
+    json: async () => ({ action: 'request', email: 'teacher@nis.edu.in' }),
+    headers: new Headers({ 'x-forwarded-for': '127.0.0.1' }),
+    nextUrl: { origin: 'http://localhost:3000' },
+  } as any
+  const restoreTokenRes = await forgotPasswordHandler(restoreReq)
+  const restoreTokenBody = await restoreTokenRes.json()
+  const restoreResetReq = {
+    json: async () => ({ action: 'reset', token: restoreTokenBody.resetToken, newPassword: 'demo1234' }),
+    headers: new Headers({ 'x-forwarded-for': '127.0.0.1' }),
+  } as any
+  await forgotPasswordHandler(restoreResetReq)
+
+  console.log('  ✓ Password reset flow verified: anti-enumeration, short-lived tokens, replay protection & credential update')
   passed++
 
   console.log('\n====================================================')

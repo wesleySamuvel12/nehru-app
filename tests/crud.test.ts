@@ -48,6 +48,11 @@ async function run() {
   const master = await db.school.findFirst({ where: { isMaster: true } })
   assert.ok(master, 'Master school must exist (run the seed first)')
 
+  // Ensure idempotent inventory for library test
+  try {
+    await db.book.updateMany({ where: { availableCopies: { lt: 5 } }, data: { availableCopies: 20 } })
+  } catch {}
+
   // ── Build a session/token for each demo role ───────────────────────────────
   const tokens: Record<string, string> = {}
   for (const role of DEMO_ROLES) {
