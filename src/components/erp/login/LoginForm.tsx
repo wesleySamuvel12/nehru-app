@@ -8,11 +8,15 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Session } from '@/lib/store'
+import { PasswordField } from './PasswordField'
+import { PrimaryAuthButton } from './PrimaryAuthButton'
+import { AuthStatusMessage } from './AuthStatusMessage'
+import { SchoolSelection } from './SchoolSelection'
 import {
-  Lock, Mail, Loader2, ShieldCheck, ArrowRight, Eye, EyeOff,
-  CheckCircle2, Sparkles, KeyRound, Crown, ShieldAlert, BookOpen,
-  Briefcase, HeartHandshake, GraduationCap, Users, Heart, Library,
-  Bus, Home, Stethoscope, Search, Copy, Check, Zap, ChevronDown, ChevronUp
+  Mail, ShieldCheck, CheckCircle2, Sparkles, KeyRound,
+  Crown, ShieldAlert, BookOpen, Briefcase, HeartHandshake,
+  GraduationCap, Users, Heart, Library, Bus, Home, Stethoscope,
+  Search, Copy, Check, Zap, ChevronDown, ChevronUp
 } from 'lucide-react'
 
 export const QUICK_ACCOUNTS = [
@@ -32,7 +36,7 @@ export const QUICK_ACCOUNTS = [
   { role: 'Student', email: 'student@nis.edu.in', category: 'Portals', label: 'My Learning & Grades', icon: <GraduationCap className="h-3.5 w-3.5 text-indigo-400" /> },
 ]
 
-type LoginPhase = 'idle' | 'checking' | 'success'
+export type LoginPhase = 'idle' | 'checking' | 'success'
 
 interface LoginFormProps {
   onLogin: (s: Session, defaultModule: string) => void
@@ -43,7 +47,6 @@ interface LoginFormProps {
 export function LoginForm({ onLogin, onForgotPassword, onPhaseChange }: LoginFormProps) {
   const [email, setEmail] = React.useState('')
   const [password, setPassword] = React.useState('')
-  const [showPw, setShowPw] = React.useState(false)
   const [remember, setRemember] = React.useState(true)
   const [loading, setLoading] = React.useState(false)
   const [phase, setPhase] = React.useState<LoginPhase>('idle')
@@ -51,10 +54,11 @@ export function LoginForm({ onLogin, onForgotPassword, onPhaseChange }: LoginFor
   const [errorField, setErrorField] = React.useState<'email' | 'password' | null>(null)
   const [shake, setShake] = React.useState(0)
   const [copiedEmail, setCopiedEmail] = React.useState<string | null>(null)
-  const [focusedField, setFocusedField] = React.useState<'email' | 'password' | 'search' | null>(null)
+  const [focusedField, setFocusedField] = React.useState<'email' | 'search' | null>(null)
   const [showAllRoles, setShowAllRoles] = React.useState(false)
+  const [selectedCampus, setSelectedCampus] = React.useState<string | null>(null)
 
-  // Quick Access Category and Search Filter
+  // Category and search filter for sample drawer
   const [activeCategory, setActiveCategory] = React.useState<'All' | 'Admin' | 'Staff' | 'Portals'>('All')
   const [quickSearch, setQuickSearch] = React.useState('')
 
@@ -88,7 +92,7 @@ export function LoginForm({ onLogin, onForgotPassword, onPhaseChange }: LoginFor
       })
       if (res.token) setToken(res.token)
       handlePhase('success')
-      // Hand over smoothly to parent after checkmark display
+      // Hand over smoothly after success animation
       setTimeout(() => onLogin(res.data, res.defaultModule), 680)
     } catch (err) {
       handlePhase('idle')
@@ -119,14 +123,6 @@ export function LoginForm({ onLogin, onForgotPassword, onPhaseChange }: LoginFor
     setPassword('demo1234')
     submit(undefined, accEmail, 'demo1234')
   }
-
-  // Password strength calculation
-  const pwStrength = React.useMemo(() => {
-    if (!password) return 0
-    if (password.length >= 8 && /[A-Z]/.test(password) && /[0-9]/.test(password)) return 3
-    if (password.length >= 6) return 2
-    return 1
-  }, [password])
 
   return (
     <div key={shake} className={cn('w-full', shake > 0 && 'anim-nudge')}>
@@ -235,7 +231,14 @@ export function LoginForm({ onLogin, onForgotPassword, onPhaseChange }: LoginFor
           </div>
         </div>
 
-        {/* Email Address */}
+        {/* Institutional Campus Context */}
+        <SchoolSelection
+          selectedSchoolId={selectedCampus}
+          onSelectSchool={id => setSelectedCampus(id)}
+          disabled={loading || phase === 'success'}
+        />
+
+        {/* Email Address Input */}
         <div className="space-y-1.5 text-left">
           <div className="flex items-center justify-between">
             <Label
@@ -257,8 +260,8 @@ export function LoginForm({ onLogin, onForgotPassword, onPhaseChange }: LoginFor
           <div className="group relative">
             <Mail
               className={cn(
-                "pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400 transition-all duration-300 ease-out",
-                focusedField === 'email' && "scale-110 -rotate-6 text-sky-400"
+                'pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400 transition-all duration-300 ease-out',
+                focusedField === 'email' && 'scale-110 -rotate-6 text-sky-400'
               )}
             />
             <Input
@@ -280,87 +283,17 @@ export function LoginForm({ onLogin, onForgotPassword, onPhaseChange }: LoginFor
           </div>
         </div>
 
-        {/* Password */}
-        <div className="space-y-1.5 text-left">
-          <div className="flex items-center justify-between">
-            <Label
-              htmlFor="password-input"
-              className={cn(
-                'text-xs font-semibold text-slate-300 transition-colors duration-200',
-                focusedField === 'password' && 'text-sky-300',
-                errorField === 'password' && 'text-rose-400'
-              )}
-            >
-              Password
-            </Label>
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={() => setPassword('demo1234')}
-                className="flex items-center gap-1 text-[11px] text-sky-400 transition-colors hover:text-sky-300 hover:underline"
-                title="Fill sample demo password"
-              >
-                <KeyRound className="h-3 w-3" /> Fill Sample (demo1234)
-              </button>
-              <span className="text-xs text-slate-600">·</span>
-              <button
-                type="button"
-                onClick={() => onForgotPassword(email)}
-                className="text-[11px] text-slate-400 transition-colors hover:text-sky-400"
-              >
-                Forgot password?
-              </button>
-            </div>
-          </div>
-          <div className="group relative">
-            <Lock
-              className={cn(
-                "pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400 transition-all duration-300 ease-out",
-                focusedField === 'password' && "scale-110 -rotate-6 text-sky-400"
-              )}
-            />
-            <Input
-              id="password-input"
-              type={showPw ? 'text' : 'password'}
-              autoComplete="current-password"
-              placeholder="••••••••"
-              value={password}
-              onChange={e => setPassword(e.target.value)}
-              onFocus={() => setFocusedField('password')}
-              onBlur={() => setFocusedField(null)}
-              disabled={loading}
-              className={cn(
-                'input-playful h-11 rounded-xl border-white/10 bg-slate-950/60 pl-10 pr-10 text-sm text-white placeholder:text-slate-500 hover:border-white/20',
-                errorField === 'password' && 'border-rose-500/70 focus:ring-rose-500/30',
-                focusedField === 'password' && !errorField && 'scale-[1.015] border-sky-400/90 bg-slate-950/90 shadow-[0_0_0_3.5px_rgba(56,189,248,0.22),0_8px_24px_-4px_rgba(14,165,233,0.28)]'
-              )}
-            />
-            <button
-              type="button"
-              onClick={() => setShowPw(v => !v)}
-              aria-label={showPw ? 'Hide password' : 'Show password'}
-              className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 transition-colors hover:text-white"
-            >
-              {showPw ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-            </button>
-          </div>
+        {/* Modular PasswordField */}
+        <PasswordField
+          value={password}
+          onChange={setPassword}
+          disabled={loading || phase === 'success'}
+          hasError={errorField === 'password'}
+          onForgotPassword={() => onForgotPassword(email)}
+          onFillSample={() => setPassword('demo1234')}
+        />
 
-          {/* Password Strength Indicator */}
-          {password.length > 0 && (
-            <div className="flex items-center gap-1.5 pt-1">
-              <div className="flex flex-1 gap-1">
-                <div className={cn('h-1 flex-1 rounded-full transition-colors duration-300', pwStrength >= 1 ? 'bg-amber-400' : 'bg-slate-700')} />
-                <div className={cn('h-1 flex-1 rounded-full transition-colors duration-300', pwStrength >= 2 ? 'bg-emerald-400' : 'bg-slate-700')} />
-                <div className={cn('h-1 flex-1 rounded-full transition-colors duration-300', pwStrength >= 3 ? 'bg-sky-400' : 'bg-slate-700')} />
-              </div>
-              <span className="text-[10px] font-medium text-slate-400">
-                {pwStrength === 1 ? 'Basic' : pwStrength === 2 ? 'Good' : 'Strong'}
-              </span>
-            </div>
-          )}
-        </div>
-
-        {/* Remember me & SSL */}
+        {/* Remember me & Security Badge */}
         <div className="flex items-center justify-between pt-0.5 text-xs">
           <label className="flex cursor-pointer items-center gap-2 text-slate-300 transition-colors hover:text-white">
             <Checkbox
@@ -375,48 +308,23 @@ export function LoginForm({ onLogin, onForgotPassword, onPhaseChange }: LoginFor
           </span>
         </div>
 
-        {/* Error Alert */}
+        {/* Modular AuthStatusMessage for Errors */}
         {error && (
-          <div role="alert" className="anim-pop rounded-xl border border-rose-500/30 bg-rose-500/15 px-3.5 py-2.5 text-left text-xs text-rose-300">
-            {error}
-          </div>
+          <AuthStatusMessage
+            type="error"
+            message={error}
+            onDismiss={() => setError(null)}
+          />
         )}
 
-        {/* Submit Button */}
-        <Button
-          type="submit"
-          disabled={loading || phase === 'success'}
-          className={cn(
-            'btn-playful group relative h-12 w-full overflow-hidden rounded-xl font-semibold text-white shadow-xl',
-            phase === 'success'
-              ? 'bg-emerald-600 scale-[1.02] shadow-[0_0_30px_rgba(16,185,129,0.4)]'
-              : 'bg-gradient-to-r from-sky-600 via-sky-500 to-orange-500 hover:from-sky-500 hover:to-orange-400'
-          )}
-        >
-          <div className="relative z-10 flex items-center justify-center gap-2">
-            {phase === 'idle' && (
-              <>
-                <span>Sign In to Nehru ERP</span>
-                <ArrowRight className="h-4 w-4 transition-transform duration-200 group-hover:translate-x-1" />
-              </>
-            )}
-            {phase === 'checking' && (
-              <>
-                <Loader2 className="h-4 w-4 animate-spin text-white" />
-                <span className="tracking-wide">Authenticating…</span>
-              </>
-            )}
-            {phase === 'success' && (
-              <>
-                <CheckCircle2 className="h-4 w-4 text-emerald-100 anim-check-bounce" />
-                <span className="font-bold tracking-wide">Access Granted</span>
-              </>
-            )}
-          </div>
-        </Button>
+        {/* Modular PrimaryAuthButton */}
+        <PrimaryAuthButton
+          phase={phase}
+          disabled={loading}
+        />
       </form>
 
-      {/* Collapsible 14 Roles Grid */}
+      {/* Collapsible 14 Roles Grid Drawer */}
       <div className="relative z-10 mt-5 border-t border-white/10 pt-3.5">
         <div className="flex items-center justify-between">
           <button
@@ -479,7 +387,7 @@ export function LoginForm({ onLogin, onForgotPassword, onPhaseChange }: LoginFor
               </div>
             </div>
 
-            {/* Grid */}
+            {/* Grid of Accounts */}
             <div className="custom-scrollbar grid max-h-[220px] grid-cols-1 gap-2 overflow-y-auto pr-1 sm:grid-cols-2">
               {QUICK_ACCOUNTS.filter(acc => {
                 const matchCat = activeCategory === 'All' || acc.category === activeCategory
@@ -553,4 +461,3 @@ export function LoginForm({ onLogin, onForgotPassword, onPhaseChange }: LoginFor
     </div>
   )
 }
-

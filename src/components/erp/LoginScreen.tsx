@@ -3,7 +3,7 @@
 import * as React from 'react'
 import { cn } from '@/lib/utils'
 import { Session } from '@/lib/store'
-import { CursorFlowCanvas } from '@/components/erp/CursorFlowCanvas'
+import { AnimatedBackground } from '@/components/erp/login/AnimatedBackground'
 import { BrandPanel } from '@/components/erp/login/BrandPanel'
 import { LoginForm } from '@/components/erp/login/LoginForm'
 import { ForgotPasswordModal } from '@/components/erp/login/ForgotPasswordModal'
@@ -47,22 +47,8 @@ export function LoginScreen({ onLogin }: { onLogin: (s: Session, defaultModule: 
 
   return (
     <div className="mesh-bg relative flex min-h-screen w-full items-center justify-center overflow-x-hidden bg-slate-950 px-4 py-8 text-slate-100 selection:bg-sky-500 selection:text-white sm:px-6 lg:px-12">
-      {/* Dynamic Cursor Flow Canvas */}
-      <CursorFlowCanvas activeRole={activeRolePalette} />
-
-      {/* Atmospheric glowing color halos */}
-      <div
-        className="pointer-events-none absolute -top-40 -left-40 h-[600px] w-[600px] rounded-full bg-sky-600/15 blur-[140px] anim-float"
-        style={{ ['--delay' as string]: '0s' }}
-      />
-      <div
-        className="pointer-events-none absolute top-1/3 -right-40 h-[650px] w-[650px] rounded-full bg-orange-500/10 blur-[150px] anim-float"
-        style={{ ['--delay' as string]: '2.5s' }}
-      />
-      <div
-        className="pointer-events-none absolute -bottom-40 left-1/3 h-[500px] w-[500px] rounded-full bg-indigo-600/10 blur-[130px] anim-float"
-        style={{ ['--delay' as string]: '4s' }}
-      />
+      {/* Fully Modular Atmospheric Animated Background with Particles & Halos */}
+      <AnimatedBackground activeRole={activeRolePalette} />
 
       {/* Two-Panel Enterprise Container */}
       <div
