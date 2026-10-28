@@ -57,6 +57,12 @@ server.log
 .netlify
 
 # Database backups and checksums
+db/*.db
+db/*.db-journal
+db/*.db-wal
+*.db
+*.sqlite
+*.sqlite3
 db/*.backup*
 db/*.sha256
 

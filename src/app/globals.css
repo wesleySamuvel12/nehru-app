@@ -245,6 +245,24 @@
   from { opacity: 0; transform: scale(0.85); }
   to { opacity: 1; transform: scale(1); }
 }
+@keyframes login-fade-up {
+  0% { opacity: 0; transform: translateY(24px) scale(0.98); }
+  60% { transform: translateY(-4px) scale(1.005); }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+@keyframes input-glow {
+  0%, 100% { box-shadow: 0 0 0 0 transparent; }
+  50% { box-shadow: 0 0 0 3px var(--ring), 0 0 12px -2px var(--ring); }
+}
+@keyframes button-press {
+  0% { transform: scale(1); }
+  50% { transform: scale(0.96); }
+  100% { transform: scale(1); }
+}
+@keyframes success-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
+}
 @keyframes fill-stripes {
   from { background-position: 0 0; }
   to { background-position: 28px 0; }
