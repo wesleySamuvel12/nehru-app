@@ -128,7 +128,7 @@ async function main() {
 
   await db.school.create({ data: { name: 'Nehru International School', code: 'NIS-MAIN', address: '18 Hill Road, Bandra West, Mumbai 400050', phone: '+91 22 2640 1200', email: 'office@nis.edu.in', isMaster: true } })
   await db.school.create({ data: { name: 'Nehru International — Pune Campus', code: 'NIS-PUNE', address: 'Baner Road, Pune 411045', phone: '+91 20 2712 3300', email: 'pune@nis.edu.in' } })
-  await db.schoolSetting.create({ data: { schoolName: 'Nehru International School', logoUrl: '/nis-logo.png', address: '18 Hill Road, Bandra West, Mumbai 400050', phone: '+91 22 2640 1200', email: 'office@nis.edu.in', currentYearId: ay.id } })
+  await db.schoolSetting.create({ data: { schoolName: 'Nehru International School', logoUrl: '/nis-logo.png', address: '18 Hill Road, Bandra West, Mumbai 400050', phone: '+91 22 2640 1200', email: 'office@nis.edu.in', currentYearId: ay.id, leaveCcEmails: 'niskarthikeyani@nehrucolleges.com,nisadmissions@nehrucolleges.com', leaveForwardEmail: 'nistaffleave@nehrucolleges.com', leaveFromEmail: 'office@nis.edu.in' } })
 
   const departments = await Promise.all([
     db.department.create({ data: { name: 'Academics', headName: 'Rajesh Malhotra' } }),
@@ -144,15 +144,18 @@ async function main() {
   /* ── Employees ── */
   console.log('Employees…')
   const empData = [
-    ['Rajesh', 'Malhotra', 'PRINCIPAL', 'Principal', false], ['Sunita', 'Desai', 'VICE_PRINCIPAL', 'Vice Principal', false],
-    ['Priya', 'Nair', 'TEACHER', 'Senior Teacher — English', true], ['Amit', 'Verma', 'TEACHER', 'Senior Teacher — Mathematics', true],
-    ['Kavita', 'Iyer', 'TEACHER', 'Senior Teacher — Science', true], ['Suresh', 'Kulkarni', 'TEACHER', 'Teacher — Social Studies', true],
+    ['Dr. K.', 'Radhakrishnan', 'CEO_SECRETARY', 'CEO & Secretary', false],
+    ['Adv. P.', 'Krishnadas', 'CORRESPONDENT', 'Correspondent', false],
+    ['Rajesh', 'Malhotra', 'PRINCIPAL', 'Principal', false],
+    ['Sunita', 'Desai', 'ADMIN_EXECUTIVE', 'Admin Executive', false],
+    ['Priya', 'Nair', 'TEACHER', 'Senior Teacher — English', true], ['Amit', 'Verma', 'HOD', 'Head of Department — Mathematics', true],
+    ['Kavita', 'Iyer', 'ACADEMIC_COORDINATOR', 'Academic Coordinator', true], ['Suresh', 'Kulkarni', 'TEACHER', 'Teacher — Social Studies', true],
     ['Meera', 'Joshi', 'TEACHER', 'Teacher — Hindi', true], ['Rahul', 'Kapoor', 'TEACHER', 'Teacher — Physics', true],
     ['Divya', 'Rao', 'TEACHER', 'Teacher — Chemistry', true], ['Arjun', 'Menon', 'TEACHER', 'Teacher — Biology', true],
     ['Neha', 'Saxena', 'TEACHER', 'Teacher — Computer Science', true], ['Vikram', 'Shetty', 'TEACHER', 'Teacher — Physical Education', true],
     ['Pooja', 'Bhat', 'TEACHER', 'Teacher — Mathematics', true], ['Sameer', 'Khan', 'TEACHER', 'Teacher — History & Civics', true],
-    ['Ritu', 'Pandey', 'TEACHER', 'Teacher — Geography', true], ['Manish', 'Chauhan', 'TEACHER', 'Teacher — English', true],
-    ['Shalini', 'Pillai', 'TEACHER', 'Teacher — Primary (All Subjects)', true], ['Farhan', 'Ali', 'TEACHER', 'Teacher — Marathi', true],
+    ['Ritu', 'Pandey', 'TEACHER', 'Teacher — Geography', true], ['Manish', 'Chauhan', 'SUBSTITUTE', 'Substitute Teacher', true],
+    ['Shalini', 'Pillai', 'HEADMISTRESS', 'Headmistress', true], ['Farhan', 'Ali', 'TEACHER', 'Teacher — Marathi', true],
     ['Anita', 'Bose', 'NURSE', 'School Nurse', false], ['Dr. Sanjay', 'Gupta', 'DOCTOR', 'School Doctor', false],
     ['Vikram', 'Rao', 'ACCOUNTANT', 'Head Accountant', false], ['Swati', 'Agarwal', 'ACCOUNTANT', 'Accounts Executive', false],
     ['Imran', 'Sheikh', 'TRANSPORT', 'Transport Manager', false], ['Mahesh', 'Tiwari', 'LIBRARIAN', 'Head Librarian', false],
@@ -165,7 +168,7 @@ async function main() {
     const [first, last, , designation, isTeacher] = empData[i]
     const emp = await db.employee.create({
       data: {
-        employeeNo: `EMP${String(i + 1).padStart(4, '0')}`, firstName: first, lastName: last,
+        schoolId: mainSchool.id, employeeNo: `EMP${String(i + 1).padStart(4, '0')}`, firstName: first, lastName: last,
         gender: ['Priya','Kavita','Meera','Divya','Neha','Pooja','Ritu','Shalini','Anita','Swati','Lata','Geeta','Deepa'].includes(first) ? 'FEMALE' : 'MALE',
         dob: new Date(1975 + int(0, 20), int(0, 11), int(1, 28)),
         email: `${first.toLowerCase().replace(/\W/g, '')}.${last.toLowerCase()}@nis.edu.in`,
@@ -203,7 +206,7 @@ async function main() {
   ]
   for (const [email, name, role] of roleUsers) {
     const emp = employees.find(e => e.name === name)
-    await db.user.create({ data: { email, passwordHash, name, role, linkedEmployeeId: emp?.id, phone: emp?.phone ?? '+919800011122' } })
+    await db.user.create({ data: { schoolId: mainSchool.id, email, passwordHash, name, role, linkedEmployeeId: emp?.id, phone: emp?.phone ?? '+919800011122' } })
   }
 
   /* ── Classes, sections, subjects ── */

@@ -1,4 +1,26 @@
 services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: nehru_erp_app
+    restart: unless-stopped
+    ports:
+      - "${PORT:-3000}:3000"
+    environment:
+      - NODE_ENV=production
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-nehru_erp}:${POSTGRES_PASSWORD:-nehru_erp_dev_secret_change_in_prod}@postgres:5432/${POSTGRES_DB:-nehru_erp}?schema=public
+      - AUTH_SECRET=${AUTH_SECRET}
+      - SMTP_HOST=${SMTP_HOST}
+      - SMTP_PORT=${SMTP_PORT}
+      - SMTP_USER=${SMTP_USER}
+      - SMTP_PASS=${SMTP_PASS}
+      - SMTP_SECURE=${SMTP_SECURE}
+      - EMAIL_FROM=${EMAIL_FROM}
+    depends_on:
+      postgres:
+        condition: service_healthy
+
   postgres:
     image: postgres:16-alpine
     container_name: nehru_erp_postgres
@@ -9,7 +31,6 @@ services:
       POSTGRES_DB: ${POSTGRES_DB:-nehru_erp}
       PGDATA: /var/lib/postgresql/data/pgdata
     ports:
-      # Bind to localhost (127.0.0.1) to avoid public exposure; host 5434 -> container 5432
       - "127.0.0.1:${POSTGRES_PORT:-5434}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data

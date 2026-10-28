@@ -19,6 +19,7 @@ model User {
   passwordHash     String
   name             String
   role             String    // SUPER_ADMIN|SCHOOL_ADMIN|PRINCIPAL|TEACHER|ACCOUNTANT|HR|COUNSELLOR|LIBRARIAN|TRANSPORT|WARDEN|NURSE|SECURITY|PARENT|STUDENT
+  roles            String?   // Comma-separated or JSON list of additional roles
   phone            String?
   avatarUrl        String?
   status           String    @default("ACTIVE") // ACTIVE|SUSPENDED|PENDING
@@ -133,6 +134,9 @@ model SchoolSetting {
   dataEncryption   Boolean @default(true)
   backupFrequency  String  @default("DAILY")
   sessionTimeoutMin Int    @default(120)
+  leaveCcEmails    String? // comma-separated CC recipients for approved teacher leave
+  leaveForwardEmail String? // forwarding address for approved leave details
+  leaveFromEmail   String?
 }
 
 model AcademicYear {
@@ -415,16 +419,49 @@ model LeaveRequest {
   requesterType String    @default("STUDENT") // STUDENT|EMPLOYEE
   requesterId   String
   requesterName String
-  type          String    @default("SICK") // SICK|CASUAL|PRIVILEGE|MATERNITY|EMERGENCY|OTHER
+  category      String    @default("LEAVE") // LEAVE|OD|IOD
+  type          String    @default("SICK") // SICK|CASUAL|EARNED|PRIVILEGE|MATERNITY|EMERGENCY|OTHER|OD|IOD
+  durationType  String    @default("FULL_DAY") // FULL_DAY|HALF_DAY
+  halfDayPart   String?   // FIRST_HALF|SECOND_HALF
   fromDate      DateTime
   toDate        DateTime
   reason        String
-  status        String    @default("PENDING") // PENDING|APPROVED|REJECTED
+  substituteId  String?
+  substituteName String?
+  status        String    @default("PENDING") // PENDING|IN_PROGRESS|APPROVED|REJECTED|RETURNED|CANCELLED
   approverId    String?
   approverName  String?
   decidedAt     DateTime?
   remarks       String?
+  workflowKey   String?
+  currentStep   Int       @default(0)
+  currentApproverRole String?
+  returnedReason String?
+  withdrawnAt   DateTime?
+  balanceDeducted Boolean @default(false)
+  stepsJson     String?   // JSON array of {index, approverRole, recipientType, label}
+  historyJson   String?   // JSON array of {action, by, byRole, at, comments, stepIndex}
   createdAt     DateTime  @default(now())
+}
+
+model EmailLog {
+  id               String   @id @default(cuid())
+  schoolId         String?
+  to               String
+  cc               String?
+  subject          String
+  body             String?
+  status           String   @default("PENDING") // PENDING|SENT|FAILED|NOT_CONFIGURED
+  provider         String?
+  providerMessageId String?
+  attempts         Int      @default(0)
+  dedupeKey        String?
+  error            String?
+  createdAt        DateTime @default(now())
+  sentAt           DateTime?
+
+  @@index([dedupeKey])
+  @@index([status])
 }
 
 model Assignment {

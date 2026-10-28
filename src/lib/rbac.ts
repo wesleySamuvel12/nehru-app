@@ -1,9 +1,27 @@
 // Role-Based Access Control — Navigation Configuration, Permissions & Modules
 
 export const ROLES = [
-  'SUPER_ADMIN', 'SCHOOL_ADMIN', 'PRINCIPAL', 'TEACHER', 'ACCOUNTANT', 'HR',
-  'COUNSELLOR', 'LIBRARIAN', 'TRANSPORT', 'WARDEN', 'NURSE', 'SECURITY',
-  'PARENT', 'STUDENT',
+  'SUPER_ADMIN',
+  'SCHOOL_ADMIN',
+  'CEO_SECRETARY',
+  'CORRESPONDENT',
+  'PRINCIPAL',
+  'HOD',
+  'ACADEMIC_COORDINATOR',
+  'HEADMISTRESS',
+  'TEACHER',
+  'SUBSTITUTE',
+  'ADMIN_EXECUTIVE',
+  'ACCOUNTANT',
+  'HR',
+  'COUNSELLOR',
+  'LIBRARIAN',
+  'TRANSPORT',
+  'WARDEN',
+  'NURSE',
+  'SECURITY',
+  'PARENT',
+  'STUDENT',
 ] as const
 
 export type Role = (typeof ROLES)[number]
@@ -11,9 +29,18 @@ export type Role = (typeof ROLES)[number]
 export const ROLE_ALIASES: Record<string, Role> = {
   HOSTEL: 'WARDEN',
   HEALTH: 'NURSE',
+  ADMIN: 'SCHOOL_ADMIN',
+  SECRETARY: 'CEO_SECRETARY',
+  CEO: 'CEO_SECRETARY',
+  CORRESPONDENT_SECRETARY: 'CEO_SECRETARY',
+  SUBSTITUTION_STAFF: 'SUBSTITUTE',
+  COORDINATOR: 'ACADEMIC_COORDINATOR',
+  HM: 'HEADMISTRESS',
+  HEAD_OF_DEPARTMENT: 'HOD',
+  ADMIN_EXEC: 'ADMIN_EXECUTIVE',
 }
 
-/** Normalizes role string to canonical uppercase Role (e.g. HOSTEL -> WARDEN, HEALTH -> NURSE) */
+/** Normalizes role string to canonical uppercase Role */
 export function normalizeRole(role: string): Role {
   const upper = String(role || '').toUpperCase().trim()
   if (upper in ROLE_ALIASES) {
@@ -25,8 +52,15 @@ export function normalizeRole(role: string): Role {
 export const ROLE_LABELS: Record<string, string> = {
   SUPER_ADMIN: 'Super Admin',
   SCHOOL_ADMIN: 'School Admin',
+  CEO_SECRETARY: 'CEO & Secretary',
+  CORRESPONDENT: 'Correspondent',
   PRINCIPAL: 'Principal',
+  HOD: 'Head of Department',
+  ACADEMIC_COORDINATOR: 'Academic Coordinator',
+  HEADMISTRESS: 'Headmistress',
   TEACHER: 'Teacher',
+  SUBSTITUTE: 'Substitute Teacher',
+  ADMIN_EXECUTIVE: 'Admin Executive',
   ACCOUNTANT: 'Accountant',
   HR: 'HR Manager',
   COUNSELLOR: 'Admission Counsellor',
@@ -41,42 +75,67 @@ export const ROLE_LABELS: Record<string, string> = {
   STUDENT: 'Student',
 }
 
-const ALL_ADMINS = ['SUPER_ADMIN', 'SCHOOL_ADMIN']
-const MANAGEMENT = [...ALL_ADMINS, 'PRINCIPAL']
+const ALL_ADMINS = ['SUPER_ADMIN', 'SCHOOL_ADMIN', 'ADMIN_EXECUTIVE']
+const EXECUTIVE = ['SUPER_ADMIN', 'SCHOOL_ADMIN', 'CEO_SECRETARY', 'CORRESPONDENT', 'PRINCIPAL']
+const MANAGEMENT = [...EXECUTIVE, 'HOD', 'ACADEMIC_COORDINATOR', 'HEADMISTRESS']
+const ALL_TEACHING = [...MANAGEMENT, 'TEACHER', 'SUBSTITUTE']
+const ALL_STAFF = [
+  ...ALL_TEACHING,
+  'ADMIN_EXECUTIVE',
+  'ACCOUNTANT',
+  'HR',
+  'COUNSELLOR',
+  'LIBRARIAN',
+  'TRANSPORT',
+  'WARDEN',
+  'NURSE',
+  'SECURITY',
+]
 
 /** Module -> roles allowed to access (API + nav). SUPER_ADMIN always allowed. */
 export const MODULE_ACCESS: Record<string, string[]> = {
-  dashboard: [...MANAGEMENT, 'TEACHER', 'ACCOUNTANT', 'HR', 'COUNSELLOR', 'LIBRARIAN', 'TRANSPORT', 'WARDEN', 'NURSE', 'SECURITY'],
-  admissions: [...MANAGEMENT, 'COUNSELLOR'],
-  students: [...MANAGEMENT, 'TEACHER', 'NURSE', 'TRANSPORT', 'WARDEN', 'LIBRARIAN', 'SECURITY'],
-  parents: [...MANAGEMENT, 'TEACHER'],
-  teachers: [...ALL_ADMINS, 'PRINCIPAL', 'HR'],
-  academics: [...MANAGEMENT, 'TEACHER'],
-  lms: [...MANAGEMENT, 'TEACHER', 'STUDENT', 'PARENT'],
-  attendance: [...MANAGEMENT, 'TEACHER', 'PARENT', 'STUDENT'],
-  examinations: [...MANAGEMENT, 'TEACHER', 'PARENT', 'STUDENT'],
-  fees: [...ALL_ADMINS, 'ACCOUNTANT', 'PARENT', 'STUDENT'],
-  hr: [...ALL_ADMINS, 'HR', 'PRINCIPAL'],
+  dashboard: [...ALL_STAFF],
+  admissions: [...MANAGEMENT, 'ADMIN_EXECUTIVE', 'COUNSELLOR'],
+  students: [...ALL_TEACHING, 'ADMIN_EXECUTIVE', 'NURSE', 'TRANSPORT', 'WARDEN', 'LIBRARIAN', 'SECURITY'],
+  parents: [...MANAGEMENT, 'TEACHER', 'SUBSTITUTE'],
+  teachers: [...EXECUTIVE, 'HOD', 'HR', 'ADMIN_EXECUTIVE'],
+  academics: [...MANAGEMENT, 'TEACHER', 'SUBSTITUTE'],
+  lms: [...MANAGEMENT, 'TEACHER', 'SUBSTITUTE', 'STUDENT', 'PARENT'],
+  attendance: [...MANAGEMENT, 'TEACHER', 'SUBSTITUTE', 'ADMIN_EXECUTIVE', 'PARENT', 'STUDENT'],
+  examinations: [...MANAGEMENT, 'TEACHER', 'SUBSTITUTE', 'PARENT', 'STUDENT'],
+  fees: [...EXECUTIVE, 'ACCOUNTANT', 'ADMIN_EXECUTIVE', 'PARENT', 'STUDENT'],
+  hr: [...EXECUTIVE, 'HR', 'ADMIN_EXECUTIVE'],
   transport: [...ALL_ADMINS, 'TRANSPORT', 'PARENT', 'STUDENT', 'PRINCIPAL'],
   hostel: [...ALL_ADMINS, 'WARDEN', 'PARENT', 'STUDENT', 'PRINCIPAL'],
   security: [...ALL_ADMINS, 'SECURITY', 'PRINCIPAL'],
   health: [...ALL_ADMINS, 'NURSE', 'PARENT', 'PRINCIPAL', 'TEACHER'],
   library: [...ALL_ADMINS, 'LIBRARIAN', 'TEACHER', 'STUDENT', 'PARENT'],
-  assets: [...MANAGEMENT, 'HR'],
+  assets: [...MANAGEMENT, 'HR', 'ADMIN_EXECUTIVE'],
   communication: [...MANAGEMENT, 'TEACHER', 'PARENT', 'STUDENT'],
-  events: [...MANAGEMENT, 'TEACHER', 'PARENT', 'STUDENT', 'ACCOUNTANT', 'HR', 'LIBRARIAN', 'TRANSPORT', 'WARDEN', 'NURSE', 'SECURITY'],
-  certificates: [...MANAGEMENT, 'TEACHER', 'PARENT', 'STUDENT'],
+  events: [...ALL_STAFF, 'PARENT', 'STUDENT'],
+  certificates: [...MANAGEMENT, 'ADMIN_EXECUTIVE', 'TEACHER', 'PARENT', 'STUDENT'],
   analytics: [...MANAGEMENT, 'ACCOUNTANT', 'HR'],
   integrations: [...ALL_ADMINS],
   settings: [...ALL_ADMINS],
-  'audit-logs': [...ALL_ADMINS, 'PRINCIPAL'],
+  'audit-logs': [...ALL_ADMINS, 'PRINCIPAL', 'CEO_SECRETARY', 'CORRESPONDENT'],
   'parent-portal': ['PARENT'],
   'student-portal': ['STUDENT'],
-  'teacher-portal': ['TEACHER'],
+  'teacher-portal': ['TEACHER', 'HOD', 'SUBSTITUTE'],
 }
 
-export function can(role: string, moduleKey: string): boolean {
-  const canonicalRole = normalizeRole(role)
+/**
+ * Checks if a user has access to a given module.
+ * Supports single role, array of roles, or comma-separated roles.
+ */
+export function can(roleOrRoles: string | string[], moduleKey: string): boolean {
+  if (Array.isArray(roleOrRoles)) {
+    return roleOrRoles.some(r => can(r, moduleKey))
+  }
+  const str = String(roleOrRoles || '').trim()
+  if (str.includes(',')) {
+    return str.split(',').map(s => s.trim()).filter(Boolean).some(r => can(r, moduleKey))
+  }
+  const canonicalRole = normalizeRole(str)
   if (moduleKey === 'student-portal' && canonicalRole !== 'STUDENT') return false
   if (canonicalRole === 'SUPER_ADMIN') return true
   const allowed = MODULE_ACCESS[moduleKey]
@@ -104,7 +163,7 @@ export const NAV_ITEMS: NavItem[] = [
     label: 'Dashboard',
     icon: 'LayoutDashboard',
     group: 'Overview',
-    roles: [...MANAGEMENT, 'TEACHER', 'ACCOUNTANT', 'HR', 'COUNSELLOR', 'LIBRARIAN', 'TRANSPORT', 'WARDEN', 'NURSE', 'SECURITY'],
+    roles: [...ALL_STAFF],
   },
   {
     key: 'parent-portal',
@@ -141,7 +200,7 @@ export const NAV_ITEMS: NavItem[] = [
     label: 'Admissions & CRM',
     icon: 'UserPlus',
     group: 'Operations',
-    roles: [...MANAGEMENT, 'COUNSELLOR'],
+    roles: [...MANAGEMENT, 'ADMIN_EXECUTIVE', 'COUNSELLOR'],
     subItems: [
       { key: 'enquiries', label: 'Enquiries & Leads' },
       { key: 'pipeline', label: 'Kanban Pipeline' },
@@ -156,7 +215,7 @@ export const NAV_ITEMS: NavItem[] = [
     label: 'Students',
     icon: 'GraduationCap',
     group: 'Operations',
-    roles: [...MANAGEMENT, 'TEACHER', 'NURSE', 'TRANSPORT', 'WARDEN', 'LIBRARIAN', 'SECURITY'],
+    roles: [...ALL_TEACHING, 'ADMIN_EXECUTIVE', 'NURSE', 'TRANSPORT', 'WARDEN', 'LIBRARIAN', 'SECURITY'],
     subItems: [
       { key: 'directory', label: 'Student Directory' },
       { key: 'enrollment', label: 'Enrollment & Promotion' },
@@ -169,14 +228,14 @@ export const NAV_ITEMS: NavItem[] = [
     label: 'Parents',
     icon: 'Users',
     group: 'Operations',
-    roles: [...MANAGEMENT, 'TEACHER'],
+    roles: [...MANAGEMENT, 'TEACHER', 'SUBSTITUTE'],
   },
   {
     key: 'teachers',
     label: 'Teachers & Staff',
     icon: 'Briefcase',
     group: 'Operations',
-    roles: [...ALL_ADMINS, 'PRINCIPAL', 'HR'],
+    roles: [...EXECUTIVE, 'HOD', 'HR', 'ADMIN_EXECUTIVE'],
     subItems: [
       { key: 'staff-directory', label: 'Staff Directory' },
       { key: 'employee-profiles', label: 'Employee Profiles' },
@@ -188,7 +247,7 @@ export const NAV_ITEMS: NavItem[] = [
     label: 'Academics',
     icon: 'BookOpen',
     group: 'Academics',
-    roles: [...MANAGEMENT, 'TEACHER'],
+    roles: [...MANAGEMENT, 'TEACHER', 'SUBSTITUTE'],
     subItems: [
       { key: 'my-classes', label: 'My Classes & Subjects' },
       { key: 'timetable', label: 'Master Timetable' },
@@ -202,14 +261,14 @@ export const NAV_ITEMS: NavItem[] = [
     label: 'LMS & Learning',
     icon: 'MonitorPlay',
     group: 'Academics',
-    roles: [...MANAGEMENT, 'TEACHER', 'STUDENT', 'PARENT'],
+    roles: [...MANAGEMENT, 'TEACHER', 'SUBSTITUTE', 'STUDENT', 'PARENT'],
   },
   {
     key: 'attendance',
     label: 'Attendance',
     icon: 'CalendarCheck',
     group: 'Academics',
-    roles: [...MANAGEMENT, 'TEACHER', 'PARENT', 'STUDENT'],
+    roles: [...MANAGEMENT, 'TEACHER', 'SUBSTITUTE', 'ADMIN_EXECUTIVE', 'PARENT', 'STUDENT'],
     subItems: [
       { key: 'mark-attendance', label: 'Mark Class Attendance' },
       { key: 'staff-attendance', label: 'Staff Attendance' },
@@ -222,7 +281,7 @@ export const NAV_ITEMS: NavItem[] = [
     label: 'Examinations',
     icon: 'ClipboardList',
     group: 'Academics',
-    roles: [...MANAGEMENT, 'TEACHER', 'PARENT', 'STUDENT'],
+    roles: [...MANAGEMENT, 'TEACHER', 'SUBSTITUTE', 'PARENT', 'STUDENT'],
     subItems: [
       { key: 'exam-planning', label: 'Exam Timetable & Schedules' },
       { key: 'question-bank', label: 'Question Bank' },
@@ -236,7 +295,7 @@ export const NAV_ITEMS: NavItem[] = [
     label: 'Fees & Finance',
     icon: 'Wallet',
     group: 'Finance',
-    roles: [...ALL_ADMINS, 'ACCOUNTANT', 'PARENT', 'STUDENT'],
+    roles: [...EXECUTIVE, 'ACCOUNTANT', 'ADMIN_EXECUTIVE', 'PARENT', 'STUDENT'],
     subItems: [
       { key: 'fee-structures', label: 'Fee Structures' },
       { key: 'fee-collection', label: 'Fee Collection & EasyPay' },
@@ -251,7 +310,7 @@ export const NAV_ITEMS: NavItem[] = [
     label: 'HR & Payroll',
     icon: 'BadgeCheck',
     group: 'Finance',
-    roles: [...ALL_ADMINS, 'HR', 'PRINCIPAL'],
+    roles: [...EXECUTIVE, 'HR', 'ADMIN_EXECUTIVE'],
     subItems: [
       { key: 'payroll-processing', label: 'Payroll Processing' },
       { key: 'salary-slips', label: 'Payslips & Salary Structure' },
@@ -327,7 +386,7 @@ export const NAV_ITEMS: NavItem[] = [
     label: 'Assets & Resources',
     icon: 'Boxes',
     group: 'Operations',
-    roles: [...MANAGEMENT, 'HR'],
+    roles: [...MANAGEMENT, 'HR', 'ADMIN_EXECUTIVE'],
   },
   {
     key: 'communication',
@@ -341,14 +400,14 @@ export const NAV_ITEMS: NavItem[] = [
     label: 'Events & Calendar',
     icon: 'CalendarDays',
     group: 'Engagement',
-    roles: [...MANAGEMENT, 'TEACHER', 'PARENT', 'STUDENT', 'ACCOUNTANT', 'HR', 'LIBRARIAN', 'TRANSPORT', 'WARDEN', 'NURSE', 'SECURITY'],
+    roles: [...ALL_STAFF, 'PARENT', 'STUDENT'],
   },
   {
     key: 'certificates',
     label: 'Certificates',
     icon: 'FileBadge',
     group: 'Engagement',
-    roles: [...MANAGEMENT, 'TEACHER', 'PARENT', 'STUDENT'],
+    roles: [...MANAGEMENT, 'ADMIN_EXECUTIVE', 'TEACHER', 'PARENT', 'STUDENT'],
   },
   {
     key: 'analytics',
@@ -376,7 +435,7 @@ export const NAV_ITEMS: NavItem[] = [
     label: 'Audit Logs',
     icon: 'ScrollText',
     group: 'System',
-    roles: [...ALL_ADMINS, 'PRINCIPAL'],
+    roles: [...ALL_ADMINS, 'PRINCIPAL', 'CEO_SECRETARY', 'CORRESPONDENT'],
   },
 ]
 

@@ -245,6 +245,7 @@ export function defineCrud(config: CrudConfig) {
       if (config.afterCreate) await config.afterCreate(row, session)
       return json({ data: strip(row, config) }, 201)
     } catch (e: any) {
+      if (String(e?.code) === 'VALIDATION') return err(400, e?.message || 'Invalid input.')
       if (String(e?.code) === 'P2002') return err(409, 'A record with this value already exists.')
       if (String(e?.code) === 'P2003') return err(400, 'Invalid reference — a related record was not found.')
       console.error(`[crud:create:${entity}]`, e)
@@ -333,6 +334,7 @@ export function defineCrud(config: CrudConfig) {
       if (config.afterUpdate) await config.afterUpdate(row, session, before)
       return json({ data: strip(row, config) })
     } catch (e: any) {
+      if (String(e?.code) === 'VALIDATION') return err(400, e?.message || 'Invalid input.')
       if (String(e?.code) === 'P2002') return err(409, 'A record with this value already exists.')
       console.error(`[crud:update:${entity}]`, e)
       return err(500, 'Could not update the record. Please try again.')
