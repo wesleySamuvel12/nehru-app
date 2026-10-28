@@ -14,7 +14,7 @@ import {
   Lock, Mail, Loader2, ShieldCheck, ArrowRight, Eye, EyeOff,
   CheckCircle2, Sparkles, KeyRound, Crown, ShieldAlert, BookOpen,
   Briefcase, HeartHandshake, GraduationCap, Users, Heart, Library,
-  Bus, Home, Stethoscope, Layers, Search, Copy, Check, Zap
+  Bus, Home, Stethoscope, Search, Copy, Check, Zap, ChevronDown, ChevronUp
 } from 'lucide-react'
 
 const QUICK_ACCOUNTS = [
@@ -48,6 +48,9 @@ export function LoginScreen({ onLogin }: { onLogin: (s: Session, defaultModule: 
   const [errorField, setErrorField] = React.useState<'email' | 'password' | null>(null)
   const [shake, setShake] = React.useState(0)
   const [copiedEmail, setCopiedEmail] = React.useState<string | null>(null)
+  const [focusedField, setFocusedField] = React.useState<'email' | 'password' | 'search' | null>(null)
+  const [successFade, setSuccessFade] = React.useState(false)
+  const [showAllRoles, setShowAllRoles] = React.useState(false)
 
   // Quick Access Category and Search Filter
   const [activeCategory, setActiveCategory] = React.useState<'All' | 'Admin' | 'Staff' | 'Portals'>('All')
@@ -69,9 +72,9 @@ export function LoginScreen({ onLogin }: { onLogin: (s: Session, defaultModule: 
 
     const centerX = rect.width / 2
     const centerY = rect.height / 2
-    const rotateX = ((y - centerY) / centerY) * -4
-    const rotateY = ((x - centerX) / centerX) * 4
-    setTransformStyle(`perspective(1000px) rotateX(${rotateX.toFixed(2)}deg) rotateY(${rotateY.toFixed(2)}deg) scale3d(1.005, 1.005, 1.005)`)
+    const rotateX = ((y - centerY) / centerY) * -3.5
+    const rotateY = ((x - centerX) / centerX) * 3.5
+    setTransformStyle(`perspective(1000px) rotateX(${rotateX.toFixed(2)}deg) rotateY(${rotateY.toFixed(2)}deg) scale3d(1.004, 1.004, 1.004)`)
   }
 
   const handleMouseLeave = () => {
@@ -102,7 +105,9 @@ export function LoginScreen({ onLogin }: { onLogin: (s: Session, defaultModule: 
       })
       if (res.token) setToken(res.token)
       setPhase('success')
-      setTimeout(() => onLogin(res.data, res.defaultModule), 550)
+      // Smooth playful success choreography: checkmark pops, then form smoothly fades & slides into dashboard
+      setTimeout(() => setSuccessFade(true), 320)
+      setTimeout(() => onLogin(res.data, res.defaultModule), 680)
     } catch (err) {
       setPhase('idle')
       setLoading(false)
@@ -151,11 +156,14 @@ export function LoginScreen({ onLogin }: { onLogin: (s: Session, defaultModule: 
       <div className="pointer-events-none absolute top-1/3 -right-40 h-[600px] w-[600px] rounded-full bg-orange-500/10 blur-[140px] anim-float" style={{ ['--delay' as string]: '2s' }} />
 
       {/* Main Centered Universal Form Container */}
-      <div className="relative z-20 flex w-full max-w-[560px] flex-col items-center">
+      <div className={cn(
+        "relative z-20 flex w-full max-w-[540px] flex-col items-center transition-all duration-500 ease-out",
+        successFade && "opacity-0 scale-[0.97] -translate-y-3 blur-[2px] pointer-events-none"
+      )}>
         
-        {/* School Logo & Brand Header */}
-        <div className="anim-rise mb-6 flex flex-col items-center text-center" style={{ ['--delay' as string]: '60ms' }}>
-          <div className="group relative mb-3 flex items-center justify-center">
+        {/* School Logo & Brand Header with Soft Bouncy Load */}
+        <div className="anim-login-up mb-5 flex flex-col items-center text-center" style={{ ['--delay' as string]: '0ms' }}>
+          <div className="group relative mb-2.5 flex items-center justify-center">
             <div className="absolute inset-0 rounded-2xl bg-gradient-to-r from-sky-500 to-orange-500 blur-md opacity-40 transition-opacity duration-300 group-hover:opacity-75" />
             <BrandMark tileClassName="relative h-14 w-14 shadow-xl" breathe />
           </div>
@@ -169,20 +177,20 @@ export function LoginScreen({ onLogin }: { onLogin: (s: Session, defaultModule: 
           </div>
         </div>
 
-        {/* Universal 3D Glassmorphic Card */}
+        {/* Universal 3D Glassmorphic Card with Staggered Entrance */}
         <div
           key={shake}
           ref={cardRef}
           onMouseMove={handleMouseMove}
           onMouseLeave={handleMouseLeave}
-          style={{ transform: transformStyle, ['--delay' as string]: '180ms' }}
+          style={{ transform: transformStyle, ['--delay' as string]: '90ms' }}
           className={cn(
-            'spotlight-card anim-rise relative w-full rounded-3xl border border-white/15 bg-slate-900/85 p-6 sm:p-8 backdrop-blur-2xl shadow-[0_25px_60px_rgba(0,0,0,0.7)] transition-all duration-200 ease-out',
+            'spotlight-card anim-login-up relative w-full rounded-3xl border border-white/15 bg-slate-900/85 p-6 sm:p-7 backdrop-blur-2xl shadow-[0_25px_60px_rgba(0,0,0,0.7)] transition-all duration-200 ease-out',
             shake > 0 && 'anim-nudge'
           )}
         >
           {/* Card Header */}
-          <div className="relative z-10 mb-6 text-center">
+          <div className="relative z-10 mb-5 text-center">
             <div className="mx-auto mb-2 inline-flex items-center gap-1.5 rounded-full border border-sky-500/30 bg-sky-500/10 px-3 py-1 text-[11px] font-semibold text-sky-300">
               <Sparkles className="h-3 w-3 text-orange-400" /> Unified Portal Sign-In
             </div>
@@ -191,8 +199,8 @@ export function LoginScreen({ onLogin }: { onLogin: (s: Session, defaultModule: 
             </h2>
             <p className="mt-1 text-xs text-slate-400 sm:text-sm">
               {phase === 'success'
-                ? 'Resolving permissions & generating sidebar…'
-                : 'Sign in to access your school workspace.'}
+                ? 'Resolving permissions & opening your workspace…'
+                : 'Sign in to access your institutional portal.'}
             </p>
           </div>
 
@@ -220,7 +228,7 @@ export function LoginScreen({ onLogin }: { onLogin: (s: Session, defaultModule: 
                     const target = e.target.value
                     if (target) handleFillSample(target)
                   }}
-                  className="h-9 w-full rounded-xl border border-white/10 bg-slate-950/80 px-3 text-xs text-white focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500"
+                  className="input-playful h-9 w-full rounded-xl border border-white/10 bg-slate-950/80 px-3 text-xs text-white focus:border-sky-500 focus:outline-none focus:ring-2 focus:ring-sky-500/30"
                 >
                   <option value="" disabled>Choose any of the 14 sample logins to autofill…</option>
                   <optgroup label="── Administration ──">
@@ -252,7 +260,7 @@ export function LoginScreen({ onLogin }: { onLogin: (s: Session, defaultModule: 
                     size="sm"
                     disabled={loading || phase === 'success'}
                     onClick={() => handleQuickLogin(email)}
-                    className="h-9 shrink-0 gap-1.5 rounded-xl bg-sky-600 px-3 text-xs text-white shadow-md transition-transform hover:bg-sky-500 active:scale-95"
+                    className="btn-playful h-9 shrink-0 gap-1.5 rounded-xl bg-sky-600 px-3 text-xs text-white shadow-md hover:bg-sky-500"
                     title="Instant sign-in with this sample account"
                   >
                     <Zap className="h-3.5 w-3.5 text-amber-300" />
@@ -275,9 +283,9 @@ export function LoginScreen({ onLogin }: { onLogin: (s: Session, defaultModule: 
                     type="button"
                     onClick={() => handleFillSample(chip.email)}
                     className={cn(
-                      'flex items-center gap-1 rounded-lg border px-2 py-0.5 text-[10px] font-medium transition-colors',
+                      'flex items-center gap-1 rounded-lg border px-2 py-0.5 text-[10px] font-medium transition-all duration-200 active:scale-95',
                       email === chip.email
-                        ? 'border-sky-400 bg-sky-500/25 text-sky-200'
+                        ? 'border-sky-400 bg-sky-500/25 text-sky-200 shadow-sm'
                         : 'border-white/10 bg-slate-900/60 text-slate-300 hover:border-sky-500/40 hover:bg-white/5'
                     )}
                   >
@@ -288,10 +296,17 @@ export function LoginScreen({ onLogin }: { onLogin: (s: Session, defaultModule: 
               </div>
             </div>
 
-            {/* Email / Username Input */}
+            {/* Email / Username Input with Gentle Zoom & Glowing Border */}
             <div className="space-y-1.5 text-left">
               <div className="flex items-center justify-between">
-                <Label htmlFor="email" className={cn('text-xs font-semibold text-slate-300 transition-colors', errorField === 'email' && 'text-rose-400')}>
+                <Label
+                  htmlFor="email"
+                  className={cn(
+                    'text-xs font-semibold text-slate-300 transition-colors duration-200',
+                    focusedField === 'email' && 'text-sky-300',
+                    errorField === 'email' && 'text-rose-400'
+                  )}
+                >
                   Email Address
                 </Label>
                 {QUICK_ACCOUNTS.find(a => a.email === email) && (
@@ -301,7 +316,12 @@ export function LoginScreen({ onLogin }: { onLogin: (s: Session, defaultModule: 
                 )}
               </div>
               <div className="group relative">
-                <Mail className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400 transition-colors group-focus-within:text-sky-400" />
+                <Mail
+                  className={cn(
+                    "pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400 transition-all duration-300 ease-out",
+                    focusedField === 'email' && "scale-110 -rotate-6 text-sky-400"
+                  )}
+                />
                 <Input
                   id="email"
                   type="email"
@@ -309,19 +329,29 @@ export function LoginScreen({ onLogin }: { onLogin: (s: Session, defaultModule: 
                   placeholder="you@nis.edu.in (or choose sample above)"
                   value={email}
                   onChange={e => setEmail(e.target.value)}
+                  onFocus={() => setFocusedField('email')}
+                  onBlur={() => setFocusedField(null)}
                   disabled={loading}
                   className={cn(
-                    'h-11 rounded-xl border-white/10 bg-slate-950/60 pl-10 text-sm text-white placeholder:text-slate-500 transition-all duration-200 hover:border-white/20 focus:border-sky-500 focus:bg-slate-950/80 focus:ring-2 focus:ring-sky-500/30',
-                    errorField === 'email' && 'border-rose-500/60 focus:ring-rose-500/30'
+                    'input-playful h-11 rounded-xl border-white/10 bg-slate-950/60 pl-10 text-sm text-white placeholder:text-slate-500 hover:border-white/20',
+                    errorField === 'email' && 'border-rose-500/70 focus:ring-rose-500/30',
+                    focusedField === 'email' && !errorField && 'scale-[1.015] border-sky-400/90 bg-slate-950/90 shadow-[0_0_0_3.5px_rgba(56,189,248,0.22),0_8px_24px_-4px_rgba(14,165,233,0.28)]'
                   )}
                 />
               </div>
             </div>
 
-            {/* Password Input */}
+            {/* Password Input with Gentle Zoom & Glowing Border */}
             <div className="space-y-1.5 text-left">
               <div className="flex items-center justify-between">
-                <Label htmlFor="password" className={cn('text-xs font-semibold text-slate-300 transition-colors', errorField === 'password' && 'text-rose-400')}>
+                <Label
+                  htmlFor="password"
+                  className={cn(
+                    'text-xs font-semibold text-slate-300 transition-colors duration-200',
+                    focusedField === 'password' && 'text-sky-300',
+                    errorField === 'password' && 'text-rose-400'
+                  )}
+                >
                   Password
                 </Label>
                 <div className="flex items-center gap-2">
@@ -344,7 +374,12 @@ export function LoginScreen({ onLogin }: { onLogin: (s: Session, defaultModule: 
                 </div>
               </div>
               <div className="group relative">
-                <Lock className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400 transition-colors group-focus-within:text-sky-400" />
+                <Lock
+                  className={cn(
+                    "pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400 transition-all duration-300 ease-out",
+                    focusedField === 'password' && "scale-110 -rotate-6 text-sky-400"
+                  )}
+                />
                 <Input
                   id="password"
                   type={showPw ? 'text' : 'password'}
@@ -352,10 +387,13 @@ export function LoginScreen({ onLogin }: { onLogin: (s: Session, defaultModule: 
                   placeholder="••••••••"
                   value={password}
                   onChange={e => setPassword(e.target.value)}
+                  onFocus={() => setFocusedField('password')}
+                  onBlur={() => setFocusedField(null)}
                   disabled={loading}
                   className={cn(
-                    'h-11 rounded-xl border-white/10 bg-slate-950/60 pl-10 pr-10 text-sm text-white placeholder:text-slate-500 transition-all duration-200 hover:border-white/20 focus:border-sky-500 focus:bg-slate-950/80 focus:ring-2 focus:ring-sky-500/30',
-                    errorField === 'password' && 'border-rose-500/60 focus:ring-rose-500/30'
+                    'input-playful h-11 rounded-xl border-white/10 bg-slate-950/60 pl-10 pr-10 text-sm text-white placeholder:text-slate-500 hover:border-white/20',
+                    errorField === 'password' && 'border-rose-500/70 focus:ring-rose-500/30',
+                    focusedField === 'password' && !errorField && 'scale-[1.015] border-sky-400/90 bg-slate-950/90 shadow-[0_0_0_3.5px_rgba(56,189,248,0.22),0_8px_24px_-4px_rgba(14,165,233,0.28)]'
                   )}
                 />
                 <button
@@ -384,7 +422,7 @@ export function LoginScreen({ onLogin }: { onLogin: (s: Session, defaultModule: 
             </div>
 
             {/* Remember Me & Security Badge */}
-            <div className="flex items-center justify-between pt-1 text-xs">
+            <div className="flex items-center justify-between pt-0.5 text-xs">
               <label className="flex cursor-pointer items-center gap-2 text-slate-300 transition-colors hover:text-white">
                 <Checkbox
                   checked={remember}
@@ -405,159 +443,181 @@ export function LoginScreen({ onLogin }: { onLogin: (s: Session, defaultModule: 
               </div>
             )}
 
-            {/* Submit Button */}
+            {/* Playful Submit Button with Small Spinner & Smooth Success State */}
             <Button
               type="submit"
               disabled={loading || phase === 'success'}
               className={cn(
-                'group relative h-12 w-full overflow-hidden rounded-xl font-semibold text-white shadow-xl transition-all duration-300',
+                'btn-playful group relative h-12 w-full overflow-hidden rounded-xl font-semibold text-white shadow-xl',
                 phase === 'success'
-                  ? 'scale-[1.01] bg-emerald-600 hover:bg-emerald-600'
-                  : 'bg-gradient-to-r from-sky-600 via-sky-500 to-orange-500 hover:from-sky-500 hover:to-orange-400 hover:shadow-sky-500/25'
+                  ? 'bg-emerald-600 scale-[1.02] shadow-[0_0_30px_rgba(16,185,129,0.4)]'
+                  : 'bg-gradient-to-r from-sky-600 via-sky-500 to-orange-500 hover:from-sky-500 hover:to-orange-400'
               )}
             >
               <div className="relative z-10 flex items-center justify-center gap-2">
                 {phase === 'idle' && (
                   <>
-                    Sign In
+                    <span>Sign In</span>
                     <ArrowRight className="h-4 w-4 transition-transform duration-200 group-hover:translate-x-1" />
                   </>
                 )}
                 {phase === 'checking' && (
                   <>
-                    <Loader2 className="h-4 w-4 animate-spin" /> Verifying Credentials…
+                    <Loader2 className="h-4 w-4 animate-spin text-white" />
+                    <span className="tracking-wide">Verifying…</span>
                   </>
                 )}
                 {phase === 'success' && (
                   <>
-                    <CheckCircle2 className="h-4 w-4 animate-bounce" /> Authentication Successful
+                    <CheckCircle2 className="h-4 w-4 text-emerald-100 anim-check-bounce" />
+                    <span className="font-bold tracking-wide">Success</span>
                   </>
                 )}
               </div>
             </Button>
           </form>
 
-          {/* Quick Access Demo Login Section (All 14 Roles) */}
-          <div className="relative z-10 mt-6 border-t border-white/10 pt-4">
-            <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-              <span className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-slate-300">
-                <KeyRound className="h-3.5 w-3.5 text-orange-400" /> Sample Accounts (All 14 Roles)
-              </span>
+          {/* Quick Access Demo Login Section (All 14 Roles) with Minimal Collapsible Drawer */}
+          <div className="relative z-10 mt-5 border-t border-white/10 pt-3.5">
+            <div className="flex items-center justify-between">
+              <button
+                type="button"
+                onClick={() => setShowAllRoles(v => !v)}
+                className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-slate-300 transition-colors hover:text-sky-300"
+              >
+                <KeyRound className="h-3.5 w-3.5 text-orange-400" />
+                <span>Sample Accounts (14 Roles)</span>
+                {showAllRoles ? (
+                  <ChevronUp className="h-3.5 w-3.5 text-slate-400" />
+                ) : (
+                  <ChevronDown className="h-3.5 w-3.5 text-slate-400" />
+                )}
+              </button>
               <span className="rounded-full border border-white/10 bg-slate-950/60 px-2 py-0.5 font-mono text-[10px] text-slate-300">
                 Password: <span className="font-bold text-emerald-400">demo1234</span>
               </span>
             </div>
 
-            {/* Category Filter Tabs & Quick Search */}
-            <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-              <div className="flex flex-wrap items-center gap-1 rounded-xl border border-white/10 bg-slate-950/60 p-1">
-                {(['All', 'Admin', 'Staff', 'Portals'] as const).map(cat => {
-                  const count = cat === 'All' ? QUICK_ACCOUNTS.length : QUICK_ACCOUNTS.filter(a => a.category === cat).length
-                  return (
-                    <button
-                      key={cat}
-                      type="button"
-                      onClick={() => setActiveCategory(cat)}
-                      className={cn(
-                        'rounded-lg px-2.5 py-1 text-[11px] font-medium transition-all duration-200',
-                        activeCategory === cat
-                          ? 'bg-sky-500 font-semibold text-white shadow-sm'
-                          : 'text-slate-400 hover:bg-white/5 hover:text-white'
-                      )}
-                    >
-                      {cat} <span className="text-[10px] opacity-70">({count})</span>
-                    </button>
-                  )
-                })}
-              </div>
-
-              {/* Quick Search */}
-              <div className="relative w-full sm:w-36">
-                <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3 w-3 -translate-y-1/2 text-slate-500" />
-                <input
-                  type="text"
-                  placeholder="Filter sample..."
-                  value={quickSearch}
-                  onChange={e => setQuickSearch(e.target.value)}
-                  className="h-7 w-full rounded-lg border border-white/10 bg-slate-950/80 pl-7 pr-2 text-[11px] text-slate-200 placeholder:text-slate-500 focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500"
-                />
-              </div>
-            </div>
-
-            {/* Quick Access Account Cards Grid */}
-            <div className="custom-scrollbar grid max-h-[260px] grid-cols-1 gap-2 overflow-y-auto pr-1 sm:grid-cols-2">
-              {QUICK_ACCOUNTS.filter(acc => {
-                const matchCat = activeCategory === 'All' || acc.category === activeCategory
-                const q = quickSearch.toLowerCase().trim()
-                const matchQuery = !q || acc.role.toLowerCase().includes(q) || acc.label.toLowerCase().includes(q) || acc.email.toLowerCase().includes(q)
-                return matchCat && matchQuery
-              }).map(acc => (
-                <div
-                  key={acc.email}
-                  className="group relative flex flex-col justify-between rounded-xl border border-white/10 bg-slate-950/60 p-2.5 transition-all duration-200 hover:border-sky-500/50 hover:bg-sky-500/5 hover:shadow-md"
-                >
-                  <div>
-                    <div className="flex items-center justify-between gap-1.5">
-                      <span className="flex items-center gap-1.5 text-xs font-bold text-slate-200 group-hover:text-sky-300">
-                        {acc.icon} {acc.role}
-                      </span>
-                      <span className="rounded border border-sky-500/30 bg-sky-500/15 px-1.5 py-0.2 font-mono text-[9px] font-semibold tracking-wider uppercase text-sky-300">
-                        Sample
-                      </span>
-                    </div>
-
-                    <div className="mt-1 flex items-center justify-between gap-1">
-                      <span className="truncate font-mono text-[11px] text-slate-400 group-hover:text-slate-300">
-                        {acc.email}
-                      </span>
-                      <button
-                        type="button"
-                        onClick={(e) => handleCopyEmail(e, acc.email)}
-                        aria-label={`Copy ${acc.email}`}
-                        className="shrink-0 rounded p-1 text-slate-500 transition-colors hover:bg-white/10 hover:text-white"
-                        title="Copy sample email"
-                      >
-                        {copiedEmail === acc.email ? (
-                          <Check className="h-3 w-3 text-emerald-400" />
-                        ) : (
-                          <Copy className="h-3 w-3" />
-                        )}
-                      </button>
-                    </div>
-
-                    <span className="mt-0.5 block line-clamp-1 text-[10px] text-slate-400">
-                      {acc.label}
-                    </span>
+            {/* Expandable Collapsible Role Cards Drawer */}
+            {showAllRoles && (
+              <div className="anim-fade-up mt-3 space-y-2">
+                {/* Category Filter Tabs & Quick Search */}
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="flex flex-wrap items-center gap-1 rounded-xl border border-white/10 bg-slate-950/60 p-1">
+                    {(['All', 'Admin', 'Staff', 'Portals'] as const).map(cat => {
+                      const count = cat === 'All' ? QUICK_ACCOUNTS.length : QUICK_ACCOUNTS.filter(a => a.category === cat).length
+                      return (
+                        <button
+                          key={cat}
+                          type="button"
+                          onClick={() => setActiveCategory(cat)}
+                          className={cn(
+                            'rounded-lg px-2.5 py-1 text-[11px] font-medium transition-all duration-200 active:scale-95',
+                            activeCategory === cat
+                              ? 'bg-sky-500 font-semibold text-white shadow-sm'
+                              : 'text-slate-400 hover:bg-white/5 hover:text-white'
+                          )}
+                        >
+                          {cat} <span className="text-[10px] opacity-70">({count})</span>
+                        </button>
+                      )
+                    })}
                   </div>
 
-                  {/* Dual Action Buttons: Autofill or Instant Login */}
-                  <div className="mt-2.5 flex items-center gap-1.5 border-t border-white/5 pt-1.5">
-                    <button
-                      type="button"
-                      disabled={loading || phase === 'success'}
-                      onClick={() => handleFillSample(acc.email)}
-                      className="flex-1 rounded-lg border border-white/10 bg-slate-900/80 px-2 py-1 text-center text-[10px] font-medium text-slate-300 transition-colors hover:bg-white/10 hover:text-white disabled:opacity-50"
-                    >
-                      Autofill
-                    </button>
-                    <button
-                      type="button"
-                      disabled={loading || phase === 'success'}
-                      onClick={() => handleQuickLogin(acc.email)}
-                      className="flex flex-1 items-center justify-center gap-1 rounded-lg bg-sky-600/80 px-2 py-1 text-[10px] font-semibold text-white shadow-sm transition-colors hover:bg-sky-500 disabled:opacity-50"
-                    >
-                      <Zap className="h-2.5 w-2.5 text-amber-300" />
-                      Sign In
-                    </button>
+                  {/* Quick Search */}
+                  <div className="relative w-full sm:w-36">
+                    <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3 w-3 -translate-y-1/2 text-slate-500" />
+                    <input
+                      type="text"
+                      placeholder="Filter sample..."
+                      value={quickSearch}
+                      onChange={e => setQuickSearch(e.target.value)}
+                      onFocus={() => setFocusedField('search')}
+                      onBlur={() => setFocusedField(null)}
+                      className={cn(
+                        'input-playful h-7 w-full rounded-lg border border-white/10 bg-slate-950/80 pl-7 pr-2 text-[11px] text-slate-200 placeholder:text-slate-500 focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500',
+                        focusedField === 'search' && 'scale-[1.02] border-sky-400'
+                      )}
+                    />
                   </div>
                 </div>
-              ))}
-            </div>
+
+                {/* Quick Access Account Cards Grid */}
+                <div className="custom-scrollbar grid max-h-[220px] grid-cols-1 gap-2 overflow-y-auto pr-1 sm:grid-cols-2">
+                  {QUICK_ACCOUNTS.filter(acc => {
+                    const matchCat = activeCategory === 'All' || acc.category === activeCategory
+                    const q = quickSearch.toLowerCase().trim()
+                    const matchQuery = !q || acc.role.toLowerCase().includes(q) || acc.label.toLowerCase().includes(q) || acc.email.toLowerCase().includes(q)
+                    return matchCat && matchQuery
+                  }).map(acc => (
+                    <div
+                      key={acc.email}
+                      className="group relative flex flex-col justify-between rounded-xl border border-white/10 bg-slate-950/60 p-2.5 transition-all duration-200 hover:border-sky-500/50 hover:bg-sky-500/5 hover:shadow-md"
+                    >
+                      <div>
+                        <div className="flex items-center justify-between gap-1.5">
+                          <span className="flex items-center gap-1.5 text-xs font-bold text-slate-200 group-hover:text-sky-300">
+                            {acc.icon} {acc.role}
+                          </span>
+                          <span className="rounded border border-sky-500/30 bg-sky-500/15 px-1.5 py-0.2 font-mono text-[9px] font-semibold tracking-wider uppercase text-sky-300">
+                            Sample
+                          </span>
+                        </div>
+
+                        <div className="mt-1 flex items-center justify-between gap-1">
+                          <span className="truncate font-mono text-[11px] text-slate-400 group-hover:text-slate-300">
+                            {acc.email}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={(e) => handleCopyEmail(e, acc.email)}
+                            aria-label={`Copy ${acc.email}`}
+                            className="shrink-0 rounded p-1 text-slate-500 transition-colors hover:bg-white/10 hover:text-white"
+                            title="Copy sample email"
+                          >
+                            {copiedEmail === acc.email ? (
+                              <Check className="h-3 w-3 text-emerald-400" />
+                            ) : (
+                              <Copy className="h-3 w-3" />
+                            )}
+                          </button>
+                        </div>
+
+                        <span className="mt-0.5 block line-clamp-1 text-[10px] text-slate-400">
+                          {acc.label}
+                        </span>
+                      </div>
+
+                      {/* Dual Action Buttons: Autofill or Instant Login */}
+                      <div className="mt-2.5 flex items-center gap-1.5 border-t border-white/5 pt-1.5">
+                        <button
+                          type="button"
+                          disabled={loading || phase === 'success'}
+                          onClick={() => handleFillSample(acc.email)}
+                          className="flex-1 rounded-lg border border-white/10 bg-slate-900/80 px-2 py-1 text-center text-[10px] font-medium text-slate-300 transition-colors hover:bg-white/10 hover:text-white disabled:opacity-50 active:scale-95"
+                        >
+                          Autofill
+                        </button>
+                        <button
+                          type="button"
+                          disabled={loading || phase === 'success'}
+                          onClick={() => handleQuickLogin(acc.email)}
+                          className="flex flex-1 items-center justify-center gap-1 rounded-lg bg-sky-600/80 px-2 py-1 text-[10px] font-semibold text-white shadow-sm transition-colors hover:bg-sky-500 disabled:opacity-50 active:scale-95"
+                        >
+                          <Zap className="h-2.5 w-2.5 text-amber-300" />
+                          Sign In
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         </div>
 
-        {/* Footer Info */}
-        <div className="anim-rise mt-6 flex flex-wrap items-center justify-center gap-4 text-center text-xs text-slate-400" style={{ ['--delay' as string]: '300ms' }}>
+        {/* Footer Info with Soft Entrance */}
+        <div className="anim-login-up mt-5 flex flex-wrap items-center justify-center gap-4 text-center text-xs text-slate-400" style={{ ['--delay' as string]: '200ms' }}>
           <span className="flex items-center gap-1.5">
             <ShieldCheck className="h-3.5 w-3.5 text-sky-400" /> Dynamic Role-Based Access Control
           </span>
