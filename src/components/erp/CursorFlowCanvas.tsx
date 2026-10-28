@@ -34,34 +34,19 @@ const ROLE_PALETTES: Record<string, string[]> = {
     'rgba(45, 212, 191, ',   // Teal bright #2DD4BF
   ],
   SUPER_ADMIN: [
-    'rgba(168, 85, 247, ',   // Purple #A855F7
-    'rgba(245, 158, 11, ',   // Amber #F59E0B
-    'rgba(217, 70, 239, ',   // Fuchsia #D946EF
-  ],
-  PRINCIPAL: [
-    'rgba(234, 179, 8, ',    // Gold #EAB308
-    'rgba(99, 102, 241, ',   // Indigo #6366F1
-    'rgba(245, 158, 11, ',   // Amber #F59E0B
+    'rgba(168, 85, 247, ',
+    'rgba(245, 158, 11, ',
+    'rgba(217, 70, 239, ',
   ],
   TEACHER: [
-    'rgba(16, 185, 129, ',   // Emerald #10B981
-    'rgba(56, 189, 248, ',   // Sky #38BDF8
-    'rgba(52, 211, 153, ',   // Mint #34D399
-  ],
-  ACCOUNTANT: [
-    'rgba(20, 184, 166, ',   // Teal #14B8A6
-    'rgba(6, 182, 212, ',    // Cyan #06B6D4
-    'rgba(16, 185, 129, ',   // Emerald #10B981
-  ],
-  PARENT: [
-    'rgba(244, 63, 94, ',    // Rose #F43F5E
-    'rgba(251, 146, 60, ',   // Orange #FB923C
-    'rgba(236, 72, 153, ',   // Pink #EC4899
+    'rgba(16, 185, 129, ',
+    'rgba(56, 189, 248, ',
+    'rgba(52, 211, 153, ',
   ],
   STUDENT: [
-    'rgba(99, 102, 241, ',   // Indigo #6366F1
-    'rgba(14, 165, 233, ',   // Sky #0EA5E9
-    'rgba(168, 85, 247, ',   // Purple #A855F7
+    'rgba(99, 102, 241, ',
+    'rgba(14, 165, 233, ',
+    'rgba(168, 85, 247, ',
   ],
 }
 
@@ -74,14 +59,20 @@ export function CursorFlowCanvas({ activeRole = 'DEFAULT' }: { activeRole?: stri
   }, [activeRole])
 
   React.useEffect(() => {
+    // Respect prefers-reduced-motion
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      return
+    }
+
     const canvas = canvasRef.current
     if (!canvas) return
-    const ctx = canvas.getContext('2d')
+    const ctx = canvas.getContext('2d', { alpha: true })
     if (!ctx) return
 
     let animationFrameId: number
     let width = (canvas.width = window.innerWidth)
     let height = (canvas.height = window.innerHeight)
+    let isTabVisible = !document.hidden
 
     const mouse = {
       x: width / 2,
@@ -97,7 +88,8 @@ export function CursorFlowCanvas({ activeRole = 'DEFAULT' }: { activeRole?: stri
     const trailParticles: Particle[] = []
     const ambientNodes: NodeParticle[] = []
 
-    const nodeCount = Math.min(Math.floor((width * height) / 22000), 45)
+    // Lightweight node count (max 14 nodes)
+    const nodeCount = Math.min(Math.floor((width * height) / 80000), 14)
     for (let i = 0; i < nodeCount; i++) {
       const x = Math.random() * width
       const y = Math.random() * height
@@ -107,11 +99,11 @@ export function CursorFlowCanvas({ activeRole = 'DEFAULT' }: { activeRole?: stri
         y,
         baseX: x,
         baseY: y,
-        size: Math.random() * 2 + 1,
+        size: Math.random() * 1.5 + 1,
         color: palette[i % palette.length],
-        alpha: Math.random() * 0.4 + 0.15,
-        vx: (Math.random() - 0.5) * 0.4,
-        vy: (Math.random() - 0.5) * 0.4,
+        alpha: Math.random() * 0.3 + 0.1,
+        vx: (Math.random() - 0.5) * 0.3,
+        vy: (Math.random() - 0.5) * 0.3,
       })
     }
 
@@ -121,9 +113,22 @@ export function CursorFlowCanvas({ activeRole = 'DEFAULT' }: { activeRole?: stri
       height = canvas.height = window.innerHeight
     }
 
-    window.addEventListener('resize', handleResize)
+    const handleVisibility = () => {
+      isTabVisible = !document.hidden
+      if (isTabVisible && !animationFrameId) {
+        animationFrameId = requestAnimationFrame(render)
+      }
+    }
 
+    window.addEventListener('resize', handleResize, { passive: true })
+    document.addEventListener('visibilitychange', handleVisibility)
+
+    let lastMoveTime = 0
     const handlePointerMove = (e: MouseEvent | TouchEvent) => {
+      const now = performance.now()
+      if (now - lastMoveTime < 16) return // Throttle to ~60fps input sampling
+      lastMoveTime = now
+
       let clientX = 0
       let clientY = 0
 
@@ -140,46 +145,38 @@ export function CursorFlowCanvas({ activeRole = 'DEFAULT' }: { activeRole?: stri
 
       const dx = clientX - mouse.lastX
       const dy = clientY - mouse.lastY
-      mouse.speed = Math.sqrt(dx * dx + dy * dy)
+      mouse.speed = Math.min(Math.sqrt(dx * dx + dy * dy), 30)
 
-      const palette = paletteRef.current
-      const particleCount = Math.min(Math.floor(mouse.speed / 4) + 1, 6)
-      for (let i = 0; i < particleCount; i++) {
-        const angle = Math.atan2(dy, dx) + (Math.random() - 0.5) * 1.2
-        const speed = Math.random() * mouse.speed * 0.15 + 0.5
+      if (trailParticles.length < 20 && mouse.speed > 2) {
+        const palette = paletteRef.current
         const color = palette[Math.floor(Math.random() * palette.length)]
-        const maxLife = Math.floor(Math.random() * 35 + 25)
-
         trailParticles.push({
-          x: clientX + (Math.random() - 0.5) * 8,
-          y: clientY + (Math.random() - 0.5) * 8,
-          vx: Math.cos(angle) * speed + (Math.random() - 0.5) * 0.8,
-          vy: Math.sin(angle) * speed + (Math.random() - 0.5) * 0.8,
-          size: Math.random() * 4 + 2,
+          x: clientX,
+          y: clientY,
+          vx: (Math.random() - 0.5) * 0.5,
+          vy: (Math.random() - 0.5) * 0.5,
+          size: Math.random() * 2.5 + 1.5,
           color,
-          alpha: 0.85,
+          alpha: 0.6,
           life: 0,
-          maxLife,
+          maxLife: 24,
         })
       }
 
       mouse.lastX = clientX
       mouse.lastY = clientY
-
-      const target = e.target as HTMLElement | null
-      if (target && (target.closest('button, input, a, [role="button"]') || target.tagName === 'BUTTON' || target.tagName === 'INPUT')) {
-        mouse.isHoveringClickable = true
-      } else {
-        mouse.isHoveringClickable = false
-      }
     }
 
     window.addEventListener('mousemove', handlePointerMove, { passive: true })
-    window.addEventListener('touchmove', handlePointerMove, { passive: true })
 
     const render = () => {
-      mouse.x += (mouse.targetX - mouse.x) * 0.18
-      mouse.y += (mouse.targetY - mouse.y) * 0.18
+      if (!isTabVisible) {
+        animationFrameId = 0
+        return
+      }
+
+      mouse.x += (mouse.targetX - mouse.x) * 0.15
+      mouse.y += (mouse.targetY - mouse.y) * 0.15
 
       ctx.clearRect(0, 0, width, height)
 
@@ -191,21 +188,6 @@ export function CursorFlowCanvas({ activeRole = 'DEFAULT' }: { activeRole?: stri
 
         if (node.x < 0 || node.x > width) node.vx *= -1
         if (node.y < 0 || node.y > height) node.vy *= -1
-
-        const dx = mouse.x - node.x
-        const dy = mouse.y - node.y
-        const dist = Math.sqrt(dx * dx + dy * dy)
-        const maxDist = 180
-
-        if (dist < maxDist) {
-          const factor = (1 - dist / maxDist)
-          ctx.beginPath()
-          ctx.moveTo(node.x, node.y)
-          ctx.lineTo(mouse.x, mouse.y)
-          ctx.strokeStyle = `${node.color}${0.25 * factor})`
-          ctx.lineWidth = 1
-          ctx.stroke()
-        }
 
         ctx.beginPath()
         ctx.arc(node.x, node.y, node.size, 0, Math.PI * 2)
@@ -219,22 +201,14 @@ export function CursorFlowCanvas({ activeRole = 'DEFAULT' }: { activeRole?: stri
         p.life++
         p.x += p.vx
         p.y += p.vy
-        p.vx *= 0.96
-        p.vy *= 0.96
-        p.size *= 0.96
 
         const progress = p.life / p.maxLife
-        p.alpha = Math.max(0, 1 - progress)
+        p.alpha = Math.max(0, 0.6 * (1 - progress))
 
-        if (p.life >= p.maxLife || p.size < 0.2) {
+        if (p.life >= p.maxLife) {
           trailParticles.splice(i, 1)
           continue
         }
-
-        ctx.beginPath()
-        ctx.arc(p.x, p.y, p.size * 2, 0, Math.PI * 2)
-        ctx.fillStyle = `${p.color}${(p.alpha * 0.25).toFixed(2)})`
-        ctx.fill()
 
         ctx.beginPath()
         ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2)
@@ -242,51 +216,16 @@ export function CursorFlowCanvas({ activeRole = 'DEFAULT' }: { activeRole?: stri
         ctx.fill()
       }
 
-      // 3. Fluid Flow Ribbon Line
-      if (trailParticles.length > 3) {
-        ctx.beginPath()
-        ctx.moveTo(trailParticles[0].x, trailParticles[0].y)
-        for (let i = 1; i < trailParticles.length - 1; i += 2) {
-          const xc = (trailParticles[i].x + trailParticles[i + 1].x) / 2
-          const yc = (trailParticles[i].y + trailParticles[i + 1].y) / 2
-          ctx.quadraticCurveTo(trailParticles[i].x, trailParticles[i].y, xc, yc)
-        }
-        const activePalette = paletteRef.current
-        const strokeColor = activePalette[0] || 'rgba(56, 189, 248, '
-        ctx.strokeStyle = `${strokeColor}0.18)`
-        ctx.lineWidth = 3
-        ctx.stroke()
-      }
-
-      // 4. Pointer Spotlight Ring
-      const activePalette = paletteRef.current
-      const primaryColor = activePalette[0] || 'rgba(19, 141, 206, '
-      const secondaryColor = activePalette[1] || 'rgba(231, 101, 7, '
-      const ringRadius = mouse.isHoveringClickable ? 26 : 14
-
-      ctx.beginPath()
-      ctx.arc(mouse.x, mouse.y, ringRadius, 0, Math.PI * 2)
-      ctx.strokeStyle = mouse.isHoveringClickable
-        ? `${secondaryColor}0.8)`
-        : `${primaryColor}0.6)`
-      ctx.lineWidth = 1.5
-      ctx.stroke()
-
-      ctx.beginPath()
-      ctx.arc(mouse.x, mouse.y, 3, 0, Math.PI * 2)
-      ctx.fillStyle = mouse.isHoveringClickable ? `${secondaryColor}1)` : `${primaryColor}1)`
-      ctx.fill()
-
       animationFrameId = requestAnimationFrame(render)
     }
 
-    render()
+    animationFrameId = requestAnimationFrame(render)
 
     return () => {
       cancelAnimationFrame(animationFrameId)
       window.removeEventListener('resize', handleResize)
+      document.removeEventListener('visibilitychange', handleVisibility)
       window.removeEventListener('mousemove', handlePointerMove)
-      window.removeEventListener('touchmove', handlePointerMove)
     }
   }, [])
 
