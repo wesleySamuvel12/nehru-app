@@ -33,7 +33,7 @@ export function DynamicSidebar({
   collapsed?: boolean
   onToggleCollapse?: () => void
 }) {
-  const { session, activeModule, moduleParams, setModule, setSession } = useErp()
+  const { session, activeModule, moduleParams, setModule, setSession, schoolName } = useErp()
   const [filterQuery, setFilterQuery] = React.useState('')
 
   if (!session) return null
@@ -94,6 +94,7 @@ export function DynamicSidebar({
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-xs font-bold text-foreground leading-tight">{studentName}</p>
                     <p className="truncate text-[10px] text-muted-foreground">Grade 8 · Section A</p>
+                    <p className="truncate text-[10px] font-semibold text-primary/80">{schoolName || 'Nehru International School'}</p>
                     <div className="mt-0.5 flex items-center gap-1 text-[10px] text-muted-foreground">
                       <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
                       <span>Student</span>

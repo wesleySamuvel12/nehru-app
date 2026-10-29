@@ -33,7 +33,7 @@ function BarcodeStrip() {
 }
 
 export function StudentProfile({ data }: { data?: any }) {
-  const { session } = useErp()
+  const { session, schoolName } = useErp()
   const p = data?.profile || {}
 
   // Active tab inside Profile
@@ -146,7 +146,7 @@ export function StudentProfile({ data }: { data?: any }) {
             <img src="/nis-mark.png" alt="NIS" className="h-7 w-7 object-contain" />
           </div>
           <div className="min-w-0 flex-1">
-            <p className="text-xs font-bold leading-tight truncate">Nehru International School</p>
+            <p className="text-xs font-bold leading-tight truncate">{schoolName || 'Nehru International School'}</p>
             <p className="text-[9px] uppercase tracking-wider text-muted-foreground">STUDENT IDENTITY CARD · 2025-26</p>
             <div className="mt-1 text-muted-foreground/80">
               <BarcodeStrip />

@@ -562,23 +562,92 @@ function YearSelector() {
 }
 
 function SchoolSelector() {
-  const { schoolId, schoolName, setSchool } = useErp()
+  const { session, schoolId, schoolName, setSchool } = useErp()
   const [schools, setSchools] = React.useState<any[]>([])
+
   React.useEffect(() => {
-    api<{ data: any[] }>('/api/settings/schools?all=1').then(r => setSchools(r.data)).catch(() => {})
-  }, [])
+    api<{ data: any[] }>('/api/settings/schools?all=1')
+      .then(r => {
+        const list = (r.data || []).filter(
+          (s: any) => !s.id?.startsWith('school-test-') && !s.id?.startsWith('school-other-')
+        )
+        setSchools(list)
+        if (list.length > 0) {
+          const current = list.find((s: any) => s.id === schoolId)
+          if (!current && schoolId !== 'main') {
+            const master = list.find((s: any) => s.isMaster) || list[0]
+            if (master) setSchool(master.id, master.name)
+          } else if (current && (!schoolName || schoolName !== current.name)) {
+            setSchool(current.id, current.name)
+          }
+        }
+      })
+      .catch(() => {})
+  }, [schoolId, schoolName, setSchool])
+
+  const isSuperAdmin = session?.role === 'SUPER_ADMIN'
+  const activeSchool = schools.find(x => x.id === schoolId)
+  const currentLabel = schoolId === 'main'
+    ? 'All Campuses'
+    : (activeSchool?.name || schoolName || 'Nehru International School')
 
   return (
-    <Select value={schoolId} onValueChange={v => {
-      const s = schools.find(x => x.id === v)
-      if (s) setSchool(s.id, s.name)
-    }}>
-      <SelectTrigger className="hidden h-9 w-[170px] rounded-xl transition-shadow hover:shadow-sm lg:flex" aria-label="Campus selector">
-        <SelectValue placeholder="Campus" />
+    <Select
+      value={schoolId || 'main'}
+      onValueChange={v => {
+        if (!isSuperAdmin && v !== (session?.schoolId || 'cmvf3male00055zxkw5dvahtr') && v !== 'main') {
+          toast.info('Your account is enrolled at Nehru International School. Campus switching is managed by administration.')
+          return
+        }
+        if (v === 'main') {
+          setSchool('main', 'All Campuses')
+          toast.success('Switched to All Campuses view')
+          return
+        }
+        const s = schools.find(x => x.id === v)
+        if (s) {
+          setSchool(s.id, s.name)
+          toast.success(`Active institution: ${s.name}`)
+        }
+      }}
+    >
+      <SelectTrigger
+        className="flex h-9 w-[130px] sm:w-[165px] md:w-[195px] items-center gap-1.5 rounded-xl border-border/70 bg-background/80 px-2.5 text-xs font-semibold shadow-2xs transition-all hover:bg-muted/70 hover:shadow-xs focus:ring-1 focus:ring-primary/40"
+        aria-label="Institution selector"
+      >
+        <Building2 className="h-3.5 w-3.5 shrink-0 text-primary" />
+        <span className="truncate text-left font-medium">{currentLabel}</span>
       </SelectTrigger>
-      <SelectContent>
-        <SelectItem value="main">All Campuses</SelectItem>
-        {schools.map(s => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
+      <SelectContent align="end" className="w-[240px] rounded-xl p-1 shadow-lg border-border/80">
+        <div className="px-2.5 py-1.5 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+          Institutional Campus
+        </div>
+        <SelectItem value="main" className="rounded-lg text-xs font-medium cursor-pointer py-2">
+          <div className="flex items-center gap-2">
+            <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary font-bold text-[10px]">
+              ALL
+            </span>
+            <div className="min-w-0">
+              <p className="font-semibold text-foreground truncate">All Campuses</p>
+              <p className="text-[10px] text-muted-foreground">Nehru Group of Institutions</p>
+            </div>
+          </div>
+        </SelectItem>
+        {schools.map(s => (
+          <SelectItem key={s.id} value={s.id} className="rounded-lg text-xs font-medium cursor-pointer py-2">
+            <div className="flex items-center gap-2">
+              <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-md bg-sky-500/10 text-sky-600 font-bold text-[10px]">
+                {s.code ? s.code.replace(/^NIS-/, '') : 'NIS'}
+              </span>
+              <div className="min-w-0">
+                <p className="font-semibold text-foreground truncate">{s.name}</p>
+                <p className="text-[10px] text-muted-foreground">
+                  {s.code || 'Campus'}{s.isMaster ? ' · Main Campus' : ''}
+                </p>
+              </div>
+            </div>
+          </SelectItem>
+        ))}
       </SelectContent>
     </Select>
   )
@@ -797,8 +866,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           )}
 
           <div className="flex shrink-0 items-center gap-2">
-            {!isStudent && !isParent && <SchoolSelector />}
-            {!isParent && <YearSelector />}
+            <SchoolSelector />
+            <YearSelector />
             <NotificationBell />
             <ThemeToggle />
             <ProfileMenu />

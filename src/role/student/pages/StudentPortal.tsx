@@ -39,6 +39,7 @@ function BarcodeStrip() {
 }
 
 function StudentIdCard({ profile }: { profile: any }) {
+  const { schoolName } = useErp()
   const name = profile?.name || 'Aditya Malhotra'
   const initials = name.split(' ').map((w: string) => w[0]).slice(0, 2).join('').toUpperCase() || 'AM'
   const className = profile?.className || 'Grade 8'
@@ -61,7 +62,7 @@ function StudentIdCard({ profile }: { profile: any }) {
           <img src="/nis-mark.png" alt="NIS" className="h-[75%] w-[85%] object-contain" />
         </span>
         <div>
-          <p className="text-xs font-bold leading-tight tracking-wide">Nehru International School</p>
+          <p className="text-xs font-bold leading-tight tracking-wide">{schoolName || 'Nehru International School'}</p>
           <p className="text-[9px] uppercase tracking-widest text-white/70">STUDENT IDENTITY CARD · 2025-26</p>
         </div>
       </div>
