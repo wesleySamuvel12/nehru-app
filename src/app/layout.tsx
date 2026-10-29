@@ -32,8 +32,14 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body
+        suppressHydrationWarning
         className={`${inter.variable} ${jakarta.variable} ${geistMono.variable} font-sans antialiased bg-background text-foreground`}
       >
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(function(){try{var clean=function(el){if(!el||el.nodeType!==1)return;if(el.hasAttribute('bis_skin_checked'))el.removeAttribute('bis_skin_checked');if(el.hasAttribute('bis_register'))el.removeAttribute('bis_register');var a=el.attributes;if(a){for(var i=a.length-1;i>=0;i--){var n=a[i].name;if(n&&(n.indexOf('bis_')===0||n.indexOf('__processed_')===0)){el.removeAttribute(n);}}}};var obs=new MutationObserver(function(muts){for(var i=0;i<muts.length;i++){var m=muts[i];if(m.type==='attributes'){var name=m.attributeName;if(name&&(name==='bis_skin_checked'||name==='bis_register'||name.indexOf('bis_')===0||name.indexOf('__processed_')===0)){m.target.removeAttribute(name);}}else if(m.type==='childList'){for(var j=0;j<m.addedNodes.length;j++){var n=m.addedNodes[j];clean(n);if(n.querySelectorAll){var list=n.querySelectorAll('[bis_skin_checked],[bis_register]');for(var k=0;k<list.length;k++)clean(list[k]);}}}}});obs.observe(document.documentElement,{attributes:true,subtree:true,childList:true});}catch(e){}})();`,
+          }}
+        />
         <ThemeProvider attribute="class" defaultTheme="light" enableSystem={false}>
           {children}
           <Toaster />
