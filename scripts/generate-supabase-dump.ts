@@ -1,4 +1,5 @@
 import fs from 'fs'
+import { execSync } from 'child_process'
 import { db } from '../src/lib/db'
 
 function escapeSqlString(str: string): string {
@@ -6,8 +7,23 @@ function escapeSqlString(str: string): string {
 }
 
 async function generateDump() {
-  console.log('Reading PostgreSQL DDL...')
-  const ddl = fs.readFileSync('prisma/supabase-schema.sql', 'utf8')
+  console.log('Generating PostgreSQL DDL...')
+  let ddl = ''
+  if (fs.existsSync('prisma/supabase-schema.sql')) {
+    ddl = fs.readFileSync('prisma/supabase-schema.sql', 'utf8')
+  } else {
+    ddl = execSync(
+      'npx prisma migrate diff --from-empty --to-schema-datamodel prisma/schema.postgres.prisma --script',
+      {
+        env: {
+          ...process.env,
+          DATABASE_URL: 'postgresql://postgres:dummy@localhost:5432/postgres',
+        },
+        encoding: 'utf8',
+      }
+    )
+    fs.writeFileSync('prisma/supabase-schema.sql', ddl, 'utf8')
+  }
 
   // Parse table column types from DDL
   const tableColTypes: Record<string, Record<string, string>> = {}
@@ -79,14 +95,14 @@ SET session_replication_role = 'replica';
 
           if (val === null || val === undefined) {
             rowVals.push('NULL')
+          } else if (val instanceof Date) {
+            rowVals.push(escapeSqlString(val.toISOString()))
           } else if (type === 'BOOLEAN') {
             rowVals.push(val === 1 || val === true || val === 'true' ? 'TRUE' : 'FALSE')
           } else if (type.includes('INT') || type.includes('DOUBLE') || type.includes('DECIMAL')) {
             rowVals.push(String(val))
           } else if (type.includes('TIMESTAMP') || type.includes('DATE')) {
-            if (typeof val === 'number') {
-              rowVals.push(escapeSqlString(new Date(val).toISOString()))
-            } else if (typeof val === 'string' && val) {
+            if (typeof val === 'number' || (typeof val === 'string' && val)) {
               rowVals.push(escapeSqlString(new Date(val).toISOString()))
             } else {
               rowVals.push('NULL')
@@ -114,3 +130,4 @@ generateDump().catch(err => {
   console.error(err)
   process.exit(1)
 })
+
