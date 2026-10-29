@@ -4,6 +4,18 @@ import { requireAuth } from '@/lib/auth'
 import { can } from '@/lib/rbac'
 import { resolveTenantContext } from '@/lib/tenant'
 
+interface CachedDashboard {
+  at: number
+  data: any
+}
+const dashboardCache = new Map<string, CachedDashboard>()
+const DASHBOARD_CACHE_TTL = 15_000
+
+export function invalidateDashboardCache(schoolId?: string) {
+  if (schoolId) dashboardCache.delete(schoolId)
+  else dashboardCache.clear()
+}
+
 export async function GET(req: NextRequest) {
   const session = await requireAuth(req)
   if (!session) return NextResponse.json({ error: 'Not signed in' }, { status: 401 })
@@ -12,6 +24,13 @@ export async function GET(req: NextRequest) {
   const tenantRes = await resolveTenantContext(req, session, { allowAllSchoolsForSuperAdmin: true })
   if (tenantRes.error) return tenantRes.error
   const tenant = tenantRes.context
+
+  const cacheKey = tenant.schoolId || 'ALL'
+  const isNoCache = req.headers.get('cache-control') === 'no-cache'
+  const cached = dashboardCache.get(cacheKey)
+  if (!isNoCache && cached && Date.now() - cached.at < DASHBOARD_CACHE_TTL) {
+    return NextResponse.json(cached.data)
+  }
 
   const schoolWhere = tenant.schoolId ? { schoolId: tenant.schoolId } : {}
 
@@ -105,7 +124,7 @@ export async function GET(req: NextRequest) {
     const hostelOccupied = hostelBeds.find(b => b.status === 'OCCUPANT')?._count || hostelBeds.find(b => b.status === 'OCCUPIED')?._count || 0
     const hostelTotal = hostelBeds.reduce((s, b) => s + b._count, 0)
 
-    return NextResponse.json({
+    const payload = {
       data: {
         kpis: {
           totalStudents, activeStudents, totalStaff, pendingAdmissions,
@@ -130,7 +149,9 @@ export async function GET(req: NextRequest) {
         pendingApprovals,
         upcomingEvents: eventsUpcoming,
       },
-    })
+    }
+    dashboardCache.set(cacheKey, { at: Date.now(), data: payload })
+    return NextResponse.json(payload)
   } catch (e: any) {
     console.error('[dashboard]', e)
     return NextResponse.json({

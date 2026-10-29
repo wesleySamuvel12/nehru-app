@@ -563,92 +563,24 @@ function YearSelector() {
 
 function SchoolSelector() {
   const { schoolId, schoolName, setSchool } = useErp()
-  const [schools, setSchools] = React.useState<any[]>([
-    {
-      id: 'cmvf3male00055zxkw5dvahtr',
-      name: 'Nehru International School',
-      code: 'NIS-MAIN',
-      isMaster: true,
-    },
-  ])
 
   React.useEffect(() => {
-    api<{ data: any[] }>('/api/settings/schools?all=1')
-      .then(r => {
-        // Keep ONLY the primary institution: Nehru International School
-        const list = (r.data || []).filter(
-          (s: any) =>
-            s.isMaster ||
-            s.code === 'NIS-MAIN' ||
-            s.name === 'Nehru International School' ||
-            s.id === 'cmvf3male00055zxkw5dvahtr'
-        )
-        const primary = list[0] || {
-          id: 'cmvf3male00055zxkw5dvahtr',
-          name: 'Nehru International School',
-          code: 'NIS-MAIN',
-          isMaster: true,
-        }
-        setSchools([primary])
-        if (schoolId !== primary.id || schoolName !== primary.name) {
-          setSchool(primary.id, primary.name)
-        }
-      })
-      .catch(() => {
-        const primary = {
-          id: 'cmvf3male00055zxkw5dvahtr',
-          name: 'Nehru International School',
-          code: 'NIS-MAIN',
-          isMaster: true,
-        }
-        setSchools([primary])
-        if (schoolId !== primary.id || schoolName !== primary.name) {
-          setSchool(primary.id, primary.name)
-        }
-      })
+    const primaryId = 'cmvf3male00055zxkw5dvahtr'
+    const primaryName = 'Nehru International School'
+    if (schoolId !== primaryId || schoolName !== primaryName) {
+      setSchool(primaryId, primaryName)
+    }
   }, [schoolId, schoolName, setSchool])
 
-  const active = schools[0] || {
-    id: 'cmvf3male00055zxkw5dvahtr',
-    name: 'Nehru International School',
-    code: 'NIS-MAIN',
-  }
-
   return (
-    <Select
-      value={active.id}
-      onValueChange={() => {
-        setSchool(active.id, active.name)
-        toast.success(`Active institution: ${active.name}`)
-      }}
+    <div
+      className="flex h-9 items-center gap-2 rounded-xl border border-border/70 bg-background/80 px-3 text-xs font-semibold shadow-2xs select-none"
+      title="Nehru International School"
     >
-      <SelectTrigger
-        className="flex h-9 w-auto min-w-[160px] max-w-[240px] items-center gap-2 rounded-xl border-border/70 bg-background/80 px-3 text-xs font-semibold shadow-2xs transition-all hover:bg-muted/70 hover:shadow-xs focus:ring-1 focus:ring-primary/40"
-        aria-label="Institution selector"
-      >
-        <Building2 className="h-3.5 w-3.5 shrink-0 text-primary" />
-        <span className="hidden font-medium sm:inline whitespace-nowrap">Nehru International School</span>
-        <span className="font-medium sm:hidden whitespace-nowrap">NIS</span>
-      </SelectTrigger>
-      <SelectContent align="end" className="w-[260px] rounded-xl p-1.5 shadow-lg border-border/80">
-        <div className="px-2.5 py-1.5 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-          Institutional Campus
-        </div>
-        <SelectItem value={active.id} className="rounded-lg text-xs font-medium cursor-pointer py-2">
-          <div className="flex items-center gap-2.5">
-            <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary font-bold text-[10px]">
-              MAIN
-            </span>
-            <div className="min-w-0">
-              <p className="font-semibold text-foreground truncate">{active.name}</p>
-              <p className="text-[10px] text-muted-foreground">
-                {active.code || 'NIS-MAIN'} · Main Campus
-              </p>
-            </div>
-          </div>
-        </SelectItem>
-      </SelectContent>
-    </Select>
+      <Building2 className="h-3.5 w-3.5 shrink-0 text-primary" />
+      <span className="hidden font-medium sm:inline whitespace-nowrap">Nehru International School</span>
+      <span className="font-medium sm:hidden whitespace-nowrap">NIS</span>
+    </div>
   )
 }
 

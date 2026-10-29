@@ -4,6 +4,18 @@ import { requireAuth } from '@/lib/auth'
 import { json, err } from '@/lib/crud'
 import { resolveTenantContext } from '@/lib/tenant'
 
+interface CachedParentPortal {
+  at: number
+  data: any
+}
+const parentPortalCache = new Map<string, CachedParentPortal>()
+const PARENT_PORTAL_CACHE_TTL = 10_000
+
+export function invalidateParentPortalCache(parentId?: string) {
+  if (parentId) parentPortalCache.delete(parentId)
+  else parentPortalCache.clear()
+}
+
 
 const DAY = 86400000
 
@@ -39,6 +51,13 @@ export async function GET(req: NextRequest) {
       if (parent) parentId = parent.id
     }
     if (!parent) return err(404, 'Parent profile not found.')
+
+    const cacheKey = `${parentId}_${tenant.schoolId || 'ALL'}`
+    const isNoCache = req.headers.get('cache-control') === 'no-cache'
+    const cached = parentPortalCache.get(cacheKey)
+    if (!isNoCache && cached && Date.now() - cached.at < PARENT_PORTAL_CACHE_TTL) {
+      return json(cached.data)
+    }
 
     let children = await db.student.findMany({
       where: { parentId: parentId, ...schoolWhere },
@@ -338,7 +357,7 @@ export async function GET(req: NextRequest) {
       }
     }))
 
-    return json({
+    const payload = {
       parent: {
         id: parent.id,
         name: parent.name,
@@ -355,7 +374,9 @@ export async function GET(req: NextRequest) {
       events,
       books,
       generatedAt: new Date().toISOString(),
-    })
+    };
+    parentPortalCache.set(cacheKey, { at: Date.now(), data: payload });
+    return json(payload);
   } catch (e: any) {
     console.error('[portal:parent]', e)
     return err(500, 'Unable to load the parent portal right now. Please try again.')

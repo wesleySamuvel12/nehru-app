@@ -68,13 +68,30 @@ const globalForPrisma = globalThis as unknown as {
   prismaUrl: string | undefined
 }
 
+function initPrisma(url?: string): PrismaClient {
+  const isDebug = process.env.DEBUG_PRISMA === '1'
+  const client = new PrismaClient({
+    log: isDebug ? ['query', 'error', 'warn'] : ['error'],
+    ...(url ? { datasources: { db: { url } } } : {}),
+  })
+
+  // Fast SQLite PRAGMAs: WAL mode, memory cache, and concurrent read throughput
+  if (!url || url.startsWith('file:')) {
+    client.$queryRawUnsafe(`PRAGMA journal_mode = WAL;`).catch(() => {})
+    client.$queryRawUnsafe(`PRAGMA synchronous = NORMAL;`).catch(() => {})
+    client.$queryRawUnsafe(`PRAGMA cache_size = -64000;`).catch(() => {})
+    client.$queryRawUnsafe(`PRAGMA temp_store = MEMORY;`).catch(() => {})
+    client.$queryRawUnsafe(`PRAGMA mmap_size = 268435456;`).catch(() => {})
+    client.$queryRawUnsafe(`PRAGMA busy_timeout = 5000;`).catch(() => {})
+  }
+
+  return client
+}
+
 export const db =
   (globalForPrisma.prisma && globalForPrisma.prismaUrl === resolvedUrl)
     ? globalForPrisma.prisma
-    : new PrismaClient({
-        log: ['query'],
-        ...(resolvedUrl ? { datasources: { db: { url: resolvedUrl } } } : {}),
-      })
+    : initPrisma(resolvedUrl)
 
 if (process.env.NODE_ENV !== 'production') {
   globalForPrisma.prisma = db

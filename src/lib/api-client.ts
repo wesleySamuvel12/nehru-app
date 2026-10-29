@@ -37,10 +37,31 @@ export class ApiError extends Error {
   }
 }
 
-export async function api<T = any>(path: string, init?: RequestInit): Promise<T> {
+interface CacheEntry {
+  at: number
+  data: any
+}
+
+const clientApiCache = new Map<string, CacheEntry>()
+const inflightRequests = new Map<string, Promise<any>>()
+const CLIENT_CACHE_TTL = 8_000 // 8 seconds memory cache for rapid navigation
+
+/** Invalidate all client API cache entries, or matching a specific endpoint prefix */
+export function invalidateApiCache(prefix?: string) {
+  if (!prefix) {
+    clientApiCache.clear()
+    return
+  }
+  for (const key of clientApiCache.keys()) {
+    if (key.includes(prefix)) {
+      clientApiCache.delete(key)
+    }
+  }
+}
+
+async function fetchDirect<T = any>(url: string, init?: RequestInit): Promise<T> {
   let res: Response
   const token = getToken()
-  const url = path.startsWith('http') || path.startsWith('/') ? path : `/${path}`
   try {
     res = await fetch(url, {
       ...init,
@@ -60,6 +81,51 @@ export async function api<T = any>(path: string, init?: RequestInit): Promise<T>
     throw new ApiError(res.status, body.error || 'Something went wrong. Please try again.', body.fields)
   }
   return body as T
+}
+
+export async function api<T = any>(path: string, init?: RequestInit): Promise<T> {
+  const method = (init?.method || 'GET').toUpperCase()
+  const isGet = method === 'GET'
+  const isNoStore = init?.cache === 'no-store'
+  const url = path.startsWith('http') || path.startsWith('/') ? path : `/${path}`
+
+  // Non-GET requests (mutations) bypass cache and invalidate matching cached endpoints
+  if (!isGet || isNoStore) {
+    if (!isGet) {
+      const resource = path.split('?')[0].split('/').slice(0, 3).join('/')
+      invalidateApiCache(resource)
+    }
+    return fetchDirect<T>(url, init)
+  }
+
+  const token = getToken()
+  const cacheKey = `${url}::${token || ''}`
+  const now = Date.now()
+  const cached = clientApiCache.get(cacheKey)
+
+  // 1. Return fresh cached data if within TTL
+  if (cached && now - cached.at < CLIENT_CACHE_TTL) {
+    return cached.data as T
+  }
+
+  // 2. Inflight request deduplication (prevent redundant parallel network calls)
+  const inflight = inflightRequests.get(cacheKey)
+  if (inflight) {
+    return inflight as Promise<T>
+  }
+
+  // 3. Dispatch network fetch and cache
+  const reqPromise = fetchDirect<T>(url, init)
+    .then(data => {
+      clientApiCache.set(cacheKey, { at: Date.now(), data })
+      return data
+    })
+    .finally(() => {
+      inflightRequests.delete(cacheKey)
+    })
+
+  inflightRequests.set(cacheKey, reqPromise)
+  return reqPromise
 }
 
 export interface ListParams {

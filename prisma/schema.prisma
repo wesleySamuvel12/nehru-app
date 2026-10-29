@@ -237,6 +237,8 @@ model Student {
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
 
+  @@index([parentId])
+  @@index([schoolId, status])
   @@index([classId, sectionId])
   @@index([lastName])
   @@unique([schoolId, admissionNo])
@@ -365,6 +367,7 @@ model TimetableSlot {
   room      String?
 
   @@unique([sectionId, dayOfWeek, period])
+  @@index([sectionId])
 }
 
 model Enrollment {
@@ -396,6 +399,7 @@ model Attendance {
   notified    Boolean  @default(false)
 
   @@unique([studentId, date])
+  @@index([studentId, status])
   @@index([date])
   @@index([schoolId, date])
 }
@@ -594,6 +598,7 @@ model Mark {
   remarks     String?
 
   @@unique([examId, studentId, subjectId])
+  @@index([studentId])
 }
 
 model GradeConfig {
@@ -654,6 +659,7 @@ model FeeInvoice {
 
   @@index([studentId])
   @@index([status])
+  @@index([schoolId, status])
   @@unique([schoolId, invoiceNo])
 }
 

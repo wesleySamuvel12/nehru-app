@@ -60,6 +60,9 @@ server.log
 db/*.db
 db/*.db-journal
 db/*.db-wal
+db/*.db-shm
+*.db-wal
+*.db-shm
 *.db
 *.sqlite
 *.sqlite3

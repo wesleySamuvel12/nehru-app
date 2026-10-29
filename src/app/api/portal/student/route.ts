@@ -4,6 +4,18 @@ import { requireAuth } from '@/lib/auth'
 import { json, err } from '@/lib/crud'
 import { resolveTenantContext } from '@/lib/tenant'
 
+interface CachedStudentPortal {
+  at: number
+  data: any
+}
+const studentPortalCache = new Map<string, CachedStudentPortal>()
+const STUDENT_PORTAL_CACHE_TTL = 10_000
+
+export function invalidateStudentPortalCache(studentId?: string) {
+  if (studentId) studentPortalCache.delete(studentId)
+  else studentPortalCache.clear()
+}
+
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
 const DAY = 86400000
@@ -53,6 +65,13 @@ export async function GET(req: NextRequest) {
       })
     }
     if (!student) return err(404, 'Student profile not found.')
+
+    const cacheKey = `${studentId}_${tenant.schoolId || 'ALL'}`
+    const isNoCache = req.headers.get('cache-control') === 'no-cache'
+    const cached = studentPortalCache.get(cacheKey)
+    if (!isNoCache && cached && Date.now() - cached.at < STUDENT_PORTAL_CACHE_TTL) {
+      return json(cached.data)
+    }
 
     const since30 = new Date(Date.now() - 30 * DAY)
     const now = new Date()
@@ -176,7 +195,7 @@ export async function GET(req: NextRequest) {
       : null
     const nextExamExam = nextSchedule?.examId ? await db.exam.findUnique({ where: { id: nextSchedule.examId }, select: { name: true } }) : null
 
-    return json({
+    const payload = {
       profile: {
         id: student.id, name: `${student.firstName} ${student.lastName}`,
         admissionNo: student.admissionNo, rollNo: student.rollNo,
@@ -209,7 +228,9 @@ export async function GET(req: NextRequest) {
         booksIssued: library.length,
       },
       generatedAt: new Date().toISOString(),
-    })
+    };
+    studentPortalCache.set(cacheKey, { at: Date.now(), data: payload });
+    return json(payload);
   } catch (e: any) {
     console.error('[portal:student]', e)
     return err(500, 'Unable to load your space right now. Please try again.', {
