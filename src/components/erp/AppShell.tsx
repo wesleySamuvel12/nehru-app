@@ -562,25 +562,62 @@ function YearSelector() {
 }
 
 function SchoolSelector() {
-  const { schoolId, schoolName, setSchool } = useErp()
+  const { schoolId, schoolName, setSchool, session } = useErp()
+  const isSuperAdmin = session?.role === 'SUPER_ADMIN'
+
+  const schools = [
+    { id: 'cmvf3male00055zxkw5dvahtr', name: 'Nehru International School', code: 'NIS-MAIN' },
+    { id: 'cmvf3malj00065zxkwx5de08a', name: 'Nehru International — Pune Campus', code: 'NIS-PUNE' },
+  ]
 
   React.useEffect(() => {
-    const primaryId = 'cmvf3male00055zxkw5dvahtr'
-    const primaryName = 'Nehru International School'
-    if (schoolId !== primaryId || schoolName !== primaryName) {
-      setSchool(primaryId, primaryName)
+    if (!schoolId) {
+      setSchool('cmvf3male00055zxkw5dvahtr', 'Nehru International School')
     }
-  }, [schoolId, schoolName, setSchool])
+  }, [schoolId, setSchool])
+
+  if (!isSuperAdmin) {
+    return (
+      <div
+        className="flex h-9 items-center gap-2 rounded-xl border border-border/70 bg-background/80 px-3 text-xs font-semibold shadow-2xs select-none"
+        title={schoolName || 'Nehru International School'}
+      >
+        <Building2 className="h-3.5 w-3.5 shrink-0 text-primary" />
+        <span className="hidden font-medium sm:inline whitespace-nowrap">{schoolName || 'Nehru International School'}</span>
+        <span className="font-medium sm:hidden whitespace-nowrap">NIS</span>
+      </div>
+    )
+  }
 
   return (
-    <div
-      className="flex h-9 items-center gap-2 rounded-xl border border-border/70 bg-background/80 px-3 text-xs font-semibold shadow-2xs select-none"
-      title="Nehru International School"
-    >
-      <Building2 className="h-3.5 w-3.5 shrink-0 text-primary" />
-      <span className="hidden font-medium sm:inline whitespace-nowrap">Nehru International School</span>
-      <span className="font-medium sm:hidden whitespace-nowrap">NIS</span>
-    </div>
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <button
+          className="flex h-9 items-center gap-2 rounded-xl border border-primary/30 bg-primary/5 px-2.5 text-xs font-semibold hover:bg-primary/10 transition-colors shadow-2xs cursor-pointer"
+          title="Switch Campus (Super Admin)"
+        >
+          <Building2 className="h-3.5 w-3.5 shrink-0 text-primary" />
+          <span className="hidden font-semibold text-primary sm:inline whitespace-nowrap max-w-[130px] truncate">
+            {schoolName || 'Nehru International'}
+          </span>
+          <ChevronsUpDown className="h-3.5 w-3.5 text-primary/70 shrink-0" />
+        </button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="w-56 rounded-xl">
+        <DropdownMenuLabel className="text-xs">Campuses & Schools</DropdownMenuLabel>
+        <DropdownMenuSeparator />
+        {schools.map(s => (
+          <DropdownMenuItem
+            key={s.id}
+            onClick={() => setSchool(s.id, s.name)}
+            className="flex items-center justify-between text-xs cursor-pointer"
+          >
+            <span className="truncate">{s.name}</span>
+            {schoolId === s.id && <Check className="h-3.5 w-3.5 text-primary ml-2" />}
+          </DropdownMenuItem>
+        ))}
+      </DropdownMenuContent>
+    </DropdownMenu>
   )
 }
 
@@ -713,17 +750,19 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           <Button variant="outline" size="icon" className="h-9 w-9 rounded-xl lg:hidden" onClick={() => setMobileOpen(true)} aria-label="Open menu">
             <Menu className="h-4 w-4" />
           </Button>
-          {/* Breadcrumb & Back to Dashboard */}
+          {/* Clean Top Navigation Breadcrumb */}
           {!isStudent && !isParent && activeModule !== 'dashboard' && (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setModule('dashboard')}
-              className="h-8.5 gap-1.5 rounded-xl border-primary/30 bg-primary/10 text-xs font-bold text-primary hover:bg-primary/20 hover:text-primary transition-all shadow-2xs"
-            >
-              <ArrowLeft className="h-3.5 w-3.5" />
-              <span>Back to Dashboard</span>
-            </Button>
+            <div className="hidden min-w-0 items-center gap-1.5 text-xs sm:text-sm font-medium sm:flex">
+              <button
+                onClick={() => setModule('dashboard')}
+                className="flex items-center gap-1 text-muted-foreground hover:text-primary transition-colors cursor-pointer"
+              >
+                <LayoutDashboard className="h-3.5 w-3.5" />
+                <span>Dashboard</span>
+              </button>
+              <span className="text-muted-foreground/40" aria-hidden>/</span>
+              <span className="font-semibold text-foreground truncate">{current?.label || 'Module'}</span>
+            </div>
           )}
 
           {isParent ? (

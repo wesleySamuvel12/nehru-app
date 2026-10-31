@@ -11,7 +11,7 @@ import { Button } from '@/components/ui/button'
 import StudentSheet from './StudentSheet'
 import { initials, fmtDate, titleCase } from '@/lib/format'
 import { toast } from 'sonner'
-import { GraduationCap, Bus, Building2, RefreshCw, UserPlus2, Eye } from 'lucide-react'
+import { GraduationCap, Bus, Building2, RefreshCw, UserPlus2, Eye, Upload, FileUp, Loader2 } from 'lucide-react'
 
 
 const BLOOD_GROUPS = ['A+', 'A-', 'B+', 'B-', 'O+', 'O-', 'AB+', 'AB-']
@@ -87,10 +87,35 @@ const fields: FormField[] = [
     optionsLoader: async () => (await api<{ data: any }>('/api/lookups')).data.houses.map((h: any) => ({ label: h.name, value: h.name })),
   },
   { name: 'club', label: 'Club', type: 'select', options: CLUBS.map(c => ({ label: c, value: c })) },
-  { name: 'phone', label: 'Phone', type: 'tel' },
-  { name: 'email', label: 'Email', type: 'email' },
+  { name: 'phone', label: 'Student Phone', type: 'tel' },
+  { name: 'email', label: 'Student Email', type: 'email' },
   { name: 'address', label: 'Address', type: 'textarea', colSpan: 2, placeholder: 'House / street, area, Mumbai' },
   { name: 'status', label: 'Status', type: 'select', options: STUDENT_STATUSES.map(s => ({ label: titleCase(s), value: s })), defaultValue: 'ACTIVE' },
+
+  // Structured Parents & Guardian Details
+  {
+    name: 'primaryContact', label: 'Primary Emergency Contact', type: 'select',
+    options: [{ label: 'Father', value: 'FATHER' }, { label: 'Mother', value: 'MOTHER' }, { label: 'Guardian', value: 'GUARDIAN' }],
+    defaultValue: 'FATHER'
+  },
+  { name: 'fatherName', label: "Father's Full Name", type: 'text', placeholder: "Mr. Rajesh Sharma" },
+  { name: 'fatherPhone', label: "Father's Mobile", type: 'tel', placeholder: "+91 98765 43210" },
+  { name: 'fatherEmail', label: "Father's Email", type: 'email', placeholder: "father@example.com" },
+  { name: 'fatherOccupation', label: "Father's Occupation", type: 'text', placeholder: "Software Architect" },
+  { name: 'fatherAltPhone', label: "Father's Alternate Contact", type: 'tel', placeholder: "Office / Landline" },
+  { name: 'fatherLanguage', label: "Father's Primary Language", type: 'text', placeholder: "English, Hindi" },
+
+  { name: 'motherName', label: "Mother's Full Name", type: 'text', placeholder: "Mrs. Sunita Sharma" },
+  { name: 'motherPhone', label: "Mother's Mobile", type: 'tel', placeholder: "+91 98765 43211" },
+  { name: 'motherEmail', label: "Mother's Email", type: 'email', placeholder: "mother@example.com" },
+  { name: 'motherOccupation', label: "Mother's Occupation", type: 'text', placeholder: "Doctor / Professor" },
+  { name: 'motherAltPhone', label: "Mother's Alternate Contact", type: 'tel', placeholder: "Clinic / Landline" },
+  { name: 'motherLanguage', label: "Mother's Primary Language", type: 'text', placeholder: "English, Marathi" },
+
+  { name: 'guardianName', label: "Guardian's Name (if applicable)", type: 'text' },
+  { name: 'guardianRelation', label: "Guardian's Relationship", type: 'text', placeholder: "Uncle / Grandparent" },
+  { name: 'guardianPhone', label: "Guardian's Phone", type: 'tel' },
+  { name: 'guardianEmail', label: "Guardian's Email", type: 'email' },
 ]
 
 const rowToForm = (row: any): Record<string, any> => ({
@@ -99,6 +124,23 @@ const rowToForm = (row: any): Record<string, any> => ({
   classId: row.classId ?? '', sectionId: row.sectionId ?? '', parentId: row.parentId ?? '',
   bloodGroup: row.bloodGroup ?? '', house: row.house ?? '', club: row.club ?? '',
   phone: row.phone ?? '', email: row.email ?? '', address: row.address ?? '', status: row.status ?? 'ACTIVE',
+  primaryContact: row.primaryContact ?? 'FATHER',
+  fatherName: row.fatherName ?? (row.parent?.relation === 'FATHER' ? row.parent?.name : ''),
+  fatherPhone: row.fatherPhone ?? (row.parent?.relation === 'FATHER' ? row.parent?.phone : ''),
+  fatherEmail: row.fatherEmail ?? (row.parent?.relation === 'FATHER' ? row.parent?.email : ''),
+  fatherOccupation: row.fatherOccupation ?? (row.parent?.relation === 'FATHER' ? row.parent?.occupation : ''),
+  fatherAltPhone: row.fatherAltPhone ?? '',
+  fatherLanguage: row.fatherLanguage ?? '',
+  motherName: row.motherName ?? (row.parent?.relation === 'MOTHER' ? row.parent?.name : ''),
+  motherPhone: row.motherPhone ?? (row.parent?.relation === 'MOTHER' ? row.parent?.phone : ''),
+  motherEmail: row.motherEmail ?? (row.parent?.relation === 'MOTHER' ? row.parent?.email : ''),
+  motherOccupation: row.motherOccupation ?? (row.parent?.relation === 'MOTHER' ? row.parent?.occupation : ''),
+  motherAltPhone: row.motherAltPhone ?? '',
+  motherLanguage: row.motherLanguage ?? '',
+  guardianName: row.guardianName ?? '',
+  guardianRelation: row.guardianRelation ?? '',
+  guardianPhone: row.guardianPhone ?? '',
+  guardianEmail: row.guardianEmail ?? '',
 })
 
 export default function StudentsModule() {
@@ -109,6 +151,34 @@ export default function StudentsModule() {
   const [refreshKey, setRefreshKey] = React.useState(0)
   const [sheetId, setSheetId] = React.useState<string | null>(null)
   const [sheetOpen, setSheetOpen] = React.useState(false)
+  const importFileRef = React.useRef<HTMLInputElement>(null)
+  const [importing, setImporting] = React.useState(false)
+
+  const handleImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setImporting(true)
+    try {
+      const text = await file.text()
+      const res = await fetch('/api/students/import', {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/csv' },
+        body: text,
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Import failed')
+      toast.success(`Successfully imported ${data.imported} student records.`)
+      if (data.errors?.length) {
+        toast.warning(`${data.errors.length} warnings/skipped: ${data.errors[0]}`)
+      }
+      refreshAll()
+    } catch (err: any) {
+      toast.error(err.message || 'CSV Import failed')
+    } finally {
+      setImporting(false)
+      if (importFileRef.current) importFileRef.current.value = ''
+    }
+  }
 
   const loadStats = React.useCallback(() => {
     let alive = true
@@ -180,19 +250,37 @@ export default function StudentsModule() {
         subtitle="Registry of enrolled students — profiles, class allocation, parents and documents."
         breadcrumbs={['Operations', 'Students']}
         actions={
-          <Button variant="outline" size="sm" onClick={refreshAll}>
-            <RefreshCw className="mr-1.5 h-4 w-4" /> Refresh
-          </Button>
+          <div className="flex items-center gap-2">
+            <input
+              ref={importFileRef}
+              type="file"
+              accept=".csv"
+              className="hidden"
+              onChange={handleImport}
+            />
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={importing}
+              onClick={() => importFileRef.current?.click()}
+            >
+              {importing ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : <FileUp className="mr-1.5 h-4 w-4" />}
+              {importing ? 'Importing…' : 'Import CSV'}
+            </Button>
+            <Button variant="outline" size="sm" onClick={refreshAll}>
+              <RefreshCw className="mr-1.5 h-4 w-4" /> Refresh
+            </Button>
+          </div>
         }
       />
 
       {/* Stats */}
-      {statsLoading ? (
+      {statsLoading && !stats ? (
         <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
           {Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-[86px] w-full rounded-xl" />)}
         </div>
       ) : (
-        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <div className={`grid grid-cols-2 gap-3 lg:grid-cols-4 transition-opacity ${statsLoading ? 'opacity-70' : ''}`}>
           <StatCard label="Total Active" value={stats?.active ?? '—'} icon={<GraduationCap className="h-5 w-5" />} tone="info" hint={`${stats?.total ?? 0} on record`} />
           <StatCard label="New This Term" value={stats?.newThisTerm ?? '—'} icon={<UserPlus2 className="h-5 w-5" />} tone="success" hint={`Admitted since ${stats?.termName || 'term'} start`} />
           <StatCard label="Transport Users" value={stats?.transportUsers ?? '—'} icon={<Bus className="h-5 w-5" />} tone="warning" hint="Active bus allocations" onClick={() => setModule('transport')} />

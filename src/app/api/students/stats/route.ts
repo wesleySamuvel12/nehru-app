@@ -5,6 +5,14 @@ import { can } from '@/lib/rbac'
 import { json, err } from '@/lib/crud'
 import { resolveTenantContext } from '@/lib/tenant'
 
+interface CachedStats {
+  at: number
+  data: any
+}
+
+const statsCache = new Map<string, CachedStats>()
+const STATS_CACHE_TTL = 30_000 // 30 seconds
+
 /** Live counters for the Students module header. GET /api/students/stats */
 export async function GET(req: NextRequest) {
   const session = await requireAuth(req)
@@ -16,6 +24,13 @@ export async function GET(req: NextRequest) {
   const tenant = tenantRes.context
   const schoolWhere = tenant.schoolId ? { schoolId: tenant.schoolId } : {}
 
+  const cacheKey = `${tenant.schoolId || 'ALL'}::${session.role}::${session.employeeId || session.sub}`
+  const cached = statsCache.get(cacheKey)
+  const isNoCache = req.headers.get('cache-control') === 'no-cache'
+  if (!isNoCache && cached && Date.now() - cached.at < STATS_CACHE_TTL) {
+    return json({ data: cached.data })
+  }
+
   try {
     const term = await db.term.findFirst({ where: { ...schoolWhere, isCurrent: true } })
     const termStart = term
@@ -23,6 +38,9 @@ export async function GET(req: NextRequest) {
       : (() => { const d = new Date(); d.setDate(d.getDate() - 90); d.setHours(0, 0, 0, 0); return d })()
 
     let studentWhere: any = schoolWhere
+    let isTeacherScoped = false
+    let studentIdList: string[] = []
+
     if (session.role === 'TEACHER') {
       let teacher: any = null
       if (session.employeeId) {
@@ -85,32 +103,50 @@ export async function GET(req: NextRequest) {
           ...(classIds.length ? [{ classId: { in: classIds } }] : []),
         ],
       }
+      isTeacherScoped = true
     }
 
-    const [active, newThisTerm, total, authorizedStudentIds] = await Promise.all([
+    const [active, newThisTerm, total] = await Promise.all([
       db.student.count({ where: { ...studentWhere, status: 'ACTIVE' } }),
       db.student.count({ where: { ...studentWhere, status: 'ACTIVE', admissionDate: { gte: termStart } } }),
       db.student.count({ where: studentWhere }),
-      db.student.findMany({ where: studentWhere, select: { id: true } }),
     ])
 
-    const studentIdList = authorizedStudentIds.map(s => s.id)
+    let transportUsers = 0
+    let boarders = 0
 
-    const [transportUsers, boarders] = await Promise.all([
-      db.transportAllocation.count({ where: { ...schoolWhere, status: 'ACTIVE', studentId: { in: studentIdList } } }),
-      db.hostelAllocation.count({ where: { ...schoolWhere, status: 'ACTIVE', studentId: { in: studentIdList } } }),
-    ])
+    if (isTeacherScoped) {
+      const authorizedStudents = await db.student.findMany({ where: studentWhere, select: { id: true }, take: 500 })
+      studentIdList = authorizedStudents.map(s => s.id)
+      if (studentIdList.length > 0) {
+        const [tCount, bCount] = await Promise.all([
+          db.transportAllocation.count({ where: { ...schoolWhere, status: 'ACTIVE', studentId: { in: studentIdList } } }),
+          db.hostelAllocation.count({ where: { ...schoolWhere, status: 'ACTIVE', studentId: { in: studentIdList } } }),
+        ])
+        transportUsers = tCount
+        boarders = bCount
+      }
+    } else {
+      // Direct indexed count without loading student IDs into node memory
+      const [tCount, bCount] = await Promise.all([
+        db.transportAllocation.count({ where: { ...schoolWhere, status: 'ACTIVE' } }),
+        db.hostelAllocation.count({ where: { ...schoolWhere, status: 'ACTIVE' } }),
+      ])
+      transportUsers = tCount
+      boarders = bCount
+    }
 
-    return json({
-      data: {
-        active,
-        newThisTerm,
-        transportUsers,
-        boarders,
-        total,
-        termName: term?.name || 'Last 90 days',
-      },
-    })
+    const payload = {
+      active,
+      newThisTerm,
+      transportUsers,
+      boarders,
+      total,
+      termName: term?.name || 'Last 90 days',
+    }
+
+    statsCache.set(cacheKey, { at: Date.now(), data: payload })
+    return json({ data: payload })
   } catch (e) {
     console.error('[students:stats]', e)
     return err(500, 'Unable to load student statistics right now.')

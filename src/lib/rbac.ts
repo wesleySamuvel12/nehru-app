@@ -12,14 +12,12 @@ export const ROLES = [
   'TEACHER',
   'SUBSTITUTE',
   'ADMIN_EXECUTIVE',
+  'ADMISSION_ADMIN',
   'ACCOUNTANT',
   'HR',
-  'COUNSELLOR',
   'LIBRARIAN',
   'TRANSPORT',
   'WARDEN',
-  'NURSE',
-  'SECURITY',
   'PARENT',
   'STUDENT',
 ] as const
@@ -28,7 +26,14 @@ export type Role = (typeof ROLES)[number]
 
 export const ROLE_ALIASES: Record<string, Role> = {
   HOSTEL: 'WARDEN',
-  HEALTH: 'NURSE',
+  HEALTH: 'SCHOOL_ADMIN',
+  NURSE: 'SCHOOL_ADMIN',
+  SECURITY: 'SCHOOL_ADMIN',
+  COUNSELLOR: 'ADMISSION_ADMIN',
+  STUDENT_ADMIN: 'ADMISSION_ADMIN',
+  ADMISSION: 'ADMISSION_ADMIN',
+  ADMISSIONS: 'ADMISSION_ADMIN',
+  PRO: 'PRINCIPAL',
   ADMIN: 'SCHOOL_ADMIN',
   SECRETARY: 'CEO_SECRETARY',
   CEO: 'CEO_SECRETARY',
@@ -54,50 +59,45 @@ export const ROLE_LABELS: Record<string, string> = {
   SCHOOL_ADMIN: 'School Admin',
   CEO_SECRETARY: 'CEO & Secretary',
   CORRESPONDENT: 'Correspondent',
-  PRINCIPAL: 'Principal',
+  PRINCIPAL: 'Principal / PRO',
   HOD: 'Head of Department',
   ACADEMIC_COORDINATOR: 'Academic Coordinator',
   HEADMISTRESS: 'Headmistress',
   TEACHER: 'Teacher',
   SUBSTITUTE: 'Substitute Teacher',
   ADMIN_EXECUTIVE: 'Admin Executive',
+  ADMISSION_ADMIN: 'Admission Administrator',
   ACCOUNTANT: 'Accountant',
   HR: 'HR Manager',
-  COUNSELLOR: 'Admission Counsellor',
   LIBRARIAN: 'Librarian',
   TRANSPORT: 'Transport Manager',
   WARDEN: 'Hostel Warden',
   HOSTEL: 'Hostel Warden',
-  NURSE: 'Nurse / Doctor',
-  HEALTH: 'Nurse / Doctor',
-  SECURITY: 'Security Staff',
   PARENT: 'Parent',
   STUDENT: 'Student',
 }
 
-const ALL_ADMINS = ['SUPER_ADMIN', 'SCHOOL_ADMIN', 'ADMIN_EXECUTIVE']
+const ALL_ADMINS = ['SUPER_ADMIN', 'SCHOOL_ADMIN', 'ADMIN_EXECUTIVE', 'ADMISSION_ADMIN']
 const EXECUTIVE = ['SUPER_ADMIN', 'SCHOOL_ADMIN', 'CEO_SECRETARY', 'CORRESPONDENT', 'PRINCIPAL']
 const MANAGEMENT = [...EXECUTIVE, 'HOD', 'ACADEMIC_COORDINATOR', 'HEADMISTRESS']
 const ALL_TEACHING = [...MANAGEMENT, 'TEACHER', 'SUBSTITUTE']
 const ALL_STAFF = [
   ...ALL_TEACHING,
   'ADMIN_EXECUTIVE',
+  'ADMISSION_ADMIN',
   'ACCOUNTANT',
   'HR',
-  'COUNSELLOR',
   'LIBRARIAN',
   'TRANSPORT',
   'WARDEN',
-  'NURSE',
-  'SECURITY',
 ]
 
 /** Module -> roles allowed to access (API + nav). SUPER_ADMIN always allowed. */
 export const MODULE_ACCESS: Record<string, string[]> = {
   dashboard: [...ALL_STAFF],
-  admissions: [...MANAGEMENT, 'ADMIN_EXECUTIVE', 'COUNSELLOR'],
-  students: [...ALL_TEACHING, 'ADMIN_EXECUTIVE', 'NURSE', 'TRANSPORT', 'WARDEN', 'LIBRARIAN', 'SECURITY'],
-  parents: [...MANAGEMENT, 'TEACHER', 'SUBSTITUTE'],
+  admissions: [...MANAGEMENT, 'ADMIN_EXECUTIVE', 'ADMISSION_ADMIN'],
+  students: [...ALL_TEACHING, 'ADMIN_EXECUTIVE', 'ADMISSION_ADMIN', 'TRANSPORT', 'WARDEN', 'LIBRARIAN'],
+  parents: [...MANAGEMENT, 'ADMIN_EXECUTIVE', 'ADMISSION_ADMIN'],
   teachers: [...EXECUTIVE, 'HOD', 'HR', 'ADMIN_EXECUTIVE'],
   academics: [...MANAGEMENT, 'TEACHER', 'SUBSTITUTE'],
   lms: [...MANAGEMENT, 'TEACHER', 'SUBSTITUTE', 'STUDENT', 'PARENT'],
@@ -107,8 +107,8 @@ export const MODULE_ACCESS: Record<string, string[]> = {
   hr: [...EXECUTIVE, 'HR', 'ADMIN_EXECUTIVE'],
   transport: [...ALL_ADMINS, 'TRANSPORT', 'PARENT', 'STUDENT', 'PRINCIPAL'],
   hostel: [...ALL_ADMINS, 'WARDEN', 'PARENT', 'STUDENT', 'PRINCIPAL'],
-  security: [...ALL_ADMINS, 'SECURITY', 'PRINCIPAL'],
-  health: [...ALL_ADMINS, 'NURSE', 'PARENT', 'PRINCIPAL', 'TEACHER'],
+  security: [...ALL_ADMINS, 'PRINCIPAL'],
+  health: [...ALL_ADMINS, 'PARENT', 'PRINCIPAL', 'TEACHER'],
   library: [...ALL_ADMINS, 'LIBRARIAN', 'TEACHER', 'STUDENT', 'PARENT'],
   assets: [...MANAGEMENT, 'HR', 'ADMIN_EXECUTIVE'],
   communication: [...MANAGEMENT, 'TEACHER', 'PARENT', 'STUDENT'],
@@ -200,7 +200,7 @@ export const NAV_ITEMS: NavItem[] = [
     label: 'Admissions & CRM',
     icon: 'UserPlus',
     group: 'Operations',
-    roles: [...MANAGEMENT, 'ADMIN_EXECUTIVE', 'COUNSELLOR'],
+    roles: [...MANAGEMENT, 'ADMIN_EXECUTIVE', 'ADMISSION_ADMIN'],
     subItems: [
       { key: 'enquiries', label: 'Enquiries & Leads' },
       { key: 'pipeline', label: 'Kanban Pipeline' },
@@ -215,7 +215,7 @@ export const NAV_ITEMS: NavItem[] = [
     label: 'Students',
     icon: 'GraduationCap',
     group: 'Operations',
-    roles: [...ALL_TEACHING, 'ADMIN_EXECUTIVE', 'NURSE', 'TRANSPORT', 'WARDEN', 'LIBRARIAN', 'SECURITY'],
+    roles: [...ALL_TEACHING, 'ADMIN_EXECUTIVE', 'ADMISSION_ADMIN', 'TRANSPORT', 'WARDEN', 'LIBRARIAN'],
     subItems: [
       { key: 'directory', label: 'Student Directory' },
       { key: 'enrollment', label: 'Enrollment & Promotion' },
@@ -228,7 +228,7 @@ export const NAV_ITEMS: NavItem[] = [
     label: 'Parents',
     icon: 'Users',
     group: 'Operations',
-    roles: [...MANAGEMENT, 'TEACHER', 'SUBSTITUTE'],
+    roles: [...MANAGEMENT, 'ADMIN_EXECUTIVE', 'ADMISSION_ADMIN'],
   },
   {
     key: 'teachers',
@@ -349,7 +349,7 @@ export const NAV_ITEMS: NavItem[] = [
     label: 'Security & Gate Pass',
     icon: 'ShieldCheck',
     group: 'Operations',
-    roles: [...ALL_ADMINS, 'SECURITY', 'PRINCIPAL'],
+    roles: [...ALL_ADMINS, 'PRINCIPAL'],
     subItems: [
       { key: 'visitor-pass', label: 'Visitor Registration' },
       { key: 'pickup-verification', label: 'Student Pickup QR Verification' },
@@ -361,7 +361,7 @@ export const NAV_ITEMS: NavItem[] = [
     label: 'Health & Clinic',
     icon: 'HeartPulse',
     group: 'Operations',
-    roles: [...ALL_ADMINS, 'NURSE', 'PARENT', 'PRINCIPAL', 'TEACHER'],
+    roles: [...ALL_ADMINS, 'PARENT', 'PRINCIPAL', 'TEACHER'],
     subItems: [
       { key: 'health-profiles', label: 'Student Health Profiles' },
       { key: 'clinic-visits', label: 'Clinic Visits & First Aid' },

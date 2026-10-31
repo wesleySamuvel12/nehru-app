@@ -58,9 +58,10 @@ export const leaveCrud = defineCrud({
     }
 
     // Validate substitute employee if provided
-    if (body.substituteEmployeeId) {
+    const subTargetId = body.substituteEmployeeId || body.substituteId
+    if (subTargetId) {
       const sub = await db.employee.findFirst({
-        where: { id: body.substituteEmployeeId, schoolId, status: 'ACTIVE' },
+        where: { id: subTargetId, schoolId, status: 'ACTIVE' },
         select: { id: true, firstName: true, lastName: true },
       })
       if (!sub) {
@@ -70,9 +71,13 @@ export const leaveCrud = defineCrud({
       body.substituteName = `${sub.firstName} ${sub.lastName}`
     }
 
-    // On creation for employees, automatically assemble the 4-tier institutional workflow
+    // On creation for employees, automatically assemble the 6-tier institutional workflow
     if (op === 'create' && body.requesterType === 'EMPLOYEE') {
-      const wf = await buildWorkflowFor(body.requesterId, schoolId)
+      const wf = await buildWorkflowFor(body.requesterId, schoolId, {
+        substituteId: body.substituteId,
+        substituteName: body.substituteName,
+        requestType: body.category,
+      })
       if (wf) {
         body.workflowKey = wf.workflowKey
         body.stepsJson = wf.stepsJson
@@ -104,6 +109,7 @@ export const leaveCrud = defineCrud({
       return {
         OR: [
           { requesterId: session.employeeId },
+          { substituteId: session.employeeId },
           ...(homeroomStudentIds.length ? [{ requesterType: 'STUDENT', requesterId: { in: homeroomStudentIds } }] : []),
         ],
       }

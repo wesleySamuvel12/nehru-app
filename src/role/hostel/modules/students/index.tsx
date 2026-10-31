@@ -187,12 +187,12 @@ export default function StudentsModule() {
       />
 
       {/* Stats */}
-      {statsLoading ? (
+      {statsLoading && !stats ? (
         <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
           {Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-[86px] w-full rounded-xl" />)}
         </div>
       ) : (
-        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <div className={`grid grid-cols-2 gap-3 lg:grid-cols-4 transition-opacity ${statsLoading ? 'opacity-70' : ''}`}>
           <StatCard label="Total Active" value={stats?.active ?? '—'} icon={<GraduationCap className="h-5 w-5" />} tone="info" hint={`${stats?.total ?? 0} on record`} />
           <StatCard label="New This Term" value={stats?.newThisTerm ?? '—'} icon={<UserPlus2 className="h-5 w-5" />} tone="success" hint={`Admitted since ${stats?.termName || 'term'} start`} />
           <StatCard label="Transport Users" value={stats?.transportUsers ?? '—'} icon={<Bus className="h-5 w-5" />} tone="warning" hint="Active bus allocations" onClick={() => setModule('transport')} />

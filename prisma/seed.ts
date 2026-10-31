@@ -193,6 +193,7 @@ async function main() {
     ['admin@nis.edu.in', 'Arvind Khanna', 'SUPER_ADMIN'],
     ['schooladmin@nis.edu.in', 'Sunita Desai', 'SCHOOL_ADMIN'],
     ['principal@nis.edu.in', 'Rajesh Malhotra', 'PRINCIPAL'],
+    ['coordinator@nis.edu.in', 'Kavita Iyer', 'ACADEMIC_COORDINATOR'],
     ['teacher@nis.edu.in', 'Priya Nair', 'TEACHER'],
     ['teacher2@nis.edu.in', 'Amit Verma', 'TEACHER'],
     ['accounts@nis.edu.in', 'Vikram Rao', 'ACCOUNTANT'],

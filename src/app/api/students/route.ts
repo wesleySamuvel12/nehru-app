@@ -3,7 +3,12 @@ import { db } from '@/lib/db'
 import { notifyRoles } from '@/lib/notify'
 
 
-const OPTIONAL_NULL = ['classId', 'sectionId', 'parentId', 'dob', 'admissionDate']
+const OPTIONAL_NULL = [
+  'classId', 'sectionId', 'parentId', 'dob', 'admissionDate',
+  'fatherName', 'fatherPhone', 'fatherEmail', 'fatherOccupation', 'fatherAddress', 'fatherAltPhone', 'fatherLanguage',
+  'motherName', 'motherPhone', 'motherEmail', 'motherOccupation', 'motherAddress', 'motherAltPhone', 'motherLanguage',
+  'guardianName', 'guardianRelation', 'guardianPhone', 'guardianEmail', 'guardianOccupation', 'guardianAddress'
+]
 const STATUS_VALUES = ['ACTIVE', 'ALUMNI', 'WITHDRAWN', 'TRANSFERRED', 'GRADUATED']
 
 async function nextAdmissionNo(): Promise<string> {
@@ -110,6 +115,39 @@ const crud = defineCrud({
     for (const k of OPTIONAL_NULL) {
       if (b[k] === '' || b[k] === undefined) b[k] = null
     }
+    // Auto-create or link Parent entity if contact info is supplied
+    const primaryType = b.primaryContact || 'FATHER'
+    const parentPhone = primaryType === 'MOTHER'
+      ? (b.motherPhone || b.fatherPhone || b.guardianPhone)
+      : (b.fatherPhone || b.motherPhone || b.guardianPhone)
+    const parentName = primaryType === 'MOTHER'
+      ? (b.motherName || b.fatherName || b.guardianName)
+      : (b.fatherName || b.motherName || b.guardianName)
+
+    if (!b.parentId && parentPhone && parentName) {
+      let existingParent = await db.parent.findUnique({
+        where: { phone: String(parentPhone).trim() }
+      }).catch(() => null)
+
+      if (!existingParent) {
+        existingParent = await db.parent.create({
+          data: {
+            schoolId: b.schoolId || null,
+            name: String(parentName).trim(),
+            phone: String(parentPhone).trim(),
+            relation: primaryType,
+            email: (primaryType === 'MOTHER' ? b.motherEmail : b.fatherEmail) || null,
+            address: (primaryType === 'MOTHER' ? b.motherAddress : b.fatherAddress) || b.address || null,
+            occupation: (primaryType === 'MOTHER' ? b.motherOccupation : b.fatherOccupation) || null,
+          }
+        }).catch(() => null)
+      }
+
+      if (existingParent) {
+        b.parentId = existingParent.id
+      }
+    }
+
     // Never blank out a unique admissionNo via edit
     if (mode === 'update' && (!b.admissionNo || String(b.admissionNo).trim() === '')) delete b.admissionNo
     return b

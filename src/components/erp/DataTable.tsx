@@ -539,8 +539,13 @@ export function DataTable(props: DataTableProps) {
       )}
 
       {/* Table */}
-      <div className="overflow-hidden rounded-xl border bg-card">
-        {loading ? (
+      <div className="relative overflow-hidden rounded-xl border bg-card">
+        {loading && rows.length > 0 && (
+          <div className="absolute top-0 left-0 right-0 z-20 h-0.5 w-full overflow-hidden bg-primary/20">
+            <div className="indeterminate-bar h-full bg-primary" />
+          </div>
+        )}
+        {loading && rows.length === 0 ? (
           <TableSkeleton rows={Math.min(pageSize, 8)} />
         ) : error ? (
           <ErrorState message={error} onRetry={refresh} />
@@ -554,7 +559,7 @@ export function DataTable(props: DataTableProps) {
           />
         ) : (
           <>
-            <div className="overflow-x-auto">
+            <div className={cn('overflow-x-auto transition-opacity duration-150', loading && 'opacity-65 pointer-events-none')}>
               <Table>
                 <TableHeader>
                   <TableRow className="bg-muted/50 hover:bg-muted/50">

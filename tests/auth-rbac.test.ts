@@ -131,16 +131,15 @@ async function runTests() {
   assert.equal(normalizeRole('HOSTEL'), 'WARDEN', 'HOSTEL should normalize to WARDEN')
   assert.equal(normalizeRole('hostel'), 'WARDEN', 'lowercase hostel should normalize to WARDEN')
   assert.equal(normalizeRole('WARDEN'), 'WARDEN', 'WARDEN remains WARDEN')
-  assert.equal(normalizeRole('HEALTH'), 'NURSE', 'HEALTH should normalize to NURSE')
-  assert.equal(normalizeRole('health'), 'NURSE', 'lowercase health should normalize to NURSE')
-  assert.equal(normalizeRole('NURSE'), 'NURSE', 'NURSE remains NURSE')
+  assert.equal(normalizeRole('PRO'), 'PRINCIPAL', 'PRO should normalize to PRINCIPAL')
+  assert.equal(normalizeRole('COUNSELLOR'), 'ADMISSION_ADMIN', 'COUNSELLOR should normalize to ADMISSION_ADMIN')
+  assert.equal(normalizeRole('STUDENT_ADMIN'), 'ADMISSION_ADMIN', 'STUDENT_ADMIN should normalize to ADMISSION_ADMIN')
   assert.equal(normalizeRole('TEACHER'), 'TEACHER', 'Standard roles pass through')
 
   // 3b: Labels for aliases
   assert.equal(ROLE_LABELS['HOSTEL'], 'Hostel Warden', 'HOSTEL label should match Hostel Warden')
   assert.equal(ROLE_LABELS['WARDEN'], 'Hostel Warden', 'WARDEN label should match Hostel Warden')
-  assert.equal(ROLE_LABELS['HEALTH'], 'Nurse / Doctor', 'HEALTH label should match Nurse / Doctor')
-  assert.equal(ROLE_LABELS['NURSE'], 'Nurse / Doctor', 'NURSE label should match Nurse / Doctor')
+  assert.equal(ROLE_LABELS['ADMISSION_ADMIN'], 'Admission Administrator', 'ADMISSION_ADMIN label should match')
 
   // 3c: Role definitions & landing workspaces
   const hostelDef = getRoleDefinition('HOSTEL')
@@ -150,14 +149,12 @@ async function runTests() {
   assert.equal(hostelDef?.landingModule, 'hostel')
   assert.equal(hostelDef, wardenDef, 'HOSTEL and WARDEN resolve to identical definition')
 
-  const healthDef = getRoleDefinition('HEALTH')
-  const nurseDef = getRoleDefinition('NURSE')
-  assert.ok(healthDef, 'getRoleDefinition(HEALTH) should exist')
-  assert.equal(healthDef?.role, 'NURSE')
-  assert.equal(healthDef?.landingModule, 'health')
-  assert.equal(healthDef, nurseDef, 'HEALTH and NURSE resolve to identical definition')
+  const admissionDef = getRoleDefinition('ADMISSION_ADMIN')
+  assert.ok(admissionDef, 'getRoleDefinition(ADMISSION_ADMIN) should exist')
+  assert.equal(admissionDef?.role, 'ADMISSION_ADMIN')
+  assert.equal(admissionDef?.landingModule, 'admissions')
 
-  console.log('  ✓ 14 roles, aliases (HOSTEL <-> WARDEN, HEALTH <-> NURSE), and landing workspaces match')
+  console.log('  ✓ Roles, aliases (PRO -> PRINCIPAL, COUNSELLOR -> ADMISSION_ADMIN), and landing workspaces match')
   passed++
 
   // --------------------------------------------------------------------------
@@ -171,10 +168,12 @@ async function runTests() {
   assert.equal(can('SUPER_ADMIN', 'settings'), true)
   assert.equal(can('SUPER_ADMIN', 'hr'), true)
 
-  // 4b: Teacher permissions
+  // 4b: Teacher permissions (restricted from parent management & whole-school admin)
   assert.equal(can('TEACHER', 'academics'), true, 'Teacher can access academics')
   assert.equal(can('TEACHER', 'attendance'), true, 'Teacher can access attendance')
   assert.equal(can('TEACHER', 'students'), true, 'Teacher can access students')
+  assert.equal(can('TEACHER', 'parents'), false, 'Teacher CANNOT manage parent accounts')
+  assert.equal(can('TEACHER', 'admissions'), false, 'Teacher CANNOT manage admissions')
   assert.equal(can('TEACHER', 'fees'), false, 'Teacher CANNOT access fees')
   assert.equal(can('TEACHER', 'settings'), false, 'Teacher CANNOT access settings')
 
@@ -185,11 +184,22 @@ async function runTests() {
   assert.equal(can('STUDENT', 'hr'), false, 'Student CANNOT access HR')
   assert.equal(can('STUDENT', 'admissions'), false, 'Student CANNOT access admissions')
 
-  // 4d: Alias permissions
+  // 4d: Admission Admin permissions
+  assert.equal(can('ADMISSION_ADMIN', 'admissions'), true, 'Admission Admin can access admissions')
+  assert.equal(can('ADMISSION_ADMIN', 'students'), true, 'Admission Admin can access students')
+  assert.equal(can('ADMISSION_ADMIN', 'parents'), true, 'Admission Admin can access parents')
+
+  // 4d-2: Academic Coordinator permissions
+  assert.equal(can('ACADEMIC_COORDINATOR', 'dashboard'), true, 'Academic Coordinator can access dashboard')
+  assert.equal(can('ACADEMIC_COORDINATOR', 'academics'), true, 'Academic Coordinator can access academics')
+  assert.equal(can('ACADEMIC_COORDINATOR', 'attendance'), true, 'Academic Coordinator can access attendance')
+  assert.equal(can('ACADEMIC_COORDINATOR', 'examinations'), true, 'Academic Coordinator can access examinations')
+  assert.equal(can('ACADEMIC_COORDINATOR', 'fees'), false, 'Academic Coordinator does NOT have unrestricted finance permissions')
+
+  // 4e: Alias permissions
   assert.equal(can('HOSTEL', 'hostel'), true, 'HOSTEL alias can access hostel module')
   assert.equal(can('WARDEN', 'hostel'), true, 'WARDEN can access hostel module')
-  assert.equal(can('HEALTH', 'health'), true, 'HEALTH alias can access health module')
-  assert.equal(can('NURSE', 'health'), true, 'NURSE can access health module')
+  assert.equal(can('PRO', 'academics'), true, 'PRO alias can access academics')
 
   console.log('  ✓ Strict server-side RBAC checks protect sensitive modules from unauthorized roles')
   passed++
@@ -199,20 +209,19 @@ async function runTests() {
   // --------------------------------------------------------------------------
   console.log('[Test 5] Login Regression & Database School Context...')
 
-  // 5a: Successful login with all 14 seed sample credentials
+  // 5a: Successful login with active seed sample credentials
   const SAMPLE_LOGINS = [
     { role: 'SUPER_ADMIN', email: 'admin@nis.edu.in' },
     { role: 'SCHOOL_ADMIN', email: 'schooladmin@nis.edu.in' },
     { role: 'PRINCIPAL', email: 'principal@nis.edu.in' },
+    { role: 'ACADEMIC_COORDINATOR', email: 'coordinator@nis.edu.in' },
     { role: 'TEACHER', email: 'teacher@nis.edu.in' },
     { role: 'ACCOUNTANT', email: 'accounts@nis.edu.in' },
     { role: 'HR', email: 'hr@nis.edu.in' },
-    { role: 'COUNSELLOR', email: 'counsellor@nis.edu.in' },
+    { role: 'ADMISSION_ADMIN', email: 'admission@nis.edu.in' },
     { role: 'LIBRARIAN', email: 'librarian@nis.edu.in' },
     { role: 'TRANSPORT', email: 'transport@nis.edu.in' },
     { role: 'WARDEN', email: 'warden@nis.edu.in' },
-    { role: 'NURSE', email: 'nurse@nis.edu.in' },
-    { role: 'SECURITY', email: 'security@nis.edu.in' },
     { role: 'PARENT', email: 'parent@nis.edu.in' },
     { role: 'STUDENT', email: 'student@nis.edu.in' },
   ]

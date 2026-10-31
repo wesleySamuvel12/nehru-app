@@ -178,36 +178,66 @@ export default function StudentSheet({ studentId, open, onOpenChange, onSaved }:
 
               <Separator />
 
-              {/* Parent & contact */}
+              {/* Parent & Contact */}
               <div>
-                <h4 className="mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                  <UserRound className="h-3.5 w-3.5" /> Parent & Contact
-                </h4>
-                <div className="rounded-xl border bg-muted/30 p-3">
-                  <p className="text-sm font-semibold">{student.parent?.name || 'No parent linked'}</p>
-                  {student.parent ? (
-                    <p className="text-xs text-muted-foreground">{titleCase(student.parent.relation)}{student.parent.occupation ? ` · ${student.parent.occupation}` : ''}</p>
-                  ) : (
-                    <p className="text-xs text-muted-foreground">Link a parent from the edit form.</p>
+                <div className="mb-2 flex items-center justify-between">
+                  <h4 className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                    <UserRound className="h-3.5 w-3.5" /> Parents & Guardian Information
+                  </h4>
+                  {student.primaryContact && (
+                    <Badge variant="outline" className="text-[10px] font-bold uppercase border-primary/30 text-primary">
+                      Primary: {student.primaryContact}
+                    </Badge>
                   )}
-                  <div className="mt-2 flex flex-col gap-1.5 text-sm">
-                    {student.parent?.phone && (
-                      <span className="flex items-center gap-1.5"><Phone className="h-3.5 w-3.5 text-muted-foreground" />{student.parent.phone}</span>
+                </div>
+
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  {/* Father Details */}
+                  <div className="rounded-xl border bg-muted/20 p-3 text-xs space-y-1.5">
+                    <div className="flex items-center justify-between border-b pb-1 font-bold">
+                      <span>Father</span>
+                      {student.fatherIsEmergency && (
+                        <span className="rounded bg-rose-500/10 px-1 text-[9px] font-bold text-rose-600">EMERGENCY</span>
+                      )}
+                    </div>
+                    <p className="text-sm font-semibold text-foreground">{student.fatherName || (student.parent?.relation === 'FATHER' ? student.parent?.name : '—')}</p>
+                    <p className="text-muted-foreground">Mobile: <strong className="text-foreground">{student.fatherPhone || (student.parent?.relation === 'FATHER' ? student.parent?.phone : '—')}</strong></p>
+                    {student.fatherAltPhone && <p className="text-muted-foreground">Alt: {student.fatherAltPhone}</p>}
+                    {(student.fatherEmail || (student.parent?.relation === 'FATHER' && student.parent?.email)) && (
+                      <p className="text-muted-foreground truncate">Email: {student.fatherEmail || student.parent?.email}</p>
                     )}
-                    {student.parent?.email && (
-                      <span className="flex items-center gap-1.5 break-all"><Mail className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />{student.parent.email}</span>
+                    {(student.fatherOccupation || (student.parent?.relation === 'FATHER' && student.parent?.occupation)) && (
+                      <p className="text-muted-foreground">Occupation: {student.fatherOccupation || student.parent?.occupation}</p>
                     )}
-                    {student.phone && (
-                      <span className="flex items-center gap-1.5"><Phone className="h-3.5 w-3.5 text-muted-foreground" />{student.phone} <span className="text-xs text-muted-foreground">(student)</span></span>
+                    {student.fatherLanguage && <p className="text-muted-foreground">Language: {student.fatherLanguage}</p>}
+                  </div>
+
+                  {/* Mother Details */}
+                  <div className="rounded-xl border bg-muted/20 p-3 text-xs space-y-1.5">
+                    <div className="flex items-center justify-between border-b pb-1 font-bold">
+                      <span>Mother</span>
+                      {student.motherIsEmergency && (
+                        <span className="rounded bg-rose-500/10 px-1 text-[9px] font-bold text-rose-600">EMERGENCY</span>
+                      )}
+                    </div>
+                    <p className="text-sm font-semibold text-foreground">{student.motherName || (student.parent?.relation === 'MOTHER' ? student.parent?.name : '—')}</p>
+                    <p className="text-muted-foreground">Mobile: <strong className="text-foreground">{student.motherPhone || (student.parent?.relation === 'MOTHER' ? student.parent?.phone : '—')}</strong></p>
+                    {student.motherAltPhone && <p className="text-muted-foreground">Alt: {student.motherAltPhone}</p>}
+                    {(student.motherEmail || (student.parent?.relation === 'MOTHER' && student.parent?.email)) && (
+                      <p className="text-muted-foreground truncate">Email: {student.motherEmail || student.parent?.email}</p>
                     )}
-                    {student.email && (
-                      <span className="flex items-center gap-1.5 break-all"><Mail className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />{student.email}</span>
+                    {(student.motherOccupation || (student.parent?.relation === 'MOTHER' && student.parent?.occupation)) && (
+                      <p className="text-muted-foreground">Occupation: {student.motherOccupation || student.parent?.occupation}</p>
                     )}
-                    {student.address && (
-                      <span className="flex items-start gap-1.5"><MapPin className="mt-0.5 h-3.5 w-3.5 shrink-0 text-muted-foreground" />{student.address}</span>
-                    )}
+                    {student.motherLanguage && <p className="text-muted-foreground">Language: {student.motherLanguage}</p>}
                   </div>
                 </div>
+
+                {student.guardianName && (
+                  <div className="mt-2 rounded-lg border bg-muted/10 p-2.5 text-xs">
+                    <span className="font-semibold">Guardian ({student.guardianRelation || 'General'}):</span> {student.guardianName} · {student.guardianPhone}
+                  </div>
+                )}
               </div>
 
               <Separator />

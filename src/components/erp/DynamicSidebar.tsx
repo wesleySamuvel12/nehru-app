@@ -35,6 +35,11 @@ export function DynamicSidebar({
 }) {
   const { session, activeModule, moduleParams, setModule, setSession, schoolName } = useErp()
   const [filterQuery, setFilterQuery] = React.useState('')
+  const [collapsedGroups, setCollapsedGroups] = React.useState<Record<string, boolean>>({})
+
+  const toggleGroup = (grp: string) => {
+    setCollapsedGroups(prev => ({ ...prev, [grp]: !prev[grp] }))
+  }
 
   if (!session) return null
 
@@ -558,14 +563,24 @@ export function DynamicSidebar({
             const groupItems = filteredItems.filter(i => i.group === group)
             if (!groupItems.length) return null
 
+            const isGroupOpen = !collapsedGroups[group] || groupItems.some(i => i.key === activeModule)
+
             return (
-              <div key={group}>
+              <div key={group} className="space-y-1">
                 {collapsed ? (
                   <div className="mx-auto mb-2 h-px w-6 bg-border/60" role="presentation" />
                 ) : (
-                  <p className="mb-1.5 px-2 text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground/70">{group}</p>
+                  <button
+                    type="button"
+                    onClick={() => toggleGroup(group)}
+                    className="flex w-full items-center justify-between px-2 py-1 text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground/70 hover:text-foreground transition-colors group cursor-pointer"
+                  >
+                    <span>{group}</span>
+                    <ChevronDown className={cn("h-3 w-3 text-muted-foreground/50 transition-transform duration-200 group-hover:text-foreground", !isGroupOpen && "-rotate-90")} />
+                  </button>
                 )}
 
+                {(isGroupOpen || collapsed) && (
                 <div className="space-y-1">
                   {groupItems.map(item => {
                     const Icon = ICONS[item.icon] || LayoutDashboard
@@ -606,6 +621,7 @@ export function DynamicSidebar({
                     )
                   })}
                 </div>
+                )}
               </div>
             )
           })}

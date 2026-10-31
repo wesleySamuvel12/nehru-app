@@ -9,7 +9,7 @@ interface CachedDashboard {
   data: any
 }
 const dashboardCache = new Map<string, CachedDashboard>()
-const DASHBOARD_CACHE_TTL = 15_000
+const DASHBOARD_CACHE_TTL = 45_000
 
 export function invalidateDashboardCache(schoolId?: string) {
   if (schoolId) dashboardCache.delete(schoolId)

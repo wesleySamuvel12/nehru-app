@@ -54,9 +54,10 @@ export async function POST(req: NextRequest) {
       const roleMap: Record<string, string[]> = {
         Student: ['STUDENT'],
         Parent: ['PARENT'],
-        Teacher: ['TEACHER'],
-        Staff: ['ACCOUNTANT', 'HR', 'LIBRARIAN', 'TRANSPORT', 'WARDEN', 'NURSE', 'SECURITY', 'COUNSELLOR'],
-        Administration: ['SUPER_ADMIN', 'SCHOOL_ADMIN', 'PRINCIPAL'],
+        Teacher: ['TEACHER', 'SUBSTITUTE'],
+        Staff: ['ACCOUNTANT', 'HR', 'LIBRARIAN', 'TRANSPORT', 'WARDEN'],
+        Administration: ['SUPER_ADMIN', 'SCHOOL_ADMIN', 'PRINCIPAL', 'ACADEMIC_COORDINATOR', 'ADMISSION_ADMIN', 'HOD', 'HEADMISTRESS', 'CEO_SECRETARY', 'CORRESPONDENT', 'ADMIN_EXECUTIVE'],
+        'Academic Coordinator': ['ACADEMIC_COORDINATOR'],
         'Super Admin': ['SUPER_ADMIN'],
         'School Admin': ['SCHOOL_ADMIN'],
       }

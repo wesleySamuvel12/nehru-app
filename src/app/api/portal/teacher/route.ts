@@ -155,46 +155,10 @@ export async function GET(req: NextRequest) {
     const now = new Date()
     const jsDay = now.getDay()
     const currentDayOfWeek = jsDay === 0 ? 1 : Math.min(6, jsDay)
-
-    // Today's Timetable Slots for this Teacher
-    const teacherSlotWhere: any = {
-      ...schoolWhere,
-      dayOfWeek: currentDayOfWeek,
-      OR: [
-        { teacherId: teacher.id },
-        ...(teacherSubjectIds.length ? [{ subjectId: { in: teacherSubjectIds } }] : []),
-      ],
-    }
-
-    const rawSlots = await db.timetableSlot.findMany({
-      where: teacherSlotWhere,
-      orderBy: { period: 'asc' },
-    })
-
-    // Batch resolve lookups for classes, sections, subjects
-    const slotClassIds = [...new Set(rawSlots.map(s => s.classId).filter(Boolean))]
-    const slotSectionIds = [...new Set(rawSlots.map(s => s.sectionId).filter(Boolean))]
-    const slotSubjectIds = [...new Set(rawSlots.map(s => s.subjectId).filter(Boolean))] as string[]
-
-    const [slotClasses, slotSections, slotSubjects] = await Promise.all([
-      slotClassIds.length ? db.class.findMany({ where: { id: { in: slotClassIds } }, select: { id: true, name: true } }) : [],
-      slotSectionIds.length ? db.section.findMany({ where: { id: { in: slotSectionIds } }, select: { id: true, name: true } }) : [],
-      slotSubjectIds.length ? db.subject.findMany({ where: { id: { in: slotSubjectIds } }, select: { id: true, name: true, code: true } }) : [],
-    ])
-
-    const classMap = new Map(slotClasses.map(c => [c.id, c.name]))
-    const sectionMap = new Map(slotSections.map(s => [s.id, s.name]))
-    const subjectMap = new Map(slotSubjects.map(s => [s.id, s.name]))
-
-    const timetableToday = rawSlots.map((s: any) => ({
-      id: s.id,
-      period: s.period,
-      time: PERIOD_TIMES[s.period - 1] || `${s.startTime || ''} - ${s.endTime || ''}`,
-      className: classMap.get(s.classId) || 'Class',
-      sectionName: sectionMap.get(s.sectionId) || 'A',
-      subject: s.subjectId ? (subjectMap.get(s.subjectId) || 'General') : 'General',
-      room: s.room || `Room ${100 + s.period}`,
-    }))
+    const currentHour = now.getHours()
+    const currentMin = now.getMinutes()
+    const currentTotalMin = currentHour * 60 + currentMin
+    const DAY_NAMES = ['', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
 
     // 4. Attendance Roll Call Status for Today (Scoped to Teacher's Responsibility)
     const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0)
@@ -210,6 +174,83 @@ export async function GET(req: NextRequest) {
       _count: true,
     })
     const recordedSectionKeys = new Set(attendanceToday.map((r: any) => `${r.classId}_${r.sectionId}`))
+
+    // All week slots for this Teacher
+    const allWeekSlots = await db.timetableSlot.findMany({
+      where: {
+        ...schoolWhere,
+        OR: [
+          { teacherId: teacher.id },
+          ...(teacherSubjectIds.length ? [{ subjectId: { in: teacherSubjectIds } }] : []),
+        ],
+      },
+      orderBy: [{ dayOfWeek: 'asc' }, { period: 'asc' }],
+    })
+
+    const rawSlots = allWeekSlots.filter(s => s.dayOfWeek === currentDayOfWeek)
+
+    // Batch resolve lookups for classes, sections, subjects
+    const slotClassIds = [...new Set([...allWeekSlots.map(s => s.classId), ...teacherClassIds].filter(Boolean))]
+    const slotSectionIds = [...new Set([...allWeekSlots.map(s => s.sectionId), ...teacherSectionIds].filter(Boolean))]
+    const slotSubjectIds = [...new Set([...allWeekSlots.map(s => s.subjectId), ...teacherSubjectIds].filter(Boolean))] as string[]
+
+    const [slotClasses, slotSections, slotSubjects] = await Promise.all([
+      slotClassIds.length ? db.class.findMany({ where: { id: { in: slotClassIds } }, select: { id: true, name: true } }) : [],
+      slotSectionIds.length ? db.section.findMany({ where: { id: { in: slotSectionIds } }, select: { id: true, name: true } }) : [],
+      slotSubjectIds.length ? db.subject.findMany({ where: { id: { in: slotSubjectIds } }, select: { id: true, name: true, code: true } }) : [],
+    ])
+
+    const classMap = new Map(slotClasses.map(c => [c.id, c.name]))
+    const sectionMap = new Map(slotSections.map(s => [s.id, s.name]))
+    const subjectMap = new Map(slotSubjects.map(s => [s.id, s.name]))
+
+    const formatSlot = (s: any, isToday: boolean) => {
+      const timeStr = PERIOD_TIMES[s.period - 1] || `${s.startTime || ''} - ${s.endTime || ''}`
+      const [startStr, endStr] = timeStr.split('-').map(x => x?.trim() || '')
+      let isCurrent = false
+      let isNext = false
+      let isPast = false
+
+      if (isToday && startStr && endStr) {
+        const [sh, sm] = startStr.split(':').map(Number)
+        const [eh, em] = endStr.split(':').map(Number)
+        const startMin = (sh || 0) * 60 + (sm || 0)
+        const endMin = (eh || 0) * 60 + (em || 0)
+        if (currentTotalMin >= startMin && currentTotalMin <= endMin) {
+          isCurrent = true
+        } else if (currentTotalMin < startMin) {
+          isNext = true
+        } else {
+          isPast = true
+        }
+      }
+
+      const isMarked = isToday ? recordedSectionKeys.has(`${s.classId}_${s.sectionId}`) : false
+
+      return {
+        id: s.id,
+        period: s.period,
+        dayOfWeek: s.dayOfWeek,
+        dayName: DAY_NAMES[s.dayOfWeek] || `Day ${s.dayOfWeek}`,
+        time: timeStr,
+        startTime: s.startTime || (startStr || '08:00'),
+        endTime: s.endTime || (endStr || '08:45'),
+        classId: s.classId,
+        sectionId: s.sectionId,
+        subjectId: s.subjectId,
+        className: classMap.get(s.classId) || 'Class',
+        sectionName: sectionMap.get(s.sectionId) || 'A',
+        subject: s.subjectId ? (subjectMap.get(s.subjectId) || 'General') : 'General',
+        room: s.room || `Room ${100 + s.period}`,
+        attendanceStatus: isMarked ? 'MARKED' : 'PENDING',
+        isCurrent,
+        isNext,
+        isPast,
+      }
+    }
+
+    const timetableToday = rawSlots.map((s: any) => formatSlot(s, true))
+    const timetableWeek = allWeekSlots.map((s: any) => formatSlot(s, s.dayOfWeek === currentDayOfWeek))
 
     // If teacher is a Homeroom Class Teacher: their homeroom sections require daily roll call.
     // If teacher is not a homeroom teacher: check if they have scheduled classes today requiring period roll call.
@@ -482,6 +523,23 @@ export async function GET(req: NextRequest) {
       homeroomCount: homeroomSections.length,
     }
 
+    const assignedClasses = allTeacherSections.map(sec => ({
+      id: sec.id,
+      classId: sec.classId,
+      name: `${classMap.get(sec.classId) || 'Grade'} - ${sec.name}`,
+      className: classMap.get(sec.classId) || 'Grade',
+      sectionName: sec.name,
+      isHomeroom: sec.teacherId === teacher.id,
+      capacity: sec.capacity,
+    }))
+
+    const assignedSubjects = taughtSubjects.map(sub => ({
+      id: sub.id,
+      name: sub.name,
+      code: sub.code,
+      className: sub.classId ? classMap.get(sub.classId) : undefined,
+    }))
+
     return json({
       data: {
         teacher: {
@@ -492,9 +550,12 @@ export async function GET(req: NextRequest) {
           email: session.email,
           isClassTeacher: homeroomSections.length > 0,
           assignedClassesCount: teacherClassIds.length,
+          assignedClasses,
+          assignedSubjects,
         },
         kpis,
         todayTimetable: timetableToday,
+        weekTimetable: timetableWeek,
         pendingTasks,
         upcomingExams: formattedExams,
         announcements,

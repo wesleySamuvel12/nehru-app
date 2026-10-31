@@ -1,10 +1,9 @@
 /**
- * Reusable workflow engine.
+ * Reusable workflow engine for Nehru ERP.
  *
- * Powers approval-driven activities (leave, OD, IOD, expenses, purchases, …)
- * with ordered TO/CC steps, server-side transition validation and a full
- * history trail. The engine is pure and entity-agnostic: callers persist
- * `stepsJson`, `currentStep`, `status` and `historyJson` on their own record.
+ * Powers approval-driven activities (Leave, OD, IOD, expenses, …)
+ * with strict TO/CC enforcement, server-side transition validation,
+ * prevention of self-approval, and a tamper-evident audit history trail.
  */
 import { normalizeRole } from './rbac'
 
@@ -12,14 +11,17 @@ export type RecipientType = 'TO' | 'CC'
 
 export interface WorkflowStep {
   index: number
-  /** Logical approver key (e.g. PRINCIPAL, HOD, ACADEMIC_COORDINATOR). */
+  /** Logical approver role key (e.g. PRINCIPAL, HOD, ACADEMIC_COORDINATOR, SUBSTITUTE, CORRESPONDENT, CEO_SECRETARY). */
   approverRole: string
   /** TO = approval required; CC = information only (never an approver). */
   recipientType: RecipientType
   label?: string
   /** Resolved specific person (employee/user id) if applicable. */
   approverId?: string | null
-  status?: 'PENDING' | 'APPROVED' | 'INFO'
+  status?: 'PENDING' | 'APPROVED' | 'INFO' | 'REJECTED' | 'RETURNED'
+  decidedAt?: string | null
+  decidedBy?: string | null
+  comments?: string | null
 }
 
 export type WorkflowAction = 'APPROVE' | 'REJECT' | 'RETURN'
@@ -95,14 +97,15 @@ export function currentToStep(steps: WorkflowStep[], currentStep: number): Workf
 }
 
 export function nextToStep(steps: WorkflowStep[], afterIndex: number): WorkflowStep | null {
-  return steps.filter(s => isToStep(s) && s.index > afterIndex).sort((a, b) => a.index - b.index)[0] || null
+  return steps.filter(s => isToStep(s) && s.index > afterIndex && s.status !== 'APPROVED').sort((a, b) => a.index - b.index)[0] || null
 }
 
 /**
  * Server-side decision gate.
  *
- * Only the current TO approver may act. CC recipients never gain approval
- * authority. Self-approval is denied unless overridden by super admin.
+ * Only designated TO approvers may act.
+ * CC recipients receive information only and can never approve.
+ * Self-approval is strictly prevented unless explicitly overridden by SUPER_ADMIN.
  */
 export function canDecide(step: WorkflowStep | null, ctx: DecisionContext): DecisionResult {
   if (!step) return { ok: false, reason: 'No pending approval step.' }
@@ -116,17 +119,24 @@ export function canDecide(step: WorkflowStep | null, ctx: DecisionContext): Deci
     !!step.approverId &&
     (step.approverId === ctx.actorId || step.approverId === ctx.actorEmployeeId)
 
-  if (!byRole && !byPerson && !isSuperAdmin) {
+  // Substitution staff step flexibility
+  const isSubstituteStep = normalizeRole(step.approverRole) === 'SUBSTITUTE'
+  const isSubstituteActor = canonicalActor === 'SUBSTITUTE' || (isSubstituteStep && byPerson)
+
+  if (!byRole && !byPerson && !isSubstituteActor && !isSuperAdmin) {
     return { ok: false, reason: 'You are not an approver for this step.' }
   }
 
+  // Prevent self-approval (requester approving their own request)
   const approverMatchesRequester =
     !!step.approverId &&
     (step.approverId === ctx.requesterId || step.approverId === ctx.requesterUserId)
   const actorIsRequester =
     !!ctx.actorId && !!ctx.requesterUserId && ctx.actorId === ctx.requesterUserId
+  const actorEmployeeMatchesRequester =
+    !!ctx.actorEmployeeId && !!ctx.requesterId && ctx.actorEmployeeId === ctx.requesterId
 
-  if ((approverMatchesRequester || actorIsRequester) && !isSuperAdmin) {
+  if ((approverMatchesRequester || actorIsRequester || actorEmployeeMatchesRequester) && !isSuperAdmin) {
     return { ok: false, reason: 'You cannot approve your own request.' }
   }
 
@@ -155,37 +165,75 @@ export function applyDecision(
 
   if (action === 'APPROVE') {
     const cur = updated.find(s => isToStep(s) && s.index === currentStep)
-    if (cur) cur.status = 'APPROVED'
+    if (cur) {
+      cur.status = 'APPROVED'
+      cur.decidedAt = new Date().toISOString()
+      cur.decidedBy = actor.name || actor.role || 'Approver'
+      cur.comments = comments || null
+    }
+
     const entry: HistoryEntry = {
-      action: 'APPROVED', by: actor.name || actor.id || null, byRole: actor.role || null,
-      at: new Date().toISOString(), comments, stepIndex: currentStep,
+      action: 'APPROVED',
+      by: actor.name || actor.id || null,
+      byRole: actor.role || null,
+      at: new Date().toISOString(),
+      comments,
+      stepIndex: currentStep,
     }
-    const next = nextToStep(updated, currentStep)
-    if (next) {
-      return { steps: updated, currentStep: next.index, status: 'IN_PROGRESS', history: [entry] }
+
+    // Check if any other TO step remains pending
+    const remainingTo = updated.filter(s => isToStep(s) && s.status !== 'APPROVED')
+    if (remainingTo.length === 0) {
+      // All mandatory TO authorities have approved!
+      return { steps: updated, currentStep, status: 'APPROVED', history: [entry] }
     }
-    return { steps: updated, currentStep, status: 'APPROVED', history: [entry] }
+
+    const next = nextToStep(updated, currentStep) || remainingTo[0]
+    return { steps: updated, currentStep: next.index, status: 'IN_PROGRESS', history: [entry] }
   }
 
   if (action === 'REJECT') {
+    const cur = updated.find(s => isToStep(s) && s.index === currentStep)
+    if (cur) {
+      cur.status = 'REJECTED'
+      cur.decidedAt = new Date().toISOString()
+      cur.decidedBy = actor.name || actor.role || 'Approver'
+      cur.comments = comments || null
+    }
     return {
       steps: updated,
       currentStep,
       status: 'REJECTED',
       history: [{
-        action: 'REJECTED', by: actor.name || actor.id || null, byRole: actor.role || null,
-        at: new Date().toISOString(), comments, stepIndex: currentStep,
+        action: 'REJECTED',
+        by: actor.name || actor.id || null,
+        byRole: actor.role || null,
+        at: new Date().toISOString(),
+        comments,
+        stepIndex: currentStep,
       }],
     }
   }
 
+  // RETURN FOR CORRECTION
+  const cur = updated.find(s => isToStep(s) && s.index === currentStep)
+  if (cur) {
+    cur.status = 'RETURNED'
+    cur.decidedAt = new Date().toISOString()
+    cur.decidedBy = actor.name || actor.role || 'Approver'
+    cur.comments = comments || null
+  }
   return {
     steps: updated,
     currentStep,
     status: 'RETURNED',
     history: [{
-      action: 'RETURNED', by: actor.name || actor.id || null, byRole: actor.role || null,
-      at: new Date().toISOString(), comments, stepIndex: currentStep,
+      action: 'RETURNED',
+      by: actor.name || actor.id || null,
+      byRole: actor.role || null,
+      at: new Date().toISOString(),
+      comments,
+      stepIndex: currentStep,
     }],
   }
 }

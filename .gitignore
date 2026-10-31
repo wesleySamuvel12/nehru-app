@@ -71,3 +71,6 @@ db/*.sha256
 
 # Nested / local copies
 nehru-app/
+
+db/*.bak*
+*.bak

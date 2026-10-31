@@ -227,6 +227,34 @@ model Student {
   email          String?
   parentId       String?
   parent         Parent?   @relation(fields: [parentId], references: [id])
+  // Structured Parents & Guardian Details
+  fatherName          String?
+  fatherPhone         String?
+  fatherEmail         String?
+  fatherOccupation    String?
+  fatherAddress       String?
+  fatherAltPhone      String?
+  fatherLanguage      String?
+  fatherIsEmergency   Boolean   @default(false)
+
+  motherName          String?
+  motherPhone         String?
+  motherEmail         String?
+  motherOccupation    String?
+  motherAddress       String?
+  motherAltPhone      String?
+  motherLanguage      String?
+  motherIsEmergency   Boolean   @default(false)
+
+  guardianName        String?
+  guardianRelation    String?
+  guardianPhone       String?
+  guardianEmail       String?
+  guardianOccupation  String?
+  guardianAddress     String?
+  guardianIsEmergency Boolean   @default(false)
+
+  primaryContact      String    @default("FATHER") // FATHER|MOTHER|GUARDIAN
   classId        String?
   klass          Class?    @relation("StudentClass", fields: [classId], references: [id])
   sectionId      String?
