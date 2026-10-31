@@ -5,11 +5,13 @@ import { cn } from '@/lib/utils'
 import { Session } from '@/lib/store'
 import { api, ApiError, setToken } from '@/lib/api-client'
 import { ForgotPasswordModal } from '@/components/erp/login/ForgotPasswordModal'
-import { QUICK_ACCOUNTS } from '@/components/erp/login/LoginForm'
+import { QUICK_ACCOUNTS, QuickAccountItem } from '@/components/erp/login/LoginForm'
 import {
   Mail, Lock, User, Phone, GraduationCap, Eye, EyeOff, Loader2,
   ShieldCheck, CheckCircle2, AlertCircle, Sparkles, ChevronDown,
-  ArrowRight, School, BookOpen
+  ArrowRight, School, BookOpen, Crown, ShieldAlert, Briefcase,
+  HeartHandshake, Users, Heart, Library, Bus, Home, Stethoscope,
+  Search, Zap, Award, UserCheck, Building2, Landmark, Shield, X, ExternalLink
 } from 'lucide-react'
 import { toast } from 'sonner'
 
@@ -21,8 +23,12 @@ export function LoginScreen({ onLogin }: { onLogin: (s: Session, defaultModule: 
   const [loading, setLoading] = React.useState(false)
   const [error, setError] = React.useState<string | null>(null)
   const [forgotPasswordOpen, setForgotPasswordOpen] = React.useState(false)
-  const [showQuickAccounts, setShowQuickAccounts] = React.useState(false)
-  const isDemoAllowed = process.env.NODE_ENV !== 'production' || process.env.NEXT_PUBLIC_ENABLE_DEMO_ACCOUNTS === 'true'
+  const [showQuickAccounts, setShowQuickAccounts] = React.useState(true)
+  const [activeDemoRole, setActiveDemoRole] = React.useState<string | null>(null)
+  const [demoModalOpen, setDemoModalOpen] = React.useState(false)
+  const [demoCategory, setDemoCategory] = React.useState<'All' | 'Leadership' | 'Academics' | 'Staff' | 'Portals'>('All')
+  const [demoSearch, setDemoSearch] = React.useState('')
+  const isDemoAllowed = true
 
   // Interactive mouse parallax state (for ambient light elements on desktop)
   const [mousePos, setMousePos] = React.useState({ x: 0, y: 0 })
@@ -107,12 +113,59 @@ export function LoginScreen({ onLogin }: { onLogin: (s: Session, defaultModule: 
     }
   }
 
+  const handleInstantDemoLogin = async (acct: QuickAccountItem) => {
+    if (loading) return
+    setActiveDemoRole(acct.role)
+    setLoading(true)
+    setError(null)
+    setEmail(acct.email)
+    setPassword('demo1234')
+
+    try {
+      const res = await api<{ data: Session; token?: string; defaultModule: string }>('/api/auth/login', {
+        method: 'POST',
+        body: JSON.stringify({ email: acct.email, password: 'demo1234', selectedLoginType: 'Auto' }),
+      })
+      if (res.token) setToken(res.token)
+      toast.success(`Instant demo access granted: ${acct.name} (${acct.role})`)
+      onLogin(res.data, res.defaultModule)
+    } catch (err: any) {
+      setLoading(false)
+      setActiveDemoRole(null)
+      const msg = (err as ApiError).message || 'Instant demo login failed. Please try again.'
+      setError(msg)
+      toast.error(msg)
+    }
+  }
+
   const fillQuickAccount = (acctEmail: string) => {
     setEmail(acctEmail)
     setPassword('demo1234')
     setError(null)
-    setShowQuickAccounts(false)
   }
+
+  const filteredDemoAccounts = QUICK_ACCOUNTS.filter(acct => {
+    const matchesCat =
+      demoCategory === 'All'
+        ? true
+        : demoCategory === 'Leadership'
+        ? acct.subCategory === 'Leadership' || acct.category === 'Admin'
+        : demoCategory === 'Academics'
+        ? acct.subCategory === 'Academics'
+        : demoCategory === 'Staff'
+        ? acct.subCategory === 'Operations' || acct.category === 'Staff'
+        : acct.category === 'Portals'
+
+    const q = demoSearch.toLowerCase().trim()
+    const matchesSearch =
+      !q ||
+      acct.role.toLowerCase().includes(q) ||
+      acct.name.toLowerCase().includes(q) ||
+      acct.email.toLowerCase().includes(q) ||
+      acct.label.toLowerCase().includes(q)
+
+    return matchesCat && matchesSearch
+  })
 
   return (
     <div className="auth-switch-root">
@@ -261,7 +314,7 @@ export function LoginScreen({ onLogin }: { onLogin: (s: Session, defaultModule: 
           position: relative;
           width: 100%;
           max-width: 1000px;
-          height: 620px;
+          height: 660px;
           background: #ffffff;
           border-radius: 28px;
           border: 1px solid rgba(226, 232, 240, 0.8);
@@ -487,7 +540,67 @@ export function LoginScreen({ onLogin }: { onLogin: (s: Session, defaultModule: 
           cursor: not-allowed;
         }
 
-        /* ── Quick Account Drawer (Light Theme) ── */
+        /* ── Header Demo Button ── */
+        .header-demo-btn {
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+          background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%);
+          color: #ffffff;
+          padding: 5px 12px;
+          border-radius: 9999px;
+          font-size: 0.73rem;
+          font-weight: 700;
+          border: none;
+          cursor: pointer;
+          transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+          box-shadow: 0 2px 8px rgba(2, 132, 199, 0.25);
+          margin-left: 8px;
+        }
+
+        .header-demo-btn:hover {
+          transform: translateY(-1px);
+          box-shadow: 0 4px 14px rgba(2, 132, 199, 0.35);
+          filter: brightness(1.06);
+        }
+
+        .header-demo-btn .count-pill {
+          background: rgba(255, 255, 255, 0.22);
+          border-radius: 9999px;
+          padding: 1px 6px;
+          font-size: 0.65rem;
+          font-weight: 800;
+        }
+
+        /* ── Promotional Panel Demo Action ── */
+        .btn-promo-demo {
+          width: 100%;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          gap: 8px;
+          background: #ffffff;
+          color: #0369a1;
+          border: 1.5px solid #bae6fd;
+          padding: 9px 16px;
+          border-radius: 9999px;
+          font-size: 0.78rem;
+          font-weight: 700;
+          cursor: pointer;
+          transition: all 0.2s ease;
+          box-shadow: 0 4px 12px rgba(2, 132, 199, 0.08);
+          margin-top: 8px;
+        }
+
+        .btn-promo-demo:hover {
+          background: #f0f9ff;
+          border-color: #0284c7;
+          color: #0284c7;
+          transform: translateY(-2px);
+          box-shadow: 0 8px 18px rgba(2, 132, 199, 0.15);
+        }
+
+        /* ── Instant Demo 1-Click Drawer (Light Theme) ── */
         .quick-roles-container {
           margin-top: 10px;
           max-width: 380px;
@@ -499,53 +612,396 @@ export function LoginScreen({ onLogin }: { onLogin: (s: Session, defaultModule: 
           display: flex;
           align-items: center;
           justify-content: space-between;
-          background: #f1f5f9;
-          border: 1px dashed #cbd5e1;
-          padding: 6px 12px;
-          border-radius: 10px;
-          font-size: 0.74rem;
-          font-weight: 600;
-          color: #475569;
+          background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+          border: 1px solid #bae6fd;
+          padding: 7px 12px;
+          border-radius: 12px;
+          font-size: 0.75rem;
+          font-weight: 700;
+          color: #0369a1;
           cursor: pointer;
-          transition: background 0.2s, border-color 0.2s;
+          transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+          box-shadow: 0 2px 6px rgba(2, 132, 199, 0.06);
         }
 
         .quick-roles-trigger:hover {
-          background: #e2e8f0;
-          border-color: #94a3b8;
+          background: #e0f2fe;
+          border-color: #7dd3fc;
+          transform: translateY(-1px);
+          box-shadow: 0 4px 12px rgba(2, 132, 199, 0.12);
+        }
+
+        .demo-badge {
+          background: #0284c7;
+          color: #ffffff;
+          padding: 1px 7px;
+          border-radius: 9999px;
+          font-size: 0.65rem;
+          font-weight: 800;
+          letter-spacing: 0.03em;
+        }
+
+        .quick-roles-card {
+          margin-top: 6px;
+          background: #ffffff;
+          border: 1px solid #e2e8f0;
+          border-radius: 14px;
+          padding: 8px;
+          box-shadow: 0 10px 25px -5px rgba(15, 23, 42, 0.08);
+          animation: fadeInUp 0.25s ease-out;
+        }
+
+        .quick-roles-filter-bar {
+          display: flex;
+          align-items: center;
+          gap: 4px;
+          padding-bottom: 6px;
+          margin-bottom: 6px;
+          border-bottom: 1px solid #f1f5f9;
+          overflow-x: auto;
+        }
+
+        .quick-filter-pill {
+          background: #f8fafc;
+          border: 1px solid #e2e8f0;
+          border-radius: 9999px;
+          padding: 2px 8px;
+          font-size: 0.65rem;
+          font-weight: 600;
+          color: #64748b;
+          cursor: pointer;
+          transition: all 0.15s;
+          white-space: nowrap;
+        }
+
+        .quick-filter-pill:hover {
+          color: #0284c7;
+          border-color: #bae6fd;
+          background: #f0f9ff;
+        }
+
+        .quick-filter-pill.active {
+          background: #0284c7;
+          border-color: #0284c7;
+          color: #ffffff;
+          font-weight: 700;
         }
 
         .quick-roles-grid {
           display: grid;
-          grid-template-columns: repeat(3, 1fr);
+          grid-template-columns: repeat(2, 1fr);
           gap: 4px;
-          margin-top: 6px;
-          max-height: 120px;
+          max-height: 135px;
           overflow-y: auto;
-          padding: 2px;
+          padding-right: 2px;
+        }
+
+        .quick-roles-grid::-webkit-scrollbar {
+          width: 4px;
+        }
+
+        .quick-roles-grid::-webkit-scrollbar-thumb {
+          background: #cbd5e1;
+          border-radius: 4px;
         }
 
         .quick-role-chip {
           display: flex;
           align-items: center;
-          justify-content: center;
-          gap: 4px;
-          background: #ffffff;
+          gap: 6px;
+          background: #f8fafc;
           border: 1px solid #e2e8f0;
           border-radius: 8px;
-          padding: 4px 6px;
-          font-size: 0.7rem;
-          font-weight: 600;
-          color: #1e293b;
+          padding: 5px 7px;
           cursor: pointer;
-          transition: all 0.2s;
-          white-space: nowrap;
+          transition: all 0.18s;
+          text-align: left;
+          width: 100%;
         }
 
         .quick-role-chip:hover {
-          background: #0284c7;
+          background: #f0f9ff;
           border-color: #0284c7;
+          box-shadow: 0 2px 8px rgba(2, 132, 199, 0.1);
+          transform: translateY(-1px);
+        }
+
+        .quick-role-chip.loading {
+          background: #e0f2fe;
+          border-color: #0284c7;
+          opacity: 0.85;
+          cursor: wait;
+        }
+
+        .chip-icon {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          flex-shrink: 0;
+          width: 22px;
+          height: 22px;
+          border-radius: 6px;
+          background: #ffffff;
+          box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06);
+        }
+
+        .chip-texts {
+          display: flex;
+          flex-direction: column;
+          overflow: hidden;
+          line-height: 1.15;
+        }
+
+        .chip-role {
+          font-size: 0.69rem;
+          font-weight: 700;
+          color: #0f172a;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+        }
+
+        .chip-name {
+          font-size: 0.61rem;
+          color: #64748b;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+        }
+
+        .quick-roles-footer {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          margin-top: 6px;
+          padding-top: 6px;
+          border-top: 1px solid #f1f5f9;
+        }
+
+        .quick-modal-open-link {
+          font-size: 0.68rem;
+          font-weight: 700;
+          color: #0284c7;
+          background: none;
+          border: none;
+          cursor: pointer;
+          transition: color 0.15s;
+        }
+
+        .quick-modal-open-link:hover {
+          color: #0369a1;
+          text-decoration: underline;
+        }
+
+        /* ── Full Demo Modal (Clean White Theme) ── */
+        .demo-modal-overlay {
+          position: fixed;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          background: rgba(15, 23, 42, 0.45);
+          backdrop-filter: blur(8px);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          z-index: 1000;
+          padding: 16px;
+          animation: fadeIn 0.2s ease-out;
+        }
+
+        .demo-modal-card {
+          width: 100%;
+          max-width: 860px;
+          max-height: 88vh;
+          background: #ffffff;
+          border-radius: 20px;
+          border: 1px solid rgba(226, 232, 240, 0.9);
+          box-shadow: 0 25px 60px -15px rgba(15, 23, 42, 0.25);
+          display: flex;
+          flex-direction: column;
+          overflow: hidden;
+          animation: zoomIn 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .demo-modal-header {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          padding: 18px 24px;
+          border-bottom: 1px solid #e2e8f0;
+          background: #f8fafc;
+        }
+
+        .demo-modal-close {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          width: 32px;
+          height: 32px;
+          border-radius: 9999px;
+          border: 1px solid #e2e8f0;
+          background: #ffffff;
+          color: #64748b;
+          cursor: pointer;
+          transition: all 0.2s;
+        }
+
+        .demo-modal-close:hover {
+          background: #fee2e2;
+          border-color: #fca5a5;
+          color: #dc2626;
+        }
+
+        .demo-modal-controls {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 12px;
+          padding: 12px 24px;
+          border-bottom: 1px solid #f1f5f9;
+          background: #ffffff;
+          flex-wrap: wrap;
+        }
+
+        .demo-search-box {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          background: #f8fafc;
+          border: 1.5px solid #e2e8f0;
+          border-radius: 10px;
+          padding: 6px 12px;
+          min-width: 260px;
+          flex: 1;
+        }
+
+        .demo-search-box:focus-within {
+          border-color: #0284c7;
+          background: #ffffff;
+          box-shadow: 0 0 0 3px rgba(2, 132, 199, 0.12);
+        }
+
+        .demo-category-tabs {
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          overflow-x: auto;
+        }
+
+        .demo-tab-pill {
+          background: #f1f5f9;
+          border: 1px solid #e2e8f0;
+          border-radius: 9999px;
+          padding: 4px 12px;
+          font-size: 0.72rem;
+          font-weight: 600;
+          color: #475569;
+          cursor: pointer;
+          transition: all 0.15s;
+          white-space: nowrap;
+        }
+
+        .demo-tab-pill:hover {
+          background: #e0f2fe;
+          color: #0284c7;
+          border-color: #7dd3fc;
+        }
+
+        .demo-tab-pill.active {
+          background: #0284c7;
           color: #ffffff;
+          border-color: #0284c7;
+          font-weight: 700;
+        }
+
+        .demo-cards-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+          gap: 12px;
+          padding: 18px 24px;
+          overflow-y: auto;
+          flex: 1;
+        }
+
+        .demo-portal-card {
+          background: #ffffff;
+          border: 1.5px solid #e2e8f0;
+          border-radius: 14px;
+          padding: 12px;
+          display: flex;
+          flex-direction: column;
+          justify-content: space-between;
+          transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .demo-portal-card:hover {
+          border-color: #0284c7;
+          box-shadow: 0 8px 20px -4px rgba(2, 132, 199, 0.12);
+          transform: translateY(-2px);
+        }
+
+        .demo-portal-card.active-card {
+          border-color: #0284c7;
+          background: #f0f9ff;
+        }
+
+        .demo-card-icon {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          width: 32px;
+          height: 32px;
+          border-radius: 10px;
+          background: #f8fafc;
+          border: 1px solid #e2e8f0;
+          flex-shrink: 0;
+        }
+
+        .demo-category-tag {
+          font-size: 0.62rem;
+          font-weight: 700;
+          color: #0369a1;
+          background: #e0f2fe;
+          padding: 1px 7px;
+          border-radius: 9999px;
+          white-space: nowrap;
+        }
+
+        .demo-launch-btn {
+          display: inline-flex;
+          align-items: center;
+          gap: 5px;
+          background: #0284c7;
+          color: #ffffff;
+          border: none;
+          border-radius: 8px;
+          padding: 5px 10px;
+          font-size: 0.72rem;
+          font-weight: 700;
+          cursor: pointer;
+          transition: all 0.18s;
+        }
+
+        .demo-launch-btn:hover {
+          background: #0369a1;
+          transform: translateY(-1px);
+        }
+
+        .demo-launch-btn.loading {
+          background: #0ea5e9;
+          cursor: wait;
+        }
+
+        @keyframes zoomIn {
+          from {
+            opacity: 0;
+            transform: scale(0.95);
+          }
+          to {
+            opacity: 1;
+            transform: scale(1);
+          }
         }
 
         /* ── Panels Container & Promotional Section ── */
@@ -876,10 +1332,22 @@ export function LoginScreen({ onLogin }: { onLogin: (s: Session, defaultModule: 
 
       {/* ── 1. Top Branding Header (Clean White Surface & Restrained Shadow) ── */}
       <header className="white-theme-header">
-        <School className="h-4 w-4 text-sky-600" />
-        <span className="school-name">Nehru International School</span>
-        <span className="divider" />
-        <span className="school-tagline">A Tradition of Excellence · School ERP</span>
+        <div className="flex items-center gap-2.5">
+          <School className="h-4 w-4 text-sky-600" />
+          <span className="school-name">Nehru International School</span>
+          <span className="divider" />
+          <span className="school-tagline">A Tradition of Excellence · School ERP</span>
+        </div>
+        <button
+          type="button"
+          className="header-demo-btn"
+          onClick={() => setDemoModalOpen(true)}
+          title="Instant 1-Click Access for all 22 live dashboards"
+        >
+          <Zap className="h-3 w-3 text-amber-300 fill-amber-300 animate-pulse" />
+          <span>Instant Demo Access</span>
+          <span className="count-pill">22 Roles</span>
+        </button>
       </header>
 
       {/* ── 2. Sliding AuthSwitch Container ── */}
@@ -954,7 +1422,8 @@ export function LoginScreen({ onLogin }: { onLogin: (s: Session, defaultModule: 
               <button type="submit" className="submit-btn" disabled={loading}>
                 {loading ? (
                   <>
-                    <Loader2 className="h-4 w-4 animate-spin" /> Signing in…
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    <span>{activeDemoRole ? `Entering ${activeDemoRole}…` : 'Signing in…'}</span>
                   </>
                 ) : (
                   <>
@@ -963,38 +1432,83 @@ export function LoginScreen({ onLogin }: { onLogin: (s: Session, defaultModule: 
                 )}
               </button>
 
-              {/* Quick Demo Role Selector Drawer — strictly hidden in production */}
-              {isDemoAllowed && (
-                <div className="quick-roles-container">
-                  <button
-                    type="button"
-                    className="quick-roles-trigger"
-                    onClick={() => setShowQuickAccounts(v => !v)}
-                  >
-                    <span className="flex items-center gap-1.5">
-                      <Sparkles className="h-3.5 w-3.5 text-sky-600" /> Instant Demo Account Fill
-                    </span>
-                    <ChevronDown className={cn('h-3.5 w-3.5 transition-transform', showQuickAccounts && 'rotate-180')} />
-                  </button>
+              {/* ── Instant Demo 1-Click Access for All Logins ── */}
+              <div className="quick-roles-container">
+                <button
+                  type="button"
+                  className="quick-roles-trigger"
+                  onClick={() => setShowQuickAccounts(v => !v)}
+                >
+                  <span className="flex items-center gap-1.5 font-bold text-sky-800">
+                    <Zap className="h-3.5 w-3.5 text-amber-500 fill-amber-500 animate-pulse" />
+                    Instant Demo Access (All Logins)
+                  </span>
+                  <div className="flex items-center gap-2">
+                    <span className="demo-badge">22 Portals</span>
+                    <ChevronDown className={cn('h-3.5 w-3.5 text-slate-400 transition-transform', showQuickAccounts && 'rotate-180')} />
+                  </div>
+                </button>
 
-                  {showQuickAccounts && (
-                    <div className="quick-roles-grid">
-                      {QUICK_ACCOUNTS.map(acct => (
+                {showQuickAccounts && (
+                  <div className="quick-roles-card">
+                    {/* Category Tabs */}
+                    <div className="quick-roles-filter-bar">
+                      {(['All', 'Leadership', 'Academics', 'Staff', 'Portals'] as const).map(cat => (
                         <button
-                          key={acct.role}
+                          key={cat}
                           type="button"
-                          className="quick-role-chip"
-                          onClick={() => fillQuickAccount(acct.email)}
-                          title={acct.label}
+                          className={cn('quick-filter-pill', demoCategory === cat && 'active')}
+                          onClick={() => setDemoCategory(cat)}
                         >
-                          {acct.icon}
-                          <span className="truncate">{acct.role.replace(/ \/ .*/, '')}</span>
+                          {cat}
                         </button>
                       ))}
                     </div>
-                  )}
-                </div>
-              )}
+
+                    {/* Role Chips */}
+                    <div className="quick-roles-grid">
+                      {filteredDemoAccounts.map(acct => {
+                        const isCurrentActive = activeDemoRole === acct.role && loading
+                        return (
+                          <button
+                            key={acct.role}
+                            type="button"
+                            className={cn('quick-role-chip', isCurrentActive && 'loading')}
+                            onClick={() => handleInstantDemoLogin(acct)}
+                            disabled={loading}
+                            title={`${acct.role} • ${acct.name}\n${acct.label}\nClick for Instant 1-Click Login`}
+                          >
+                            <span className="chip-icon">
+                              {isCurrentActive ? (
+                                <Loader2 className="h-3 w-3 animate-spin text-sky-600" />
+                              ) : (
+                                acct.icon
+                              )}
+                            </span>
+                            <div className="chip-texts">
+                              <span className="chip-role">{acct.role.replace(/ \/ .*/, '')}</span>
+                              <span className="chip-name">{acct.name}</span>
+                            </div>
+                          </button>
+                        )
+                      })}
+                    </div>
+
+                    <div className="quick-roles-footer">
+                      <span className="flex items-center gap-1 text-[10px] text-slate-500 font-medium">
+                        <Zap className="h-2.5 w-2.5 text-amber-500 fill-amber-500" /> Click any role for 1-click access
+                      </span>
+                      <button
+                        type="button"
+                        className="quick-modal-open-link"
+                        onClick={() => setDemoModalOpen(true)}
+                      >
+                        All 22 detailed cards →
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
             </form>
 
             {/* ── SIGN UP / ADMISSION ENQUIRY FORM ── */}
@@ -1131,14 +1645,24 @@ export function LoginScreen({ onLogin }: { onLogin: (s: Session, defaultModule: 
                 enquiries, and register for school campus visits.
               </p>
 
-              {/* 4. Apply Now Button */}
-              <button
-                type="button"
-                className="btn-promo-action"
-                onClick={() => setIsSignUp(true)}
-              >
-                Apply Now <ArrowRight className="h-4 w-4" />
-              </button>
+              {/* 4. Apply Now Button & Instant Demo Portals Trigger */}
+              <div className="flex flex-col gap-2 mt-2 w-full max-w-[260px]">
+                <button
+                  type="button"
+                  className="btn-promo-action"
+                  onClick={() => setIsSignUp(true)}
+                >
+                  Apply Now <ArrowRight className="h-4 w-4" />
+                </button>
+                <button
+                  type="button"
+                  className="btn-promo-demo"
+                  onClick={() => setDemoModalOpen(true)}
+                >
+                  <Zap className="h-3.5 w-3.5 text-amber-500 fill-amber-500" />
+                  <span>Instant Demo 22 Portals</span>
+                </button>
+              </div>
             </div>
           </div>
 
@@ -1195,6 +1719,122 @@ export function LoginScreen({ onLogin }: { onLogin: (s: Session, defaultModule: 
         onClose={() => setForgotPasswordOpen(false)}
         initialEmail={email}
       />
+
+      {/* ── 4. Full Instant Demo Access Modal (All 22 Live Portals) ── */}
+      {demoModalOpen && (
+        <div className="demo-modal-overlay" onClick={() => setDemoModalOpen(false)}>
+          <div className="demo-modal-card" onClick={e => e.stopPropagation()}>
+            <div className="demo-modal-header">
+              <div className="flex items-center gap-2.5">
+                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-sky-100 text-sky-700">
+                  <Zap className="h-5 w-5 text-amber-500 fill-amber-500" />
+                </div>
+                <div>
+                  <h3 className="text-base font-extrabold text-slate-900 flex items-center gap-2">
+                    Instant Demo Access — All 22 Portals
+                    <span className="bg-sky-100 text-sky-700 text-[10px] font-bold px-2 py-0.5 rounded-full">
+                      1-Click Live Dashboards
+                    </span>
+                  </h3>
+                  <p className="text-xs text-slate-500">
+                    Click any role below to immediately enter their live dashboard as that persona.
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                className="demo-modal-close"
+                onClick={() => setDemoModalOpen(false)}
+                aria-label="Close"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            {/* Search and Tabs */}
+            <div className="demo-modal-controls">
+              <div className="demo-search-box">
+                <Search className="h-4 w-4 text-slate-400 shrink-0" />
+                <input
+                  type="text"
+                  placeholder="Search by role, name, email or department..."
+                  value={demoSearch}
+                  onChange={e => setDemoSearch(e.target.value)}
+                  className="w-full bg-transparent border-none outline-none text-xs text-slate-800 placeholder:text-slate-400"
+                />
+                {demoSearch && (
+                  <button type="button" onClick={() => setDemoSearch('')} className="text-slate-400 hover:text-slate-600">
+                    <X className="h-3 w-3" />
+                  </button>
+                )}
+              </div>
+
+              <div className="demo-category-tabs">
+                {(['All', 'Leadership', 'Academics', 'Staff', 'Portals'] as const).map(cat => (
+                  <button
+                    key={cat}
+                    type="button"
+                    className={cn('demo-tab-pill', demoCategory === cat && 'active')}
+                    onClick={() => setDemoCategory(cat)}
+                  >
+                    {cat}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Grid of 22 Roles */}
+            <div className="demo-cards-grid">
+              {filteredDemoAccounts.map(acct => {
+                const isCurrentActive = activeDemoRole === acct.role && loading
+                return (
+                  <div key={acct.role} className={cn('demo-portal-card', isCurrentActive && 'active-card')}>
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex items-center gap-2.5">
+                        <div className="demo-card-icon">
+                          {acct.icon}
+                        </div>
+                        <div>
+                          <h4 className="text-xs font-bold text-slate-900">{acct.role}</h4>
+                          <p className="text-[11px] font-medium text-slate-600">{acct.name}</p>
+                        </div>
+                      </div>
+                      <span className="demo-category-tag">{acct.subCategory || acct.category}</span>
+                    </div>
+                    <p className="text-[11px] text-slate-500 mt-2 line-clamp-2 min-h-[32px]">
+                      {acct.label}
+                    </p>
+                    <div className="flex items-center justify-between mt-3 pt-2 border-t border-slate-100">
+                      <span className="text-[10px] text-slate-400 font-mono truncate max-w-[130px]">
+                        {acct.email}
+                      </span>
+                      <button
+                        type="button"
+                        className={cn('demo-launch-btn', isCurrentActive && 'loading')}
+                        onClick={() => {
+                          setDemoModalOpen(false)
+                          handleInstantDemoLogin(acct)
+                        }}
+                        disabled={loading}
+                      >
+                        {isCurrentActive ? (
+                          <>
+                            <Loader2 className="h-3 w-3 animate-spin" /> Entering…
+                          </>
+                        ) : (
+                          <>
+                            Enter Portal <ArrowRight className="h-3 w-3" />
+                          </>
+                        )}
+                      </button>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

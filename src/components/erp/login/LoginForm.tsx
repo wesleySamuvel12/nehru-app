@@ -15,23 +15,50 @@ import {
   Mail, ShieldCheck, CheckCircle2, Sparkles, KeyRound,
   Crown, ShieldAlert, BookOpen, Briefcase, HeartHandshake,
   GraduationCap, Users, Heart, Library, Bus, Home, Stethoscope,
-  Search, Copy, Check, Zap, ChevronDown, ChevronUp
+  Search, Copy, Check, Zap, ChevronDown, ChevronUp, Award,
+  UserCheck, Building2, Landmark, Shield
 } from 'lucide-react'
 
-export const QUICK_ACCOUNTS = [
-  { role: 'Super Admin', email: 'admin@nis.edu.in', category: 'Admin', label: 'Full System Control', icon: <ShieldAlert className="h-3.5 w-3.5 text-amber-400" /> },
-  { role: 'School Admin', email: 'schooladmin@nis.edu.in', category: 'Admin', label: 'Campus Administration', icon: <ShieldCheck className="h-3.5 w-3.5 text-orange-400" /> },
-  { role: 'Principal / PRO', email: 'principal@nis.edu.in', category: 'Admin', label: 'Academic & Timetable Oversight', icon: <Crown className="h-3.5 w-3.5 text-yellow-400" /> },
-  { role: 'Academic Coordinator', email: 'coordinator@nis.edu.in', category: 'Admin', label: 'Curriculum & Leave Approvals', icon: <GraduationCap className="h-3.5 w-3.5 text-indigo-400" /> },
-  { role: 'Admission Admin', email: 'admission@nis.edu.in', category: 'Admin', label: 'Student Admissions & Records', icon: <Sparkles className="h-3.5 w-3.5 text-sky-400" /> },
-  { role: 'Teacher', email: 'teacher@nis.edu.in', category: 'Staff', label: 'Class Schedules & Marks Entry', icon: <BookOpen className="h-3.5 w-3.5 text-emerald-400" /> },
-  { role: 'Accountant', email: 'accounts@nis.edu.in', category: 'Staff', label: 'Fees, Payroll & Finance', icon: <Briefcase className="h-3.5 w-3.5 text-teal-400" /> },
-  { role: 'HR Manager', email: 'hr@nis.edu.in', category: 'Staff', label: 'Staff & Recruitment', icon: <Users className="h-3.5 w-3.5 text-blue-400" /> },
-  { role: 'Librarian', email: 'librarian@nis.edu.in', category: 'Staff', label: 'Library Catalog & Books', icon: <Library className="h-3.5 w-3.5 text-purple-400" /> },
-  { role: 'Transport', email: 'transport@nis.edu.in', category: 'Staff', label: 'Routes, Vehicles & Fleet', icon: <Bus className="h-3.5 w-3.5 text-sky-400" /> },
-  { role: 'Warden', email: 'warden@nis.edu.in', category: 'Staff', label: 'Hostel & Dormitories', icon: <Home className="h-3.5 w-3.5 text-cyan-400" /> },
-  { role: 'Parent', email: 'parent@nis.edu.in', category: 'Portals', label: 'Child Dashboard & Fees', icon: <HeartHandshake className="h-3.5 w-3.5 text-rose-400" /> },
-  { role: 'Student', email: 'student@nis.edu.in', category: 'Portals', label: 'My Learning & Grades', icon: <GraduationCap className="h-3.5 w-3.5 text-indigo-400" /> },
+export interface QuickAccountItem {
+  role: string
+  name: string
+  email: string
+  category: 'Admin' | 'Staff' | 'Portals'
+  subCategory?: string
+  label: string
+  icon: React.ReactNode
+}
+
+export const QUICK_ACCOUNTS: QuickAccountItem[] = [
+  // Institutional Leadership & Admin
+  { role: 'Super Admin', name: 'Arvind Khanna', email: 'admin@nis.edu.in', category: 'Admin', subCategory: 'Leadership', label: 'Full System Control & Multi-School Oversight', icon: <ShieldAlert className="h-3.5 w-3.5 text-amber-500" /> },
+  { role: 'School Admin', name: 'Sunita Desai', email: 'schooladmin@nis.edu.in', category: 'Admin', subCategory: 'Leadership', label: 'Campus Administration & Modules Config', icon: <ShieldCheck className="h-3.5 w-3.5 text-orange-500" /> },
+  { role: 'Principal / PRO', name: 'Rajesh Malhotra', email: 'principal@nis.edu.in', category: 'Admin', subCategory: 'Leadership', label: 'Academic & Timetable Oversight, Final Approver', icon: <Crown className="h-3.5 w-3.5 text-yellow-500" /> },
+  { role: 'Academic Coordinator', name: 'Kavita Iyer', email: 'coordinator@nis.edu.in', category: 'Admin', subCategory: 'Leadership', label: 'Curriculum Plans & Leave Route Reviewer', icon: <GraduationCap className="h-3.5 w-3.5 text-indigo-500" /> },
+  { role: 'Head of Dept (HOD)', name: 'Dr. Suresh Menon', email: 'hod@nis.edu.in', category: 'Admin', subCategory: 'Leadership', label: 'Department Leaves, Subject Schedules & Faculty', icon: <Award className="h-3.5 w-3.5 text-blue-500" /> },
+  { role: 'Headmistress', name: 'Meenakshi Sundaram', email: 'headmistress@nis.edu.in', category: 'Admin', subCategory: 'Leadership', label: 'Primary Wing Administration & Approvals', icon: <UserCheck className="h-3.5 w-3.5 text-pink-500" /> },
+  { role: 'CEO & Secretary', name: 'Dr. P. Krishnakumar', email: 'ceo@nis.edu.in', category: 'Admin', subCategory: 'Leadership', label: 'Executive Governance, Policy & Sanctions', icon: <Building2 className="h-3.5 w-3.5 text-purple-500" /> },
+  { role: 'Correspondent', name: 'Adv. S. Radhakrishnan', email: 'correspondent@nis.edu.in', category: 'Admin', subCategory: 'Leadership', label: 'Trust & Institutional Management', icon: <Landmark className="h-3.5 w-3.5 text-teal-500" /> },
+  { role: 'Admin Executive', name: 'R. Balasubramanian', email: 'adminexec@nis.edu.in', category: 'Admin', subCategory: 'Leadership', label: 'Institutional Liaison & Approvals Workflow', icon: <Briefcase className="h-3.5 w-3.5 text-slate-500" /> },
+
+  // Academics & Teaching
+  { role: 'Admission Admin', name: 'Deepa Kamath', email: 'admission@nis.edu.in', category: 'Admin', subCategory: 'Academics', label: 'Student Admissions, Inquiries & Leads', icon: <Sparkles className="h-3.5 w-3.5 text-sky-500" /> },
+  { role: 'Teacher (Math)', name: 'Priya Nair', email: 'teacher@nis.edu.in', category: 'Staff', subCategory: 'Academics', label: 'Class Schedules, Marks Entry & Attendance', icon: <BookOpen className="h-3.5 w-3.5 text-emerald-500" /> },
+  { role: 'Teacher (Science)', name: 'Amit Verma', email: 'teacher2@nis.edu.in', category: 'Staff', subCategory: 'Academics', label: 'Physics Labs, Homework & Grading', icon: <BookOpen className="h-3.5 w-3.5 text-teal-500" /> },
+  { role: 'Counsellor', name: 'Ananya Sen', email: 'counsellor@nis.edu.in', category: 'Staff', subCategory: 'Academics', label: 'Student Wellbeing, Sessions & Guidance', icon: <Heart className="h-3.5 w-3.5 text-rose-500" /> },
+
+  // Staff & Operations
+  { role: 'Accountant', name: 'Vikram Rao', email: 'accounts@nis.edu.in', category: 'Staff', subCategory: 'Operations', label: 'Fee Collections, Invoices & Payroll', icon: <Briefcase className="h-3.5 w-3.5 text-emerald-600" /> },
+  { role: 'HR Manager', name: 'Lata Mishra', email: 'hr@nis.edu.in', category: 'Staff', subCategory: 'Operations', label: 'Staff Records, Leaves & Recruitment', icon: <Users className="h-3.5 w-3.5 text-blue-600" /> },
+  { role: 'Librarian', name: 'Mahesh Tiwari', email: 'librarian@nis.edu.in', category: 'Staff', subCategory: 'Operations', label: 'Book Catalog, Issuance & Returns', icon: <Library className="h-3.5 w-3.5 text-purple-600" /> },
+  { role: 'Transport', name: 'Imran Sheikh', email: 'transport@nis.edu.in', category: 'Staff', subCategory: 'Operations', label: 'Routes, Vehicle Fleet & Allocations', icon: <Bus className="h-3.5 w-3.5 text-sky-600" /> },
+  { role: 'Hostel Warden', name: 'Geeta Singh', email: 'warden@nis.edu.in', category: 'Staff', subCategory: 'Operations', label: 'Dormitories, Rooms & Hostel Care', icon: <Home className="h-3.5 w-3.5 text-cyan-600" /> },
+  { role: 'Campus Nurse', name: 'Anita Bose', email: 'nurse@nis.edu.in', category: 'Staff', subCategory: 'Operations', label: 'Infirmary, Medical Records & Vitals', icon: <Stethoscope className="h-3.5 w-3.5 text-red-500" /> },
+  { role: 'Security Desk', name: 'Ravi Naik', email: 'security@nis.edu.in', category: 'Staff', subCategory: 'Operations', label: 'Gate Passes, Visitors & Safety', icon: <Shield className="h-3.5 w-3.5 text-slate-600" /> },
+
+  // Portals
+  { role: 'Parent Portal', name: 'Rohan Gupta', email: 'parent@nis.edu.in', category: 'Portals', subCategory: 'Portals', label: 'Child Academics, Attendance, Fees & Leave', icon: <HeartHandshake className="h-3.5 w-3.5 text-rose-500" /> },
+  { role: 'Student Portal', name: 'Diya Gupta', email: 'student@nis.edu.in', category: 'Portals', subCategory: 'Portals', label: 'My Timetable, Homework, Exams & Results', icon: <GraduationCap className="h-3.5 w-3.5 text-indigo-600" /> },
 ]
 
 export type LoginPhase = 'idle' | 'checking' | 'success'
