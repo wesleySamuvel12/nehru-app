@@ -20,7 +20,7 @@ import {
   LayoutDashboard, GraduationCap, UserPlus, Users, Briefcase, BookOpen, MonitorPlay, CalendarCheck,
   ClipboardList, Wallet, BadgeCheck, Bus, Building2, ShieldCheck, HeartPulse, Library, Boxes,
   Megaphone, CalendarDays, FileBadge, BarChart3, Plug, Settings, ScrollText, Search, Bell, Sun,
-  Moon, LogOut, Menu, ChevronsUpDown, X, PanelLeftClose, PanelLeftOpen, User,
+  Moon, LogOut, Menu, ChevronsUpDown, X, PanelLeftClose, PanelLeftOpen, User, Check,
   Activity, CornerDownLeft, ArrowUp, ArrowDown, AlertTriangle, ArrowLeft, Sparkles, Calendar, Trophy,
 } from 'lucide-react'
 

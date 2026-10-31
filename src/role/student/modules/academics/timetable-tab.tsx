@@ -231,6 +231,8 @@ function SlotDialog({ state, onClose, onSaved, subjects, classId, sectionId }: {
 }) {
   const [subjectId, setSubjectId] = React.useState('')
   const [room, setRoom] = React.useState('')
+  const [day, setDay] = React.useState(state.day || 1)
+  const [period, setPeriod] = React.useState(state.period || 1)
   const [saving, setSaving] = React.useState(false)
   const [removing, setRemoving] = React.useState(false)
 
@@ -238,6 +240,8 @@ function SlotDialog({ state, onClose, onSaved, subjects, classId, sectionId }: {
     if (state.open) {
       setSubjectId(state.slot?.subjectId || '')
       setRoom(state.slot?.room || '')
+      setDay(state.day || 1)
+      setPeriod(state.period || 1)
     }
   }, [state.open, state.slot, state.day, state.period])
 
@@ -256,8 +260,8 @@ function SlotDialog({ state, onClose, onSaved, subjects, classId, sectionId }: {
         await createOne('api/academics/timetables', {
           classId,
           sectionId,
-          dayOfWeek: state.day,
-          period: state.period,
+          dayOfWeek: day,
+          period: period,
           subjectId: cleanSubject,
           room: room || null,
           startTime: range[0],
@@ -307,14 +311,14 @@ function SlotDialog({ state, onClose, onSaved, subjects, classId, sectionId }: {
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
                 <Label>Day</Label>
-                <Select value={String(state.day)} onValueChange={v => setDialog(d => ({ ...d, day: Number(v) }))}>
+                <Select value={String(day)} onValueChange={v => setDay(Number(v))}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>{DAYS.map(d => <SelectItem key={d.value} value={String(d.value)}>{d.label}</SelectItem>)}</SelectContent>
                 </Select>
               </div>
               <div className="space-y-1.5">
                 <Label>Period</Label>
-                <Select value={String(state.period)} onValueChange={v => setDialog(d => ({ ...d, period: Number(v) }))}>
+                <Select value={String(period)} onValueChange={v => setPeriod(Number(v))}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
                     {PERIOD_TIMES.map((t, i) => <SelectItem key={i + 1} value={String(i + 1)}>P{i + 1} · {t}</SelectItem>)}
