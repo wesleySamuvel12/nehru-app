@@ -74,3 +74,5 @@ nehru-app/
 
 db/*.bak*
 *.bak
+!db/custom.db
+!prisma/custom.db

@@ -30,3 +30,17 @@ if (fs.existsSync(publicDir) && fs.existsSync(path.dirname(standalonePublic))) {
   console.log('✓ Copied public to standalone build')
 }
 
+const dbDir = path.join(process.cwd(), 'db')
+const standaloneDb = path.join(process.cwd(), '.next', 'standalone', 'db')
+if (fs.existsSync(dbDir) && fs.existsSync(path.dirname(standaloneDb))) {
+  copyDir(dbDir, standaloneDb)
+  console.log('✓ Copied db to standalone build')
+}
+
+const prismaDir = path.join(process.cwd(), 'prisma')
+const standalonePrisma = path.join(process.cwd(), '.next', 'standalone', 'prisma')
+if (fs.existsSync(prismaDir) && fs.existsSync(path.dirname(standalonePrisma))) {
+  copyDir(prismaDir, standalonePrisma)
+  console.log('✓ Copied prisma to standalone build')
+}
+

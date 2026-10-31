@@ -22,9 +22,15 @@ function setupDatabaseUrl(): string | undefined {
         path.join(process.cwd(), 'db', 'custom.db'),
         path.join(process.cwd(), '..', 'db', 'custom.db'),
         path.join(process.cwd(), 'prisma', 'custom.db'),
+        path.join(process.cwd(), '.next', 'standalone', 'db', 'custom.db'),
         path.join(__dirname, '..', '..', '..', 'db', 'custom.db'),
+        path.join(__dirname, '..', '..', '..', '..', 'db', 'custom.db'),
+        path.join(__dirname, '..', '..', '..', 'prisma', 'custom.db'),
         path.join('/var/task', 'db', 'custom.db'),
+        path.join('/var/task', 'prisma', 'custom.db'),
         path.join('/var/task', 'custom.db'),
+        path.resolve('db/custom.db'),
+        path.resolve('prisma/custom.db'),
       ]
       for (const candidate of candidates) {
         if (fs.existsSync(/* turbopackIgnore: true */ candidate)) {
