@@ -2,7 +2,7 @@
 
 import * as React from 'react'
 import { useErp } from '@/lib/store'
-import { can } from '@/lib/rbac'
+import { can, normalizeRole } from '@/lib/rbac'
 import { AppShell } from './AppShell'
 import { BrandMark } from './brand'
 import { SUPER_ADMIN_MODULE_REGISTRY } from '@/role/super-admin/modules/registry'
@@ -37,6 +37,9 @@ const ROLE_MODULE_REGISTRIES = {
   SUBSTITUTE: TEACHER_MODULE_REGISTRY,
   ADMIN_EXECUTIVE: SCHOOL_ADMIN_MODULE_REGISTRY,
   ADMISSION_ADMIN: COUNSELLOR_MODULE_REGISTRY,
+  COUNSELLOR: COUNSELLOR_MODULE_REGISTRY,
+  NURSE: SCHOOL_ADMIN_MODULE_REGISTRY,
+  SECURITY: SCHOOL_ADMIN_MODULE_REGISTRY,
   STUDENT: STUDENT_MODULE_REGISTRY,
   PARENT: PARENT_MODULE_REGISTRY,
   ACCOUNTANT: ACCOUNTANT_MODULE_REGISTRY,
@@ -62,11 +65,16 @@ export function AuthenticatedApp() {
 
   if (!session) return null
 
-  const allowed = can(session.role, activeModule)
-  const roleRegistry = ROLE_MODULE_REGISTRIES[session.role as keyof typeof ROLE_MODULE_REGISTRIES]
+  const canonicalRole = normalizeRole(session.role)
+  const allowed = can(canonicalRole, activeModule)
+  const roleRegistry =
+    ROLE_MODULE_REGISTRIES[canonicalRole as keyof typeof ROLE_MODULE_REGISTRIES] ||
+    ROLE_MODULE_REGISTRIES[session.role as keyof typeof ROLE_MODULE_REGISTRIES]
   const ModuleView = roleRegistry ? (roleRegistry[activeModule] || roleRegistry.dashboard) : null
-  const roleApplication = ROLE_APPLICATIONS[session.role as keyof typeof ROLE_APPLICATIONS]
-  const isRoleLanding = activeModule === getRoleLandingModule(session.role)
+  const roleApplication =
+    ROLE_APPLICATIONS[canonicalRole as keyof typeof ROLE_APPLICATIONS] ||
+    ROLE_APPLICATIONS[session.role as keyof typeof ROLE_APPLICATIONS]
+  const isRoleLanding = activeModule === getRoleLandingModule(canonicalRole)
   const ActiveView = isRoleLanding && roleApplication ? roleApplication : ModuleView
 
   return (

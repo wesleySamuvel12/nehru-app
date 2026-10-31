@@ -87,7 +87,7 @@ export default function AcademicCoordinatorDashboard() {
         api<{ data: ClassItem[] }>('/api/academics/classes?all=1').catch(() => ({ data: [] })),
         api<{ data: any[] }>('/api/employees?all=1').catch(() => ({ data: [] })),
         list<LeaveRequestItem>('api/attendance/leave', { all: true }).catch(() => ({ data: [] })),
-        api<{ data: ExamItem[] }>('/api/examinations?all=1').catch(() => ({ data: [] })),
+        api<{ data: ExamItem[] }>('/api/exams?all=1').catch(() => ({ data: [] })),
         api<{ data: any[] }>('/api/academics/timetables?all=1').catch(() => ({ data: [] })),
         list('api/events', { all: true, sortBy: 'startDate', sortDir: 'asc' }).catch(() => ({ data: [] })),
       ])
